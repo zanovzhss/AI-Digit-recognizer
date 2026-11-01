@@ -311,7 +311,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       }
       if (id === 6) for (let i = 0; i < 7; i++) fig(out, cam, mk(40 + i, townsfolk(i), "tf" + i), at("harbor", -9 + i * 1.3, 0, 3 + (i % 3) * 0.8), f, { mode: "stand", expr: "laugh" });
       if (id === 8) {
-        const P: [number, number, number, boolean][] = [[-7.6, 3.1, 0, false], [-6.95, 2.3, 1, true], [-6.25, 3.4, 2, false], [-5.6, 2.5, 3, true], [-5.0, 3.7, 4, false], [-8.0, 4.3, 5, false]];
+        const P: [number, number, number, boolean][] = [[-7.6, 3.1, 0, false], [-6.95, 2.3, 1, true], [-6.25, 3.4, 2, false], [-5.6, 2.5, 3, true], [-5.0, 3.7, 4, false], [-7.3, 4.6, 5, false]];
         P.forEach(([x, z, v, pt], i) => {
           const bob = Math.abs(Math.sin(f * 0.45 + i * 1.3));
           fig(out, cam, mk(40 + v, townsfolk(v), "tf" + v), at("harbor", x, 0, z), f, { mode: "stand", expr: f < cue(W.joke) && i % 2 ? "grin" : "laugh", prop: pt ? "point" : null,
@@ -334,7 +334,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
           { roll: falling ? -0.95 * smooth(sl.fall * 1.3) : 0, shadow: true });
         if (falling && f < SLIP + 30) { const k = q((f - SLIP) / 30, 30); out.fx.push({ key: `stars${k}`, cw: 420, ch: 220, draw: (p) => fxStars(p, k), x: sl.p[0] + cam.right.x * 1.2, y: 1.15, z: sl.p[2] + cam.right.z * 1.2, w: 0.9, h: 0.47 }); }
         fig(out, cam, mk(30, NEWSBOY, "newsboy"), [-4.2, 0, 2.4], f, { mode: "stand", expr: falling ? "laugh" : "grin", prop: falling ? "point" : null }, { flip: true });
-        fig(out, cam, mk(43, townsfolk(3), "tf3"), [-2.3, 0, 0.6], f, { mode: "stand", expr: falling ? "laugh" : "neutral" });
+        fig(out, cam, mk(43, townsfolk(3), "tf3"), [-3.6, 0, 0.8], f, { mode: "stand", expr: falling ? "laugh" : "neutral" });
       }
       break;
     }

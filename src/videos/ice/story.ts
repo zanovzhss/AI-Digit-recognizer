@@ -57,10 +57,10 @@ export const brigAt = (id: number, f: number): BrigPose => {
   switch (s.place) {
     case "beach": return { ...P("beach", 6, -46, 0.5), roll: bob * 2 };
     case "harbor":
-      if (id === 6) return P("harbor", -4 - 6 * u, -16 - 10 * u, 0.55);
+      if (id === 6) return P("harbor", -4 - 6 * u, -16 - 10 * u, 2.11);
       if (id === 8) return P("harbor", 6, -44, 0.6);
-      if (id === 13) return P("harbor", -2 - 4 * u, -12 - 7 * u, 0.5, RED);
-      if (id === 14) return P("harbor", 2 - 3 * u, -14 - 6 * u, 0.62, GREEN);
+      if (id === 13) return P("harbor", -6 - 4 * u, -20 - 7 * u, 2.09, RED);
+      if (id === 14) return P("harbor", -2 - 3 * u, -22 - 6 * u, 2.03, GREEN);
       return P("harbor", 0, -4.2);
     case "port": return P("port", 0, -4.2);
     case "ocean": return { pos: at("ocean", 3.2 * (f - s.a) / FPS, WATER_Y, 0), yaw: 0, roll: 0.03 * Math.sin(f * 0.09), sail: SAIL, show: true };
@@ -103,7 +103,7 @@ export const COIN_F = cue(W.dollars);
 // shots 16-21 cell
 export const TUDOR_CELL: V3 = C(-0.45, BENCH.h - 0.02, BENCH.z + 0.08);
 export const TUDOR_WIN: V3 = C(0.15, 0, -2.75);
-export const GUARD_P: V3 = C(0.85, 0, 2.7);
+export const GUARD_P: V3 = C(1.45, 0, 1.85);
 export const YAWN = [cue(W.prison) - 6, cue(W.prison) + 26] as const;
 export const BULB = cue(W.figures);
 export const BOTTLE: V3 = C(-1.75, BENCH.h, BENCH.z + 0.04);
@@ -192,15 +192,15 @@ const CAMS: Record<number, Key[]> = {
   // 4 harbor: Tudor, proud, the ice stack and the brig behind him
   4: [{ f: 162, s: hold("harbor", [0.7, 1.45, 6.9], [-1.0, 1.35, 2.8], 162, 0.0032, { fov: 35, roll: -0.03 }) }],
   // 5 harbor: on deck looking back at the plank, the cutters carry blocks aboard
-  5: [{ f: 208, s: hold("harbor", [4.6, 2.1, -3.4], [1.6, 0.9, 1.6], 208, 0.0018, { fov: 40, roll: 0.03 }) }],
+  5: [{ f: 208, s: hold("harbor", [4.6, 2.1, -4.2], [2.3, 0.9, 1.6], 208, 0.0012, { fov: 40, roll: 0.02 }) }],
   // 6 aerial: the brig leaves the snowy harbour
   6: [{ f: 293, s: (f) => { const b = brigAt(6, f); return dolly([b.pos[0] + 22, 34, b.pos[2] + 34], [b.pos[0] - 2, 0, b.pos[2] - 6], pushK(f, 293, 0.002), { fov: 40 }); } }],
   // 7 street: the newspaper close-up, the newsboy's face over it
-  7: [{ f: 331, s: hold("street", [-2.9, 0.95, 5.95], [-3.12, 0.95, 4.1], 331, 0.0025, { fov: 36, roll: 0.03 }) }],
+  7: [{ f: 331, s: hold("street", [-2.9, 0.9, 6.35], [-3.12, 0.9, 4.1], 331, 0.0018, { fov: 36, roll: 0.03 }) }],
   // 8 harbor quay: the crowd laughs and points at the brig out on the water
   8: [{ f: 366, s: hold("harbor", [-3.6, 1.6, 12.4], [-6.5, 1.15, 3.1], 366, 0.0015, { fov: 40, roll: -0.02 }) }],
   // 9 street: the slip on the ice patch
-  9: [{ f: 407, s: hold("street", [0.3, 1.6, 12.5], [-2.9, 0.8, 5.0], 407, 0.0012, { fov: 40 }) }],
+  9: [{ f: 407, s: hold("street", [-1.6, 1.6, 12.5], [-2.9, 0.8, 5.0], 407, 0.0012, { fov: 40 }) }],
   // 10 Caribbean port wide: the brig in, the sun on the stack
   10: [{ f: 471, s: hold("port", [8.0, 4.6, 14.5], [-0.6, 0.9, 0.4], 471, 0.002, { fov: 40 }) }],
   // 11 close on the melting stack, Tudor sweating behind it
@@ -209,12 +209,12 @@ const CAMS: Record<number, Key[]> = {
   12: [{ f: 578, s: hold("port", [1.95, 0.55, 4.5], [2.42, 0.04, 3.2], 578, 0.002, { fov: 34 }) },
     { f: 630, dur: 30, s: hold("port", [2.2, 0.4, 4.4], [3.1, 0.05, 3.25], 630, 0.002, { fov: 34 }) }],
   // 13-14 two quick departures from Boston: red sails, then green sails from the other side
-  13: [{ f: 660, s: brigFollow(13, [22, 4.0, 30], 7.5, { fov: 40, roll: 0.02 }) }],
-  14: [{ f: 709, s: brigFollow(14, [-24, 3.6, 30], 7.5, { fov: 40, roll: -0.02 }) }],
+  13: [{ f: 660, s: brigFollow(13, [14, 7.5, 38], 10.2, { fov: 40, roll: 0.02 }) }],
+  14: [{ f: 709, s: brigFollow(14, [6, 7.5, 38], 10.2, { fov: 40, roll: -0.02 }) }],
   // 15 port: the puddles are bigger now
   15: [{ f: 736, s: hold("port", [1.6, 2.6, 6.8], [-1.4, 0.2, 2.0], 736, 0.006, { fov: 38 }) }],
   // 16 cell: from the corridor (the guard yawning in the foreground) toward Tudor on the bench, through the bars
-  16: [{ f: 754, s: hold("cell", [2.15, 1.55, 5.45], [-0.45, 0.95, -2.8], 754, 0.0015, { fov: 40 }) }],
+  16: [{ f: 754, s: hold("cell", [2.15, 1.0, 5.45], [-0.45, 0.85, -2.8], 754, 0.0008, { fov: 40 }) }],
   // 17 inside: Tudor's light-bulb moment
   17: [{ f: 836, s: hold("cell", [0.45, 1.3, -0.45], [-0.45, 1.42, -2.95], 836, 0.0015, { fov: 38 }) }, { f: 857, dur: 18, s: hold("cell", [0.38, 1.3, -0.6], [-0.45, 1.45, -2.95], 875, 0.0015, { fov: 38, roll: -0.03 }) }],
   // 18 the icicle in the window, dripping
@@ -229,7 +229,7 @@ const CAMS: Record<number, Key[]> = {
   // 23 the lumber mill yard and its sawdust mountains
   23: [{ f: 1220, s: hold("mill", [6.0, 2.3, 10.0], [-1.5, 1.6, -2.5], 1220, 0.0015, { fov: 40 }) }, { f: 1224, dur: 40, s: hold("mill", [4.2, 2.0, 8.2], [-1.8, 1.5, -2.5], 1264, 0.002, { fov: 40, roll: 0.02 }) }],
   // 24 the brig alone on a hot ocean, aerial
-  24: [{ f: 1291, s: brigFollow(24, [-22, 16, 36], 6, { fov: 40 }) }],
+  24: [{ f: 1291, s: brigFollow(24, [-26, 18, 41], 6, { fov: 40 }) }],
   // 25 the calendar on the hold's post flips four months
   25: [{ f: 1331, s: (f) => { const s = hold("hold", [-0.82, 1.45, 4.85], [-1.0, 1.42, 3.06], 1331, 0.0012, { fov: 34 })(f); return { ...s, roll: 0.02 * Math.sin(f * 0.06) }; } }],
   // 26 Calcutta: on deck above the hatch as its cover comes off
@@ -308,7 +308,6 @@ export const focusAt = (id: number, f: number): V3 => { const d = dofAt(f); retu
  *  a palm in the port wide, a barrel in the market wide */
 export type Fg = { a: number; b: number; kit: string; pos: V3; s?: number; yaw?: number };
 export const FOREGROUND: Fg[] = [
-  { a: 407, b: 471, kit: "fencepost", pos: [-0.95, D0, 8.6], s: 0.95, yaw: 0.25 },
   { a: 366, b: 407, kit: "crate", pos: at("harbor", -2.45, 0, 7.6), s: 0.8, yaw: 0.4 },
   { a: 1471, b: 1510, kit: "barrel", pos: at("calcutta", 74.6, 0, 27.4), s: 0.95, yaw: 0.2 },
 ];

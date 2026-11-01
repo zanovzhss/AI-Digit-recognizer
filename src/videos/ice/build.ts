@@ -1060,19 +1060,21 @@ export const buildPond = (root: THREE.Object3D, kit: Kit) => {
 };
 
 /** Boston harbour in winter: snowy quay with a stone face, a row of snowy houses, the gangplank, ice stacks, barrels */
-export const buildHarbor = (root: THREE.Object3D, kit: Kit) => {
+export const buildHarbor = (root: THREE.Object3D, kit: Kit): THREE.Object3D => {
   const b = new Batch(), r = rng(53), O = at("harbor", 0, 0, 0)[0];
   vegOrigin(O, 0);
   const stone = lam("quayStone", () => ({ map: stoneHD("quayHD", ["#b9b0a4", "#aaa196", "#c2b9ad", "#a39a90"], "#6f675e") }));
   quayWall(b, O - 120, O + 120, 0, -1.8, stone);
   [[-52, 9, 8.4, 1], [-42.5, 8, 9.8, 0], [-33.5, 9, 7, 4], [-24, 8, 8.4, 2], [-14.5, 9, 9.8, 3], [-5, 8, 7, 1], [4.5, 9, 8.4, 0], [14, 8, 9.8, 4], [23.5, 9, 7, 2], [33, 8, 8.4, 3], [42.5, 9, 9.8, 1]]
     .forEach(([x, w, h, si]) => house(b, O + x, 26, Math.PI, w, 8, h, si, D0, true));
-  // gangplank from the quay to the brig's rail
+  // gangplank from the quay to the brig's rail (its own object: shown only while the brig is moored)
   const L = Math.hypot(PLANK.z0 - PLANK.z1, DECK_Y + WATER_Y), ang = Math.atan2(DECK_Y + WATER_Y, PLANK.z0 - PLANK.z1);
-  b.add(boxGeo(V(-0.32, -0.05, -L / 2), V(0.32, 0.03, L / 2), 1), woodM("plank", "#9a7048"),
+  const pb = new Batch(), plank = new THREE.Group();
+  pb.add(boxGeo(V(-0.32, -0.05, -L / 2), V(0.32, 0.03, L / 2), 1), woodM("plank", "#9a7048"),
     new THREE.Matrix4().makeRotationX(ang).setPosition(O + PLANK.x, (DECK_Y + WATER_Y) / 2, (PLANK.z0 + PLANK.z1) / 2));
+  pb.build(plank); root.add(plank);
   iceStack(b, at("harbor", -2.7, 0, 0)[0], 0, 2.2, 4, 2, 3);
-  iceStack(b, O + 4.2, 0, 2.9, 3, 2, 2);
+  iceStack(b, O + 6.5, 0, 4.0, 3, 2, 2);
   for (let x = -60; x <= 60; x += 6.5) if (Math.abs(x - 2.2) > 1.2) b.add(cyl(0.16, 0.2, 0.55, 10), ironM(), tr(O + x, 0, 0.55));
   for (const [x, z] of [[-6.8, 1.4], [-7.4, 1.9], [7.2, 1.5], [9.5, 6.5]]) barrel(b, O + x, z);
   for (const [x, z, s] of [[6.2, 2.2, 0.8], [6.9, 3.1, 0.6], [-9.2, 7.8, 0.7]] as const) crate(b, O + x, z, s, r());
@@ -1080,6 +1082,7 @@ export const buildHarbor = (root: THREE.Object3D, kit: Kit) => {
   hills(b, O, [[-160, -260, 190, 40, 110], [60, -300, 240, 52, 120], [260, -220, 150, 36, 110], [-320, -160, 180, 44, 120]], ["#ece8e4", "#e2dfe0"]);
   for (let i = 0; i < 24; i++) prop(b, kit, "tree_cone", O - 200 + r() * 420, D0, -200 - r() * 60, 9 + r() * 6, r() * 6);
   b.build(root);
+  return plank;
 };
 
 /** the tropical beach: sand, a foam line, palms, a far green headland */

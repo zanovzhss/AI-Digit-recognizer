@@ -73,7 +73,7 @@ export class World {
   private clouds: THREE.Mesh[] = [];
   private fgs: { o: THREE.Object3D; a: number; b: number }[] = [];
   private WU: Record<string, THREE.IUniform>;
-  private brig: BrigParts;
+  private brig: BrigParts; private plank: THREE.Object3D;
   private held: { ice: THREE.Mesh[]; paper: THREE.Mesh };
   private stack: THREE.Mesh[] = []; private puddles: THREE.Mesh[] = [];
   private wallet: { flap: THREE.Group; coin: THREE.Mesh };
@@ -167,7 +167,7 @@ export class World {
     buildStreet(R, kit, sightLines());
     this.streetDoor(R);
     this.cell = buildCell(R);
-    buildPond(R, kit); buildHarbor(R, kit); buildBeach(R); buildPort(R); buildMill(R, kit); buildCalcutta(R);
+    buildPond(R, kit); this.plank = buildHarbor(R, kit); buildBeach(R); buildPort(R); buildMill(R, kit); buildCalcutta(R);
     this.hold = buildHold(R);
     this.hold.pageMat.map = calendarTex(0); this.hold.underMat.map = calendarTex(1); this.hold.pageMat.needsUpdate = this.hold.underMat.needsUpdate = true;
     this.brig = buildBrig(); R.add(this.brig.group);
@@ -313,6 +313,7 @@ export class World {
     const bp = brigAt(id, f), bg = this.brig.group;
     bg.visible = bp.show; bg.position.set(...bp.pos); bg.rotation.set(bp.roll, bp.yaw, 0, "YXZ");
     this.brig.sail.color.set(bp.sail);
+    this.plank.visible = id <= 5;
     const lk = id === 26 ? smooth((f - HATCH_OPEN[0]) / (HATCH_OPEN[1] - HATCH_OPEN[0])) : 0;
     this.brig.lid.position.set(0.4, 1.52 + 0.5 * Math.sin(Math.PI * Math.min(1, lk * 1.4)) * (1 - lk) + 0.05 * lk, 1.9 * lk);
     this.brig.lid.rotation.set(0.25 * Math.sin(Math.PI * lk), 0, 0);
