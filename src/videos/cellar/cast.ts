@@ -257,6 +257,11 @@ const farmer = (id: number, f: number, cam: CamInfo, out: Stage) => {
     out.bucket = { pos: [h[0] + Math.sin(yaw) * 0.05, h[1] - HANDLE, h[2] + Math.cos(yaw) * 0.05], yaw };
     return;
   }
+  if (id === 3) { // the bucket insert: the lens stands where he does, so he is out of this frame (he stepped back to watch)
+    out.bucket = { pos: [...BUCKET_C], yaw: 0.3 };
+    blob(out, BUCKET_C[0], 0, BUCKET_C[2], 0.75, 0.9);
+    return;
+  }
   const [x, y, z] = cellarFarmer(), fo = cellarPose(f);
   out.places.push(person(cam, who, x, y, z, { side: false, mirror: false }, fo, {}));
   blob(out, x, y, z);
