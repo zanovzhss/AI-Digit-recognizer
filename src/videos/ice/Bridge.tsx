@@ -1,4 +1,4 @@
-// "The Bridge That Fell for a Song": our original 67 s short in the flat-characters-in-a-3D-toon-world style.
+// "The Man Who Sold Ice to the Tropics": ~55 s short in the flat-characters-in-a-3D-toon-world style (bridge template post chain, unchanged).
 // One three.js world (world.ts) posed per frame from the story timeline (story.ts). Post chain (look-match pass):
 //   InkPass (world ink lines, own pass) -> lens blur pre + main (thin-lens DOF per shot from dofAt) ->
 //   [bloom (emissive only) + NEUTRAL tone mapping + colour grade] (one merged EffectPass), MSAA 4.
@@ -41,7 +41,7 @@ const fwd = new THREE.Vector3(), fpt = new THREE.Vector3();
 
 const useKit = () => {
   const [kit, setKit] = useState<Kit | null>(null);
-  const [handle] = useState(() => delayRender("bridge kit"));
+  const [handle] = useState(() => delayRender("ice kit"));
   useEffect(() => { loadKit().then((k) => { setKit(k); continueRender(handle); }); }, [handle]);
   return kit;
 };
@@ -63,13 +63,15 @@ const Inner: React.FC<{ id: number; kit: Kit }> = ({ id, kit }) => {
   useEffect(() => () => fx.ink.dispose(), [fx]);
   const post = useMemo(() => (
     <EffectComposer multisampling={4}>
-      {on.ink ? <primitive object={fx.ink} dispose={null} /> : null}
-      {on.lens && on.pre ? <primitive object={fx.lens.pre} dispose={null} /> : null}
-      {on.lens ? <primitive object={fx.lens.main} dispose={null} /> : null}
-      {on.bloom ? <primitive object={fx.bloom} dispose={null} /> : null}
-      <primitive object={fx.tone} dispose={null} />
-      {on.grade ? <primitive object={fx.grade} dispose={null} /> : null}
-      {on.grain ? <primitive object={fx.grain} dispose={null} /> : null}
+      {[
+        on.ink ? <primitive key="ink" object={fx.ink} dispose={null} /> : null,
+        on.lens && on.pre ? <primitive key="pre" object={fx.lens.pre} dispose={null} /> : null,
+        on.lens ? <primitive key="lens" object={fx.lens.main} dispose={null} /> : null,
+        on.bloom ? <primitive key="bloom" object={fx.bloom} dispose={null} /> : null,
+        <primitive key="tone" object={fx.tone} dispose={null} />,
+        on.grade ? <primitive key="grade" object={fx.grade} dispose={null} /> : null,
+        on.grain ? <primitive key="grain" object={fx.grain} dispose={null} /> : null,
+      ].filter((e): e is JSX.Element => e !== null)}
     </EffectComposer>
   ), [fx, on]);
   const cam = camera as THREE.PerspectiveCamera;

@@ -3,9 +3,11 @@
 // hills and CC0 Kenney props (trees, lanterns, stalls, hedges).
 import * as THREE from "three";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { D0 } from "./story";
-import { brick, rng, ctex, rep, facadeHD, roofHD, stoneHD } from "./paint";
+import { D0, C, CELLAR, CX, HATCH, FENCE_X, at, PlaceId, DECK_Y, WATER_Y, CELL_WIN, BARS_Z, BENCH, PLANK, HOLD, MARKET } from "./story";
+import { brick, rng, ctex, rep, facadeHD, roofHD, stoneHD, snowRoofHD, cellarStoneHD, cellarFloorHD, potatoTex, frostTex, yardTex, beamHD, planksHD,
+  sawdustHD, hullHD, warmSkyTex, plasterTex, awningTex, pondIceHD } from "./paint";
 import { twoTone } from "./shade";
+import { NOINK } from "./ink";
 
 export type Kit = Record<string, THREE.Object3D>;
 export const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
@@ -239,6 +241,9 @@ export class Strand {
 /** a sight line of the film: from the lens toward the shot's subject, `len` along d (d has unit forward component) */
 export type Ray = { o: THREE.Vector3; d: THREE.Vector3; len: number; core: boolean };
 let sight: Ray[] = [];
+/** vegetation level of detail is picked by distance from the place's own centre (places sit at large x offsets) */
+let vegO: [number, number] = [0, 0];
+export const vegOrigin = (x: number, z: number) => { vegO = [x, z]; };
 /** does any sight line pass through this box? (centre lines only for small props, so they can still frame a shot) */
 const inTheWay = (x0: number, x1: number, y0: number, y1: number, z0: number, z1: number, coreOnly = false) => {
   for (const { o, d, len, core } of sight) {
@@ -431,8 +436,8 @@ export const prop = (b: Batch, kit: Kit, name: string, x: number, y: number, z: 
   if (vk) {
     const rad = vegRad(vk, h);
     if (inTheWay(x - rad, x + rad, y, y + h, z - rad, z + rad, true)) return;
-    const d = Math.hypot(x, z);
-    addVeg(b, vk, x, y, z, h, x * 92.7 + z * 31.3 + yaw * 1000, d > 200 ? 2 : Math.abs(z) > 45 && d > 60 ? 1 : 0);
+    const d = Math.hypot(x - vegO[0], z - vegO[1]);
+    addVeg(b, vk, x, y, z, h, x * 92.7 + z * 31.3 + yaw * 1000, d > 200 ? 2 : Math.abs(z - vegO[1]) > 45 && d > 60 ? 1 : 0);
     return;
   }
   const o = kit[name];
@@ -489,7 +494,7 @@ const STYLES: Style[] = [
 const roofMat = (col: string) => lam("roof" + col, () => ({ map: roofHD(col, col === "#8f97a8"), side: THREE.DoubleSide }));
 
 /** gabled house: front facade (local +z) at width w, depth d, wall height h, ridge along local x (left out if it blocks a shot) */
-export const house = (b: Batch, x: number, z: number, yaw: number, w: number, d: number, h: number, si: number, y = D0) => {
+export const house = (b: Batch, x: number, z: number, yaw: number, w: number, d: number, h: number, si: number, y = D0, snow = false) => {
   const across = Math.abs(Math.sin(yaw)) > 0.5, hx = (across ? d : w) / 2 + 0.6, hz = (across ? w : d) / 2 + 0.6;
   if (inTheWay(x - hx, x + hx, y, y + h + d * 0.42 + 1.2, z - hz, z + hz)) return;
   const st = STYLES[si % STYLES.length];
@@ -504,13 +509,23 @@ export const house = (b: Batch, x: number, z: number, yaw: number, w: number, d:
   b.add(quad(V(hw, 0, hd), V(hw, 0, -hd), V(hw, h, -hd), V(hw, h, hd)), side, m);
   b.add(tri(V(-hw, h, -hd), V(-hw, h, hd), V(-hw, h + rh, 0)), wall, m);
   b.add(tri(V(hw, h, hd), V(hw, h, -hd), V(hw, h + rh, 0)), wall, m);
-  const ru = (w + 2 * o) / 4, rv = Math.hypot(hd + o, rh) / 4, rm = roofMat(st.roof);
+  const ru = (w + 2 * o) / 4, rv = Math.hypot(hd + o, rh) / 4, rm = snow ? snowRoofMat() : roofMat(st.roof);
   b.add(quad(V(-hw - o, h - 0.25, hd + o), V(hw + o, h - 0.25, hd + o), V(hw + o, h + rh, 0), V(-hw - o, h + rh, 0), ru, rv), rm, m);
   b.add(quad(V(hw + o, h - 0.25, -hd - o), V(-hw - o, h - 0.25, -hd - o), V(-hw - o, h + rh, 0), V(hw + o, h + rh, 0), ru, rv), rm, m);
   const cx = hw * 0.45 * (si % 2 ? 1 : -1);
   b.add(boxGeo(V(cx - 0.4, h + rh * 0.3, -hd * 0.35 - 0.4), V(cx + 0.4, h + rh + 1.1, -hd * 0.35 + 0.4), 2), lam("chim", () => ({ map: rep(brick(), 1, 1) })), m);
-  houseDetail(b, m, w, d, h, rh, cx);
+  houseDetail(b, m, w, d, h, rh, cx, snow);
+  if (snow) { // snow cap on the chimney and a soft snow lip hanging over both eaves
+    const top = h + rh + 1.1 + 0.16;
+    ub(b, snowMat(), m, cx - 0.5, cx + 0.5, top, top + 0.13, -hd * 0.35 - 0.5, -hd * 0.35 + 0.5);
+    for (const s of [-1, 1]) ub(b, snowMat(), m, -hw - o, hw + o, h - 0.36, h - 0.18, s * (hd + o) - 0.09, s * (hd + o) + 0.09);
+  }
 };
+const snowRoofMat = () => lam("snowRoof", () => ({ map: snowRoofHD(), side: THREE.DoubleSide, emissive: SNOW_GLOW, emissiveMap: snowRoofHD() }));
+/** snow keeps a cool self-lit share (like the template's unlit sign face) so it stays the brightest, near-white thing
+ *  under the orange golden key: lit side peach-white, shade side pale lavender (verifier round 1, fix 1) */
+export const SNOW_GLOW = new THREE.Color(0.3, 0.32, 0.4);
+export const snowMat = () => lam("snowCap", () => ({ color: "#f3f0ec", emissive: SNOW_GLOW }));
 
 // round 4: real 3D relief on every house (was a flat window-textured box): stone plinth, cornice under the eaves,
 // window sills + lintel hoods matching facadeHD's window layout, front door step + door hood, chimney cap and pot
@@ -520,7 +535,7 @@ const capM = () => lam("chimCap", () => ({ color: "#9a8778" }));
 const plinthM = () => lam("plinthHD", () => ({ map: stoneHD("copeHD") }));
 const ub = (b: Batch, mat: THREE.Material, m: THREE.Matrix4, x0: number, x1: number, y0: number, y1: number, z0: number, z1: number) =>
   b.add(UB, mat, m.clone().multiply(new THREE.Matrix4().compose(V((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), new THREE.Quaternion(), V(x1 - x0, y1 - y0, z1 - z0))));
-const houseDetail = (b: Batch, m: THREE.Matrix4, w: number, d: number, h: number, rh: number, chx: number) => {
+const houseDetail = (b: Batch, m: THREE.Matrix4, w: number, d: number, h: number, rh: number, chx: number, snow = false) => {
   const hw = w / 2, hd = d / 2, tm = trimM(), floors = Math.max(1, Math.floor(h / 2.8));
   b.add(boxGeo(V(-hw - 0.07, -0.05, -hd - 0.07), V(hw + 0.07, 0.45, hd + 0.07), 2), plinthM(), m);          // plinth
   ub(b, tm, m, -hw - 0.12, hw + 0.12, h - 0.52, h - 0.25, hd, hd + 0.17);                                   // cornice front
@@ -541,6 +556,7 @@ const houseDetail = (b: Batch, m: THREE.Matrix4, w: number, d: number, h: number
       for (const [y0, y1, dep, half] of [[yb - 0.2, yb - 0.08, 0.14, 0.6], [yb + 1.33, yb + 1.43, 0.08, 0.55]] as const) {
         const ax = px - out[1] * half, az = pz + out[0] * half, bx = px + out[1] * half, bz = pz - out[0] * half;
         ub(b, tm, m, Math.min(ax, bx, ax + out[0] * dep), Math.max(ax, bx, ax + out[0] * dep), y0, y1, Math.min(az, bz, az + out[1] * dep), Math.max(az, bz, az + out[1] * dep));
+        if (snow) ub(b, snowMat(), m, Math.min(ax, bx, ax + out[0] * dep) + 0.02, Math.max(ax, bx, ax + out[0] * dep) - 0.02, y1, y1 + 0.06, Math.min(az, bz, az + out[1] * dep) + 0.01, Math.max(az, bz, az + out[1] * dep) - 0.01);
       }
     }
   };
@@ -700,4 +716,573 @@ export const buildTown = (root: THREE.Object3D, kit: Kit, rays: Ray[] = []) => {
   prop(b, kit, "lantern", 64.5, D0, -71, 2.8);
   b.build(root);
   sight = [];
+};
+
+
+// ---------------- cellar short: the winter lane (shot 1) ----------------
+/** triangular prism (side cheek of the bulkhead hatch): triangle in x-y at z0..z1 */
+const prism = (b: Batch, mat: THREE.Material, a: [number, number], c: [number, number], e: [number, number], z0: number, z1: number) => {
+  b.add(tri(V(a[0], a[1], z1), V(c[0], c[1], z1), V(e[0], e[1], z1)), mat);
+  b.add(tri(V(a[0], a[1], z0), V(e[0], e[1], z0), V(c[0], c[1], z0)), mat);
+  for (const [p, q] of [[a, c], [c, e], [e, a]] as const) b.add(quad(V(p[0], p[1], z0), V(q[0], q[1], z0), V(q[0], q[1], z1), V(p[0], p[1], z1)), mat);
+};
+/** a snowy fence post (also used as the foreground framing prop) */
+export const fencePost = (b: Batch, x: number, z: number, h: number, yaw = 0, rail = true) => {
+  const m = new THREE.Matrix4().makeRotationY(yaw).setPosition(x, D0, z), wood = lam("fenceWood", () => ({ map: rep(beamHD(), 0.5, 1), color: "#6b4a32" }));
+  ub(b, wood, m, -0.075, 0.075, 0, h, -0.075, 0.075);
+  b.add(new THREE.SphereGeometry(0.11, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.75, 1), snowMat(), m.clone().multiply(new THREE.Matrix4().makeTranslation(0, h - 0.01, 0)));
+  if (rail) for (const y of [0.42, 0.82]) {
+    ub(b, wood, m, -0.04, 0.04, y - 0.05, y + 0.05, -1.12, -0.075);
+    ub(b, snowMat(), m, -0.045, 0.045, y + 0.05, y + 0.09, -1.1, -0.08);
+  }
+};
+export const buildStreet = (root: THREE.Object3D, kit: Kit, rays: Ray[] = []) => {
+  const b = new Batch(), r = rng(23);
+  sight = rays;
+  // three townhouses, fronts on x = -6 facing +x, snow on the roofs (template kit house()). They are the subject of the
+  // rooftop framing, not blockers, so they skip the sight-line test (the side rays of that framing graze their boxes)
+  sight = [];
+  ([[-9.1, 9, 8.4, 1], [-0.4, 8, 9.8, 0], [7.55, 7, 7, 4]] as const).forEach(([z, w, h, si]) => house(b, -10, z, Math.PI / 2, w, 8, h, si, D0, true));
+  sight = rays;
+  // a low snowy wall continuing the house line both ways
+  const cope = lam("copeHD", () => ({ map: stoneHD("copeHD") }));
+  for (const [z0, z1] of [[-60, -13.7], [11.15, 40]]) {
+    b.add(boxGeo(V(-6.6, D0, z0), V(-6.0, D0 + 1.1, z1), 2), cope);
+    b.add(boxGeo(V(-6.65, D0 + 1.1, z0), V(-5.95, D0 + 1.28, z1), 0), snowMat());
+  }
+  // bulkhead hatch against the middle house: stone cheeks, a dark well inside; the door itself is dynamic (world.ts)
+  const { x0, x1, z0, z1, top } = HATCH, cheek = lam("hatchStone", () => ({ map: stoneHD("copeHD") }));
+  prism(b, cheek, [x0, D0], [x0, D0 + top + 0.06], [x1 + 0.08, D0], z0 - 0.14, z0);
+  prism(b, cheek, [x0, D0], [x0, D0 + top + 0.06], [x1 + 0.08, D0], z1, z1 + 0.14);
+  b.add(boxGeo(V(x1 - 0.02, D0, z0 - 0.14), V(x1 + 0.12, D0 + 0.12, z1 + 0.14), 0), cheek);
+  // the well under the door: dark brown boards with a warm glow coming up the cellar steps (verifier fix 2)
+  const well = new THREE.MeshBasicMaterial({ map: ctex("hatchWell", 256, 256, (g) => {
+    const gr = g.createLinearGradient(0, 0, 256, 0); // u runs from the wall (x0) to the outer lip (x1)
+    gr.addColorStop(0, "#c27a3a"); gr.addColorStop(0.45, "#5a3420"); gr.addColorStop(1, "#24160f");
+    g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+    g.fillStyle = "rgba(20,10,6,0.55)"; for (let y = 30; y < 256; y += 46) g.fillRect(0, y, 256, 6);
+  }) });
+  b.add(quad(V(x0 + 0.02, D0 + 0.02, z0), V(x0 + 0.02, D0 + 0.02, z1), V(x1, D0 + 0.02, z1), V(x1, D0 + 0.02, z0)), well);
+  // snow drifts along the house fronts (skip the doors and the hatch)
+  for (let z = -13.4; z < 11; z += 0.9 + 0.5 * r()) {
+    if ([-9.1, -0.4, 7.55].some((dz) => Math.abs(z - dz) < 1.0) || (z > HATCH.z0 - 0.4 && z < HATCH.z1 + 0.4)) continue;
+    const s = 0.5 + 0.35 * r();
+    b.add(new THREE.SphereGeometry(1, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2).scale(0.42 * s, 0.32 * s, 0.75 * s).translate(-5.95, D0, z), snowMat());
+  }
+  // snowy fence line along the far side of the lane (x = 3), posts every 2.4 m
+  for (let z = -40.4; z < 26; z += 2.4) if (Math.abs(z - 7.85) > 1.3) {
+    if (!inTheWay(FENCE_X - 0.15, FENCE_X + 0.15, D0, D0 + 1.1, z - 1.2, z + 0.1, true)) fencePost(b, FENCE_X, z, 1.05 + 0.08 * (r() - 0.5));
+  }
+  // beyond the fence: snowy orchard / pines, a gas lamp by the hatch (warm practical), hills white
+  const trees = ["tree_cone", "tree_cone", "tree_fat", "tree_default"];
+  for (let i = 0; i < 46; i++) {
+    const x = 5 + r() * 70, z = -90 + r() * 120;
+    prop(b, kit, trees[i % 4], x, D0, z, 5 + r() * 4, r() * 6);
+  }
+  for (let i = 0; i < 30; i++) {
+    const a = r() * Math.PI * 2, d = 160 + r() * 140;
+    prop(b, kit, "tree_cone", Math.cos(a) * d, D0, Math.sin(a) * d, 12 + r() * 6, r() * 6);
+  }
+  const hill = new THREE.SphereGeometry(1, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2);
+  const hm = [lam("snowHillA", () => ({ color: "#ece8e4" })), lam("snowHillB", () => ({ color: "#e2dfe0" }))];
+  ([[-260, -240, 190, 46, 120], [120, -330, 240, 60, 140], [330, -60, 170, 44, 130], [-380, 40, 200, 50, 150], [240, 200, 200, 40, 140]] as const)
+    .forEach(([x, z, sx, sy, sz], i) => b.add(hill, hm[i % 2], new THREE.Matrix4().compose(V(x, D0 - 2, z), new THREE.Quaternion(), V(sx, sy, sz))));
+  const iron = twoTone(new THREE.MeshPhongMaterial({ color: "#3d414c", specular: "#8a8a8a", shininess: 60 }), 0.15);
+  const LX = -5.35, LZ = 1.2;
+  if (!inTheWay(LX - 0.3, LX + 0.3, D0, D0 + 3.4, LZ - 0.3, LZ + 0.3, true)) {
+    b.add(new THREE.CylinderGeometry(0.05, 0.08, 3.0, 10).translate(LX, D0 + 1.5, LZ), iron);
+    b.add(new THREE.CylinderGeometry(0.16, 0.16, 0.08, 6).translate(LX, D0 + 3.0, LZ), iron);
+    b.add(new THREE.ConeGeometry(0.24, 0.22, 6).translate(LX, D0 + 3.5, LZ), iron);
+    b.add(new THREE.SphereGeometry(0.2, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.5, 1).translate(LX, D0 + 3.6, LZ), snowMat());
+    b.add(new THREE.CylinderGeometry(0.17, 0.13, 0.36, 6).translate(LX, D0 + 3.22, LZ), lanternGlass());
+  }
+  b.build(root);
+  sight = [];
+};
+/** the flame inside the lantern: white-hot HDR core */
+export const lanternCore = () => {
+  let m = mats.get("lanternCore");
+  if (!m) { m = new THREE.MeshBasicMaterial({ color: new THREE.Color(9, 7.6, 5.2) }); mats.set("lanternCore", m); }
+  return m;
+};
+export const LANTERN = C(0.26, 1.7, -0.9);
+/** lantern glass: self-lit HDR (only emissives bloom: threshold 1.0) */
+export const lanternGlass = () => {
+  let m = mats.get("lanternGlass");
+  if (!m) { m = new THREE.MeshBasicMaterial({ color: new THREE.Color(5.2, 3.0, 1.25) }); mats.set("lanternGlass", m); }
+  return m;
+};
+
+// ---------------- cellar short: the root cellar (shots 2-4) ----------------
+export type CellarParts = { frostNear: THREE.MeshBasicMaterial; frostFar: THREE.MeshBasicMaterial; window: { x: number; y: number; w: number; h: number } };
+/** stone room at CX: floor, frosted walls (window in the back wall), plank ceiling + beams, stairs, crate of potatoes,
+ *  barrel, sacks, the lantern (the shot's practical light). Walls / ceiling cast no shadow: the key light is the lantern. */
+export const buildCellar = (root: THREE.Object3D, win: { x: number; y: number; w: number; h: number }): CellarParts => {
+  const walls = new Batch(), props = new Batch(), r = rng(41);
+  const { x0, x1, z0, z1, h } = CELLAR;
+  const P = (x: number, y: number, z: number) => V(...C(x, y, z));
+  const stone = lam("cellarStone", () => ({ map: rep(cellarStoneHD(), 0.5, 0.5) }));
+  const floor = lam("cellarFloor", () => ({ map: cellarFloorHD() }));
+  const ceil = lam("cellarCeil", () => ({ map: rep(planksHD(), 0.6, 0.6), color: "#8a7a6c" }));
+  const wood = lam("cellarWood", () => ({ map: beamHD(), color: "#b08a64" }));
+  walls.add(quad(P(x0, 0, z1), P(x1, 0, z1), P(x1, 0, z0), P(x0, 0, z0), (x1 - x0) / 2, (z1 - z0) / 2), floor);
+  walls.add(quad(P(x0, h, z0), P(x1, h, z0), P(x1, h, z1), P(x0, h, z1), (x1 - x0) / 2, (z1 - z0) / 2), ceil);
+  const wq = (a: THREE.Vector3, c: THREE.Vector3, d: THREE.Vector3, e: THREE.Vector3, u: number, v: number, u0 = 0, v0 = 0) => walls.add(quad(a, c, d, e, u + u0, v + v0, u0, v0), stone);
+  wq(P(x0, 0, z0), P(x0, 0, z1), P(x0, h, z1), P(x0, h, z0), (z1 - z0) / 2, h / 2);             // left (faces +x)
+  wq(P(x1, 0, z1), P(x1, 0, z0), P(x1, h, z0), P(x1, h, z1), (z1 - z0) / 2, h / 2);             // right (faces -x)
+  wq(P(x1, 0, z1), P(x0, 0, z1), P(x0, h, z1), P(x1, h, z1), (x1 - x0) / 2, h / 2);             // front (behind the lens)
+  // back wall (faces +z) with the window opening, as four quads; uv continuous in metres / 2
+  const wx0 = win.x - win.w / 2, wx1 = win.x + win.w / 2, wy0 = win.y - win.h / 2, wy1 = win.y + win.h / 2;
+  const back = (ax: number, bx: number, ay: number, by: number) => wq(P(ax, ay, z0), P(bx, ay, z0), P(bx, by, z0), P(ax, by, z0), (bx - ax) / 2, (by - ay) / 2, (ax - x0) / 2, ay / 2);
+  back(x0, wx0, 0, h); back(wx1, x1, 0, h); back(wx0, wx1, 0, wy0); back(wx0, wx1, wy1, h);
+  // window reveal (0.4 m deep), sill with snow, two bars
+  const D = 0.4;
+  wq(P(wx0, wy0, z0 - D), P(wx0, wy0, z0), P(wx0, wy1, z0), P(wx0, wy1, z0 - D), D / 2, win.h / 2);
+  wq(P(wx1, wy0, z0), P(wx1, wy0, z0 - D), P(wx1, wy1, z0 - D), P(wx1, wy1, z0), D / 2, win.h / 2);
+  wq(P(wx0, wy1, z0), P(wx1, wy1, z0), P(wx1, wy1, z0 - D), P(wx0, wy1, z0 - D), win.w / 2, D / 2);
+  wq(P(wx0, wy0, z0 - D), P(wx1, wy0, z0 - D), P(wx1, wy0, z0), P(wx0, wy0, z0), win.w / 2, D / 2);
+  props.add(boxGeo(P(wx0, wy0, z0 - D + 0.02), P(wx1, wy0 + 0.05, z0 - 0.08), 0), snowMat());
+  const iron = twoTone(new THREE.MeshPhongMaterial({ color: "#3d414c", specular: "#8a8a8a", shininess: 60 }), 0.15);
+  for (const k of [-1, 1]) props.add(boxGeo(P(win.x + k * win.w / 6 - 0.012, wy0, z0 - 0.06), P(win.x + k * win.w / 6 + 0.012, wy1, z0 - 0.03), 0), iron);
+  // the snowy yard outside (self-lit painting) 0.5 m behind the opening
+  const yard = new THREE.Mesh(new THREE.PlaneGeometry(win.w * 2.4, win.h * 2.4), new THREE.MeshBasicMaterial({ map: yardTex(), color: new THREE.Color(1.25, 1.2, 1.15), fog: false }));
+  yard.position.set(...C(win.x, win.y, z0 - 0.62)); root.add(yard);
+  // ceiling beams across x
+  for (const z of [-2.5, -0.9, 0.9]) walls.add(boxGeo(P(x0, h - 0.22, z - 0.11), P(x1, h, z + 0.11), 1), wood);
+  // stairs up the left wall toward the back (the way he came down)
+  for (let i = 0; i < 7; i++) {
+    const zb = 1.6 - i * 0.42, y = (i + 1) * 0.33;
+    props.add(boxGeo(P(x0, y - 0.06, zb - 0.42), P(x0 + 0.85, y, zb), 1), wood);
+    props.add(boxGeo(P(x0 + 0.02, 0, zb - 0.4), P(x0 + 0.83, y - 0.06, zb - 0.36), 1), wood);
+  }
+  props.add(boxGeo(P(x0 + 0.85, 0, -1.4), P(x0 + 0.92, 2.3, -1.33), 1), wood); // stair post
+  // crate of potatoes (slatted box) at CRATE, heaped potatoes, each with a frost shell
+  const cr = { x: 0.62, z: -1.72, w: 0.86, hh: 0.5, d: 0.56 };
+  const slat = lam("crateSlat", () => ({ map: beamHD(), color: "#c49a6a" }));
+  for (const [ax, az, bx, bz] of [[-1, -1, 1, -0.86], [-1, 0.86, 1, 1], [-1, -1, -0.88, 1], [0.88, -1, 1, 1]] as const)
+    for (const y of [0.04, 0.2, 0.36]) props.add(boxGeo(P(cr.x + ax * cr.w / 2, y, cr.z + az * cr.d / 2), P(cr.x + bx * cr.w / 2, y + 0.13, cr.z + bz * cr.d / 2), 0.5), slat);
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) props.add(boxGeo(P(cr.x + sx * cr.w / 2 - 0.04, 0, cr.z + sz * cr.d / 2 - 0.04), P(cr.x + sx * cr.w / 2 + 0.04, cr.hh + 0.02, cr.z + sz * cr.d / 2 + 0.04), 0.5), slat);
+  props.add(boxGeo(P(cr.x - cr.w / 2 + 0.05, 0.25, cr.z - cr.d / 2 + 0.05), P(cr.x + cr.w / 2 - 0.05, 0.27, cr.z + cr.d / 2 - 0.05), 0), lam("crateFloor", () => ({ color: "#4a3a2c" })));
+  const pot = lam("potato", () => ({ map: potatoTex() }));
+  const frostNear = new THREE.MeshBasicMaterial({ map: frostTex(), transparent: true, depthWrite: false, opacity: 1, color: new THREE.Color(0.78, 0.84, 0.95) });
+  const frostFar = frostNear.clone();
+  const nearG: THREE.BufferGeometry[] = [], farG: THREE.BufferGeometry[] = [];
+  const sph = new THREE.SphereGeometry(1, 16, 10);
+  for (let i = 0; i < 34; i++) {
+    const u = r(), v = r(), layer = i < 20 ? 0 : 1;
+    const px = cr.x + (u - 0.5) * (cr.w - 0.18) * (layer ? 0.75 : 1), pz = cr.z + (v - 0.5) * (cr.d - 0.16) * (layer ? 0.7 : 1);
+    const py = 0.33 + layer * 0.075 + (1 - Math.abs(u - 0.5) * 2) * 0.04 * layer;
+    const s = 0.042 + 0.014 * r(), q = new THREE.Quaternion().setFromEuler(new THREE.Euler(r() * 3, r() * 3, r() * 3));
+    const m = new THREE.Matrix4().compose(P(px, py, pz), q, V(s * 1.35, s, s * 1.05));
+    const lump = sph.clone(), lp = lump.attributes.position as THREE.BufferAttribute, ph = [r() * 6, r() * 6, r() * 6];
+    for (let k = 0; k < lp.count; k++) {
+      const x = lp.getX(k), y = lp.getY(k), z = lp.getZ(k);
+      const d = 1 + 0.09 * Math.sin(3 * x + ph[0]) * Math.cos(2 * y + ph[1]) + 0.06 * Math.sin(4 * z + ph[2]);
+      lp.setXYZ(k, x * d, y * d, z * d);
+    }
+    lump.computeVertexNormals();
+    props.add(lump, pot, m);
+    const g = lump.clone().applyMatrix4(new THREE.Matrix4().compose(P(px, py, pz), q, V(s * 1.35 * 1.06, s * 1.06, s * 1.05 * 1.06)));
+    (px < cr.x - 0.05 ? nearG : farG).push(g.toNonIndexed());
+  }
+  for (const [list, mat] of [[nearG, frostNear], [farG, frostFar]] as const) {
+    const mesh = new THREE.Mesh(mergeGeometries(list, false), mat);
+    mesh.layers.set(NOINK); mesh.renderOrder = 2; root.add(mesh);
+  }
+  // barrel + sacks at the back right, shelf on the right wall
+  props.add(new THREE.CylinderGeometry(0.3, 0.3, 0.8, 18).translate(...C(1.85, 0.4, -2.85)), lam("barrel", () => ({ map: beamHD(), color: "#a8805a" })));
+  for (const y of [0.18, 0.62]) props.add(new THREE.TorusGeometry(0.305, 0.02, 6, 24).rotateX(Math.PI / 2).translate(...C(1.85, y, -2.85)), iron);
+  for (const [x, z, s] of [[1.25, -3.05, 0.34], [2.25, -2.1, 0.3]] as const)
+    props.add(new THREE.SphereGeometry(1, 14, 10).scale(s, s * 1.25, s * 0.9).translate(...C(x, s * 1.1, z)), lam("sack", () => ({ color: "#b59a72" })));
+  props.add(boxGeo(P(x1 - 0.32, 1.25, -1.2), P(x1, 1.29, 0.6), 1), wood);
+  for (let i = 0; i < 5; i++) props.add(new THREE.CylinderGeometry(0.06, 0.06, 0.17, 12).translate(...C(x1 - 0.17, 1.375, -1.0 + i * 0.36)), lam("jar" + (i % 2), () => ({ color: i % 2 ? "#c9874a" : "#8fae6a" })));
+  // the lantern: hook from the middle beam, iron frame, HDR glass
+  const LP = LANTERN;
+  props.add(new THREE.CylinderGeometry(0.008, 0.008, h - 0.22 - LP[1] - 0.18, 6).translate(LP[0], (h - 0.22 + LP[1] + 0.18) / 2, LP[2]), iron);
+  props.add(new THREE.CylinderGeometry(0.075, 0.075, 0.025, 6).translate(LP[0], LP[1] + 0.13, LP[2]), iron);
+  props.add(new THREE.ConeGeometry(0.085, 0.06, 6).translate(LP[0], LP[1] + 0.17, LP[2]), iron);
+  props.add(new THREE.CylinderGeometry(0.08, 0.07, 0.025, 6).translate(LP[0], LP[1] - 0.115, LP[2]), iron);
+  for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2; props.add(new THREE.CylinderGeometry(0.006, 0.006, 0.23, 4).translate(LP[0] + Math.cos(a) * 0.07, LP[1], LP[2] + Math.sin(a) * 0.07), iron); }
+  props.add(new THREE.CylinderGeometry(0.066, 0.06, 0.22, 6).translate(LP[0], LP[1], LP[2]), lanternGlass());
+  props.add(new THREE.SphereGeometry(0.028, 10, 8).scale(1, 1.5, 1).translate(LP[0], LP[1] - 0.02, LP[2]), lanternCore());
+  walls.build(root, false);
+  props.build(root, true);
+  void CX; void ctex;
+  return { frostNear, frostFar, window: win };
+};
+
+// ================= ice short: sets =================
+const ironM = () => { let m = mats.get("iron"); if (!m) { m = twoTone(new THREE.MeshPhongMaterial({ color: "#3d414c", specular: "#8a8a8a", shininess: 60 }), 0.15); mats.set("iron", m); } return m; };
+/** block ice: pale blue with a cool self-lit share (like the snow) so it stays icy under the warm golden key */
+export const ICE_GLOW = new THREE.Color(0.26, 0.34, 0.44);
+export const iceMat = () => lam("iceBlock", () => ({ color: "#bfe4f4", emissive: ICE_GLOW }));
+const woodM = (key: string, col: string) => lam(key, () => ({ map: rep(beamHD(), 1, 1), color: col }));
+const sawM = () => lam("sawdust", () => ({ map: rep(sawdustHD(), 1, 1) }));
+const tr = (x: number, y: number, z: number, yaw = 0) => new THREE.Matrix4().makeRotationY(yaw).setPosition(x, y, z);
+const cyl = (r0: number, r1: number, h: number, n = 12) => new THREE.CylinderGeometry(r1, r0, h, n).translate(0, h / 2, 0);
+
+/** a palm: bent, tapered trunk with ring marks and a crown of drooping fronds (smooth ribbons, both sides lit) */
+export const palm = (b: Batch, x: number, y: number, z: number, h: number, seed: number) => {
+  const r = rng(seed), bend = 0.12 + 0.18 * r(), dir = r() * Math.PI * 2, dx = Math.cos(dir), dz = Math.sin(dir);
+  const trunk = lam("palmTrunk", () => ({ map: rep(beamHD(), 1, 3), color: "#a8825a" }));
+  const leaf = lam("palmLeaf", () => ({ color: "#4f9a3c", side: THREE.DoubleSide }));
+  const N = 8, pt = (t: number) => V(x + dx * bend * h * t * t, y + h * t, z + dz * bend * h * t * t);
+  for (let i = 0; i < N; i++) {
+    const a = pt(i / N), c = pt((i + 1) / N), len = a.distanceTo(c), rr = 0.2 - 0.08 * (i / N);
+    const g = new THREE.CylinderGeometry(rr * 0.9, rr, len * 1.02, 10).translate(0, len / 2, 0);
+    const q = new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), c.clone().sub(a).normalize());
+    b.add(g, trunk, new THREE.Matrix4().compose(a, q, V(1, 1, 1)));
+  }
+  const top = pt(1), nf = 8;
+  b.add(new THREE.SphereGeometry(0.28, 12, 8), lam("palmNut", () => ({ color: "#6b5a2a" })), new THREE.Matrix4().setPosition(top.x, top.y - 0.1, top.z));
+  for (let k = 0; k < nf; k++) {
+    const a = (k / nf) * Math.PI * 2 + r() * 0.4, L = h * (0.38 + 0.08 * r()), up = 0.35 + 0.25 * r(), M = 10;
+    const ca = Math.cos(a), sa = Math.sin(a), pos: number[] = [], uv: number[] = [];
+    for (let j = 0; j <= M; j++) {
+      const t = j / M, w = 0.42 * L * 0.25 * Math.sin(Math.PI * Math.min(1, t * 1.15)) + 0.02;
+      const px = top.x + ca * L * t, pz = top.z + sa * L * t, py = top.y + L * (up * t - 0.9 * t * t);
+      const nx = -sa * w, nz = ca * w;
+      pos.push(px - nx, py + 0.04 * t, pz - nz, px + nx, py + 0.04 * t, pz + nz); uv.push(0, t, 1, t);
+    }
+    const idx: number[] = [];
+    for (let j = 0; j < M; j++) { const i0 = j * 2; idx.push(i0, i0 + 1, i0 + 2, i0 + 1, i0 + 3, i0 + 2); }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
+    g.setIndex(idx); g.computeVertexNormals();
+    b.add(g, leaf);
+  }
+};
+
+export type BrigParts = { group: THREE.Group; sail: THREE.MeshLambertMaterial; lid: THREE.Object3D };
+/** the brig: tarred hull with a cream wale, deck, bulwarks, two masts with three square sails each, bowsprit, stays,
+ *  a hatch whose cover lifts off (the hold under it is packed with sawdust, ice blocks just showing). Local frame:
+ *  waterline y 0, bow toward +x, beam along z. */
+export const buildBrig = (): BrigParts => {
+  const group = new THREE.Group(), b = new Batch(), sb = new Batch();
+  const hull = lam("hull", () => ({ map: hullHD() })), deck = lam("deck", () => ({ map: rep(planksHD(), 2, 1), color: "#d8b88a" }));
+  const spar = woodM("spar", "#8a6040"), rail = woodM("rail", "#5a3a26");
+  const sail = twoTone(new THREE.MeshLambertMaterial({ color: "#f1e9d6", side: THREE.DoubleSide }));
+  // hull: stations along x, half-beam tapering to a bow point (+x) and a square-ish stern (-x)
+  const NS = 18, X0 = -8.5, X1 = 9.5, yb = -1.5, yd = DECK_Y;
+  const half = (x: number) => { const t = (x - X0) / (X1 - X0); return 2.5 * Math.min(1, Math.sqrt(Math.max(0, 1 - Math.max(0, (t - 0.55) / 0.45) ** 2)) * 1.0) * (0.86 + 0.14 * Math.min(1, t * 6)); };
+  for (let i = 0; i < NS; i++) {
+    const xa = X0 + ((X1 - X0) * i) / NS, xc = X0 + ((X1 - X0) * (i + 1)) / NS, ha = half(xa), hc = half(xc), ua = i / NS, uc = (i + 1) / NS;
+    for (const s of [1, -1]) {
+      const A = V(xa, yd + 0.5, s * ha), Bv = V(xc, yd + 0.5, s * hc), Cv = V(xc, yb, s * hc * 0.45), Dv = V(xa, yb, s * ha * 0.45);
+      const g = s > 0 ? quad(Dv, Cv, Bv, A, uc * 3, 1, ua * 3, 0) : quad(Cv, Dv, A, Bv, ua * 3, 1, uc * 3, 0);
+      b.add(g, hull);
+    }
+    b.add(quad(V(xa, yd, ha - 0.05), V(xc, yd, hc - 0.05), V(xc, yd, -hc + 0.05), V(xa, yd, -ha + 0.05), 1, 1), deck);
+    for (const s of [1, -1]) ub(b, rail, new THREE.Matrix4(), xa, xc + 0.02, yd + 0.5, yd + 0.62, s * ((ha + hc) / 2) - 0.08, s * ((ha + hc) / 2) + 0.08);
+  }
+  b.add(quad(V(X0, yb, -half(X0) * 0.45), V(X0, yb, half(X0) * 0.45), V(X0, yd + 0.5, half(X0)), V(X0, yd + 0.5, -half(X0)), 1, 1), hull); // transom
+  // masts, yards, sails (billowing toward +x)
+  for (const [mx, top] of [[-2.6, 15], [3.4, 16]] as const) {
+    b.add(cyl(0.17, 0.11, top), spar, tr(mx, yd, 0));
+    ([[4.2, 7.0, 3.6], [8.2, 5.8, 3.3], [11.8, 4.4, 2.6]] as const).forEach(([y, w, hh]) => {
+      if (y + hh > top + 0.2) return;
+      b.add(new THREE.CylinderGeometry(0.07, 0.07, w + 0.6, 8).rotateX(Math.PI / 2), spar, tr(mx, yd + y + hh, 0));
+      const g = new THREE.PlaneGeometry(w, hh, 8, 6).rotateY(Math.PI / 2), pp = g.attributes.position as THREE.BufferAttribute;
+      for (let k = 0; k < pp.count; k++) { const zz = pp.getZ(k) / (w / 2), yy = pp.getY(k) / (hh / 2); pp.setX(k, 0.55 * (1 - zz * zz) * (1 - 0.5 * yy * yy) + 0.12); }
+      g.computeVertexNormals();
+      sb.add(g, sail, tr(mx + 0.05, yd + y + hh / 2, 0));
+    });
+  }
+  b.add(new THREE.CylinderGeometry(0.1, 0.13, 6, 8).rotateZ(-Math.PI / 2 + 0.28), spar, tr(X1 + 2.4, yd + 1.3, 0));
+  const line = (a: THREE.Vector3, c: THREE.Vector3) => {
+    const len = a.distanceTo(c), q = new THREE.Quaternion().setFromUnitVectors(V(0, 1, 0), c.clone().sub(a).normalize());
+    b.add(new THREE.CylinderGeometry(0.025, 0.025, len, 5).translate(0, len / 2, 0), rail, new THREE.Matrix4().compose(a, q, V(1, 1, 1)));
+  };
+  line(V(3.4, yd + 15.8, 0), V(X1 + 5, yd + 2.6, 0)); line(V(-2.6, yd + 14.8, 0), V(3.4, yd + 15.6, 0)); line(V(-2.6, yd + 14.8, 0), V(X0 + 0.3, yd + 0.6, 0));
+  for (const mx of [-2.6, 3.4]) for (const s of [1, -1]) line(V(mx, yd + 11.5, 0), V(mx - 1.2, yd + 0.6, s * 2.3));
+  // pennant
+  const flag = new THREE.Mesh(new THREE.PlaneGeometry(1.6, 0.5).translate(-0.8, 0, 0), lam("pennant", () => ({ color: "#2f4f8a", side: THREE.DoubleSide })));
+  flag.position.set(3.4, yd + 15.7, 0); group.add(flag);
+  // hatch: coaming, the packed hold (sawdust surface with ice corners), the cover (separate, lifts off)
+  const hx = 0.4, hw = 1.7;
+  for (const [ax, az, bx, bz] of [[-1, -1, 1, -0.88], [-1, 0.88, 1, 1], [-1, -1, -0.88, 1], [0.88, -1, 1, 1]] as const)
+    ub(b, rail, new THREE.Matrix4(), hx + ax * hw / 2, hx + bx * hw / 2, yd, yd + 0.32, az * hw / 2, bz * hw / 2);
+  b.add(quad(V(hx - hw / 2, yd + 0.16, hw / 2), V(hx + hw / 2, yd + 0.16, hw / 2), V(hx + hw / 2, yd + 0.16, -hw / 2), V(hx - hw / 2, yd + 0.16, -hw / 2), 1, 1), sawM());
+  for (const [ix, iz] of [[-0.35, -0.3], [0.32, 0.12], [-0.05, 0.42], [0.4, -0.45]]) b.add(boxGeo(V(hx + ix - 0.2, yd + 0.05, iz - 0.2), V(hx + ix + 0.2, yd + 0.24, iz + 0.2)), iceMat());
+  const lid = new THREE.Group(), lidB = new Batch();
+  lidB.add(boxGeo(V(-hw / 2 - 0.05, 0, -hw / 2 - 0.05), V(hw / 2 + 0.05, 0.1, hw / 2 + 0.05), 1), woodM("hatchLid", "#9a6c48"));
+  for (const dz of [-0.45, 0.45]) lidB.add(boxGeo(V(-hw / 2, 0.1, dz - 0.05), V(hw / 2, 0.15, dz + 0.05)), ironM());
+  lidB.build(lid); lid.position.set(hx, yd + 0.32, 0); group.add(lid);
+  // a few blocks and barrels on deck
+  for (const [x, z] of [[-5.5, 1.1], [-5.5, -1.1], [6.2, 0.8]]) b.add(cyl(0.32, 0.3, 0.85, 14), woodM("barrel", "#a8805a"), tr(x, yd, z));
+  b.build(group); sb.build(group);
+  group.traverse((o) => { o.castShadow = true; o.receiveShadow = true; });
+  return { group, sail, lid };
+};
+
+/** ice blocks stacked as a pyramid at (x, y, z) in rows along x (block size s) */
+const iceStack = (b: Batch, x: number, y: number, z: number, nx: number, nz: number, layers: number, s = 0.5) => {
+  for (let l = 0; l < layers; l++) for (let i = 0; i < nx - l; i++) for (let k = 0; k < nz; k++) {
+    const x0 = x + (i - (nx - l - 1) / 2) * (s + 0.03) - s / 2, z0 = z + (k - (nz - 1) / 2) * (s + 0.03) - s / 2, y0 = y + l * s;
+    b.add(boxGeo(V(x0, y0, z0), V(x0 + s, y0 + s * 0.92, z0 + s)), iceMat());
+  }
+};
+const quayWall = (b: Batch, x0: number, x1: number, z: number, y0: number, mat: THREE.Material) => {
+  b.add(quad(V(x1, y0, z), V(x0, y0, z), V(x0, 0.02, z), V(x1, 0.02, z), (x1 - x0) / 3, -y0 / 3), mat); // faces the water (-z)
+  b.add(boxGeo(V(x0, -0.05, z - 0.02), V(x1, 0.08, z + 0.45), 2), lam("copeHD", () => ({ map: stoneHD("copeHD") })));
+};
+const crate = (b: Batch, x: number, z: number, s: number, yaw = 0) => {
+  const m = tr(x, 0, z, yaw), w = woodM("crate", "#b08458");
+  b.add(boxGeo(V(-s / 2, 0, -s / 2), V(s / 2, s, s / 2), 0.5), w, m);
+  b.add(boxGeo(V(-s / 2 - 0.01, s * 0.15, -s / 2 - 0.01), V(s / 2 + 0.01, s * 0.25, s / 2 + 0.01)), woodM("crateBand", "#7a5638"), m);
+};
+const barrel = (b: Batch, x: number, z: number, s = 1) => {
+  b.add(cyl(0.3 * s, 0.33 * s, 0.85 * s, 16), woodM("barrel", "#a8805a"), tr(x, 0, z));
+  for (const y of [0.15, 0.7]) b.add(new THREE.TorusGeometry(0.315 * s, 0.018, 6, 24).rotateX(Math.PI / 2), ironM(), tr(x, y * s, z));
+};
+const hills = (b: Batch, ox: number, list: [number, number, number, number, number][], cols: string[]) => {
+  const hill = new THREE.SphereGeometry(1, 28, 14, 0, Math.PI * 2, 0, Math.PI / 2);
+  const hm = cols.map((c) => lam("hill" + c, () => ({ color: c })));
+  list.forEach(([x, z, sx, sy, sz], i) => b.add(hill, hm[i % hm.length], new THREE.Matrix4().compose(V(ox + x, D0 - 2, z), new THREE.Quaternion(), V(sx, sy, sz))));
+};
+
+/** the frozen pond: ice sheet, the cut channel of open water, cut blocks, the ice house, pines on the snowy banks */
+export const buildPond = (root: THREE.Object3D, kit: Kit) => {
+  const b = new Batch(), r = rng(71), O = at("pond", 0, 0, 0)[0];
+  vegOrigin(O, -14);
+  b.add(new THREE.CircleGeometry(15, 64).rotateX(-Math.PI / 2), lam("pondIceHD", () => ({ map: rep(pondIceHD(), 1, 1), emissive: ICE_GLOW, emissiveMap: pondIceHD() })), tr(O, 0.025, -15));
+  b.add(boxGeo(V(O - 3.4, 0.026, -3.85), V(O + 3.6, 0.03, -3.3)), lam("openWater", () => ({ color: "#1e3d5c" })));
+  for (const x of [-2.8, -1.2, 1.6, 2.9]) b.add(boxGeo(V(O + x - 0.25, 0.0, -3.82), V(O + x + 0.25, 0.12, -3.33)), iceMat());
+  iceStack(b, O + 4.9, 0, 0.4, 4, 2, 3); iceStack(b, O - 4.8, 0, 0.0, 3, 2, 2);
+  for (let i = 0; i < 46; i++) {
+    const a = r() * Math.PI * 2, d = 17 + r() * 22, x = O + Math.cos(a) * d, z = -15 + Math.sin(a) * d;
+    if (z > -1 && Math.abs(x - O) < 9) continue;
+    prop(b, kit, "tree_cone", x, D0, z, 5 + r() * 4, r() * 6);
+  }
+  house(b, O - 7, -36, 0, 11, 7, 5, 3, D0, true); // the ice house across the pond
+  hills(b, O, [[-200, -240, 190, 46, 120], [120, -330, 240, 60, 140], [300, -60, 170, 44, 130], [-330, 60, 200, 50, 150]], ["#ece8e4", "#e2dfe0"]);
+  b.build(root);
+};
+
+/** Boston harbour in winter: snowy quay with a stone face, a row of snowy houses, the gangplank, ice stacks, barrels */
+export const buildHarbor = (root: THREE.Object3D, kit: Kit) => {
+  const b = new Batch(), r = rng(53), O = at("harbor", 0, 0, 0)[0];
+  vegOrigin(O, 0);
+  const stone = lam("quayStone", () => ({ map: stoneHD("quayHD", ["#b9b0a4", "#aaa196", "#c2b9ad", "#a39a90"], "#6f675e") }));
+  quayWall(b, O - 120, O + 120, 0, -1.8, stone);
+  [[-52, 9, 8.4, 1], [-42.5, 8, 9.8, 0], [-33.5, 9, 7, 4], [-24, 8, 8.4, 2], [-14.5, 9, 9.8, 3], [-5, 8, 7, 1], [4.5, 9, 8.4, 0], [14, 8, 9.8, 4], [23.5, 9, 7, 2], [33, 8, 8.4, 3], [42.5, 9, 9.8, 1]]
+    .forEach(([x, w, h, si]) => house(b, O + x, 26, Math.PI, w, 8, h, si, D0, true));
+  // gangplank from the quay to the brig's rail
+  const L = Math.hypot(PLANK.z0 - PLANK.z1, DECK_Y + WATER_Y), ang = Math.atan2(DECK_Y + WATER_Y, PLANK.z0 - PLANK.z1);
+  b.add(boxGeo(V(-0.32, -0.05, -L / 2), V(0.32, 0.03, L / 2), 1), woodM("plank", "#9a7048"),
+    new THREE.Matrix4().makeRotationX(ang).setPosition(O + PLANK.x, (DECK_Y + WATER_Y) / 2, (PLANK.z0 + PLANK.z1) / 2));
+  iceStack(b, at("harbor", -2.7, 0, 0)[0], 0, 2.2, 4, 2, 3);
+  iceStack(b, O + 4.2, 0, 2.9, 3, 2, 2);
+  for (let x = -60; x <= 60; x += 6.5) if (Math.abs(x - 2.2) > 1.2) b.add(cyl(0.16, 0.2, 0.55, 10), ironM(), tr(O + x, 0, 0.55));
+  for (const [x, z] of [[-6.8, 1.4], [-7.4, 1.9], [7.2, 1.5], [9.5, 6.5]]) barrel(b, O + x, z);
+  for (const [x, z, s] of [[6.2, 2.2, 0.8], [6.9, 3.1, 0.6], [-9.2, 7.8, 0.7]] as const) crate(b, O + x, z, s, r());
+  for (let x = -60; x < 60; x += 1.6 + r()) { const s = 0.4 + 0.3 * r(); b.add(new THREE.SphereGeometry(1, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2).scale(0.6 * s, 0.3 * s, 0.5 * s), snowMat(), tr(O + x, 0, 21.5 + r())); }
+  hills(b, O, [[-160, -260, 190, 40, 110], [60, -300, 240, 52, 120], [260, -220, 150, 36, 110], [-320, -160, 180, 44, 120]], ["#ece8e4", "#e2dfe0"]);
+  for (let i = 0; i < 24; i++) prop(b, kit, "tree_cone", O - 200 + r() * 420, D0, -200 - r() * 60, 9 + r() * 6, r() * 6);
+  b.build(root);
+};
+
+/** the tropical beach: sand, a foam line, palms, a far green headland */
+export const buildBeach = (root: THREE.Object3D) => {
+  const b = new Batch(), O = at("beach", 0, 0, 0)[0];
+  b.add(boxGeo(V(O - 300, 0.03, -5.4), V(O + 300, 0.045, -4.95)), lam("foam", () => ({ color: "#f6f4ee", emissive: new THREE.Color(0.25, 0.25, 0.28) })));
+  ([[-4.6, -1.6, 6.2], [-7.8, 2.6, 7.6], [6.6, -2.8, 6.8], [9.2, 3.2, 8.2], [-12.5, -3.4, 7.0], [13.5, -1.2, 6.2], [-16, 5, 8.4], [18, 4, 7.4]] as const)
+    .forEach(([x, z, h], i) => palm(b, O + x, 0, z, h, 11 + i * 7));
+  hills(b, O, [[-260, -380, 160, 40, 90], [220, -420, 200, 48, 110]], ["#5f8f56", "#4f7f52"]);
+  b.build(root);
+};
+
+/** the Caribbean port: sun-baked quay, pastel houses down the left, palms, crates and barrels */
+export const buildPort = (root: THREE.Object3D) => {
+  const b = new Batch(), r = rng(89), O = at("port", 0, 0, 0)[0];
+  const stone = lam("portStone", () => ({ map: stoneHD("portQuayHD", ["#d9c4a0", "#cdb592", "#e2cfad", "#c4ab88"], "#8f7a5c") }));
+  quayWall(b, O - 120, O + 120, 0, -1.8, stone);
+  ([[2, 9, 7, 0], [11.5, 8, 8.4, 1], [20.5, 9, 7, 2], [30, 8, 9.8, 0], [39.5, 9, 7, 1]] as const).forEach(([z, w, h, si]) => house(b, O - 17, z, Math.PI / 2, w, 8, h, si));
+  ([[-30, 9, 8.4, 2], [-20.5, 8, 7, 1], [22, 9, 7, 0], [31.5, 8, 8.4, 2]] as const).forEach(([x, w, h, si]) => house(b, O + x, 36, Math.PI, w, 8, h, si));
+  ([[-11, 1.6, 7.2], [-13, 8.5, 8.4], [9.5, 2.6, 7.0], [13.5, 9.0, 8.0], [-6.5, 15, 7.6], [7.5, 18, 8.6]] as const).forEach(([x, z, h], i) => palm(b, O + x, 0, z, h, 41 + i * 5));
+  for (const [x, z] of [[-5.2, 1.5], [-5.8, 2.3], [5.6, 1.2], [6.2, 4.6]]) barrel(b, O + x, z);
+  for (const [x, z, s] of [[4.0, 1.7, 0.8], [4.6, 2.6, 0.6], [-6.8, 5.2, 0.7]] as const) crate(b, O + x, z, s, r());
+  for (let x = -60; x <= 60; x += 6.5) b.add(cyl(0.16, 0.2, 0.55, 10), ironM(), tr(O + x, 0, 0.55));
+  hills(b, O, [[-180, -300, 170, 46, 100], [140, -360, 220, 54, 120], [320, -200, 140, 36, 100]], ["#5f8f56", "#4f7f52"]);
+  for (let i = 0; i < 18; i++) palm(b, O - 220 + r() * 440, 0, -250 - r() * 60, 14 + r() * 6, 200 + i);
+  b.build(root);
+};
+
+export type CellParts = { icicles: THREE.Mesh[] };
+/** the debtors' prison: the cellar room rebuilt as a cell (stone walls, plank ceiling, barred window with the warm
+ *  evening sky behind it), a plank bench, the bar wall and the corridor where the guard stands */
+export const buildCell = (root: THREE.Object3D): CellParts => {
+  const walls = new Batch(), props = new Batch();
+  const { x0, x1, z0, h } = CELLAR, z1 = BARS_Z, ze = 5.6, win = CELL_WIN;
+  const P = (x: number, y: number, z: number) => V(...C(x, y, z));
+  const stone = lam("cellStone", () => ({ map: rep(cellarStoneHD(), 0.5, 0.5), color: "#c9c4cf", side: THREE.DoubleSide }));
+  const floor = lam("cellFloor", () => ({ map: cellarFloorHD(), color: "#c8c0bc", side: THREE.DoubleSide }));
+  const ceil = lam("cellCeil", () => ({ map: rep(planksHD(), 0.6, 0.6), color: "#7a6c64", side: THREE.DoubleSide }));
+  const wood = lam("cellWood", () => ({ map: beamHD(), color: "#9a7a5c" }));
+  walls.add(quad(P(x0, 0, ze), P(x1, 0, ze), P(x1, 0, z0), P(x0, 0, z0), (x1 - x0) / 2, (ze - z0) / 2), floor);
+  walls.add(quad(P(x0, h, z0), P(x1, h, z0), P(x1, h, ze), P(x0, h, ze), (x1 - x0) / 2, (ze - z0) / 2), ceil);
+  const wq = (a: THREE.Vector3, c: THREE.Vector3, d: THREE.Vector3, e: THREE.Vector3, u: number, v: number, u0 = 0, v0 = 0) => walls.add(quad(a, c, d, e, u + u0, v + v0, u0, v0), stone);
+  wq(P(x0, 0, z0), P(x0, 0, ze), P(x0, h, ze), P(x0, h, z0), (ze - z0) / 2, h / 2);
+  wq(P(x1, 0, ze), P(x1, 0, z0), P(x1, h, z0), P(x1, h, ze), (ze - z0) / 2, h / 2);
+  wq(P(x1, 0, ze), P(x0, 0, ze), P(x0, h, ze), P(x1, h, ze), (x1 - x0) / 2, h / 2);
+  const wx0 = win.x - win.w / 2, wx1 = win.x + win.w / 2, wy0 = win.y - win.h / 2, wy1 = win.y + win.h / 2;
+  const back = (ax: number, bx: number, ay: number, by: number) => wq(P(ax, ay, z0), P(bx, ay, z0), P(bx, by, z0), P(ax, by, z0), (bx - ax) / 2, (by - ay) / 2, (ax - x0) / 2, ay / 2);
+  back(x0, wx0, 0, h); back(wx1, x1, 0, h); back(wx0, wx1, 0, wy0); back(wx0, wx1, wy1, h);
+  const D = 0.45;
+  wq(P(wx0, wy0, z0 - D), P(wx0, wy0, z0), P(wx0, wy1, z0), P(wx0, wy1, z0 - D), D / 2, win.h / 2);
+  wq(P(wx1, wy0, z0), P(wx1, wy0, z0 - D), P(wx1, wy1, z0 - D), P(wx1, wy1, z0), D / 2, win.h / 2);
+  wq(P(wx0, wy1, z0), P(wx1, wy1, z0), P(wx1, wy1, z0 - D), P(wx0, wy1, z0 - D), win.w / 2, D / 2);
+  wq(P(wx0, wy0, z0 - D), P(wx1, wy0, z0 - D), P(wx1, wy0, z0), P(wx0, wy0, z0), win.w / 2, D / 2);
+  for (const k of [-1, 0, 1]) props.add(boxGeo(P(win.x + (k * win.w) / 4 - 0.014, wy0, z0 - 0.08), P(win.x + (k * win.w) / 4 + 0.014, wy1, z0 - 0.05), 0), ironM());
+  // the evening sky outside: self-lit HDR (blooms: the one warm light in the cell)
+  const sky = new THREE.Mesh(new THREE.PlaneGeometry(win.w * 3, win.h * 3), new THREE.MeshBasicMaterial({ map: warmSkyTex(), color: new THREE.Color(1.7, 1.55, 1.35), fog: false }));
+  sky.position.set(...C(win.x, win.y, z0 - 0.75)); root.add(sky);
+  // the window's warm patch on the floor and wall (additive)
+  const patch = new THREE.Mesh(new THREE.PlaneGeometry(0.7, 1.5).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({
+    map: ctex("lightPatch", 128, 256, (g) => { const gr = g.createRadialGradient(64, 128, 10, 64, 128, 124); gr.addColorStop(0, "rgba(255,190,120,0.9)"); gr.addColorStop(1, "rgba(255,170,90,0)"); g.fillStyle = gr; g.fillRect(0, 0, 128, 256); }),
+    color: new THREE.Color(0.55, 0.36, 0.18), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false }));
+  patch.position.set(...C(win.x - 0.35, 0.006, z0 + 1.1)); patch.rotation.y = 0.35; patch.layers.set(NOINK); root.add(patch);
+  // beams, bench, bar wall, corridor lamp, guard's stool
+  for (const z of [-2.5, -0.9, 0.7, 3.0]) walls.add(boxGeo(P(x0, h - 0.22, z - 0.11), P(x1, h, z + 0.11), 1), wood);
+  props.add(boxGeo(P(BENCH.x0, BENCH.h - 0.07, BENCH.z - BENCH.d / 2), P(BENCH.x1, BENCH.h, BENCH.z + BENCH.d / 2), 1), wood);
+  for (const x of [BENCH.x0 + 0.25, BENCH.x1 - 0.25]) props.add(boxGeo(P(x - 0.14, 0, BENCH.z - 0.16), P(x + 0.14, BENCH.h - 0.07, BENCH.z + 0.16), 1), stone);
+  for (let x = x0 + 0.08; x < x1; x += 0.17) props.add(new THREE.CylinderGeometry(0.022, 0.022, h, 6).translate(...C(x, h / 2, z1)), ironM());
+  for (const y of [0.18, 1.15, 2.35]) props.add(boxGeo(P(x0, y - 0.03, z1 - 0.03), P(x1, y + 0.03, z1 + 0.03), 0), ironM());
+  props.add(new THREE.CylinderGeometry(0.06, 0.06, 0.12, 8).translate(...C(0.9, 1.15, z1 + 0.06)), ironM()); // lock
+  props.add(new THREE.CylinderGeometry(0.075, 0.065, 0.22, 6).translate(...C(x1 - 0.12, 1.95, 4.2)), lanternGlass());
+  props.add(boxGeo(P(x1 - 0.2, 1.8, 4.12), P(x1, 1.83, 4.28), 0), ironM());
+  props.add(cyl(0.2, 0.2, 0.45, 12), wood, new THREE.Matrix4().setPosition(...C(2.0, 0, 3.6)));
+  // icicles hanging from the window's outer lintel (they melt in world.ts)
+  const icicles: THREE.Mesh[] = [];
+  for (const [dx, L] of [[-0.17, 0.2], [-0.04, 0.3], [0.1, 0.16], [0.2, 0.24]] as const) {
+    const m = new THREE.Mesh(new THREE.ConeGeometry(0.022, L, 10).rotateX(Math.PI).translate(0, -L / 2, 0), iceMat());
+    m.position.set(...C(win.x + dx, wy1, z0 - D + 0.06)); m.castShadow = false; root.add(m); icicles.push(m);
+  }
+  walls.build(root, false);
+  props.build(root, true);
+  return { icicles };
+};
+
+export type HoldParts = { sawdust: THREE.Mesh; page: THREE.Mesh; pageMat: THREE.MeshLambertMaterial; underMat: THREE.MeshLambertMaterial };
+/** the ship's hold: plank box, beams, the open hatch's daylight, rows of ice blocks under a rising sawdust fill,
+ *  heaps of sawdust, a ladder, a post with the calendar */
+export const buildHold = (root: THREE.Object3D): HoldParts => {
+  const walls = new Batch(), props = new Batch();
+  const P = (x: number, y: number, z: number) => V(...at("hold", x, y, z));
+  const X0 = -3, X1 = 3, Z0 = -5, Z1 = 7, H = 2.4;
+  const plank = lam("holdPlank", () => ({ map: rep(planksHD(), 0.7, 0.7), color: "#b88e64", side: THREE.DoubleSide }));
+  const plankD = lam("holdWall", () => ({ map: rep(planksHD(), 0.7, 0.7), color: "#94704e", side: THREE.DoubleSide }));
+  const wood = woodM("holdBeam", "#7a5638");
+  walls.add(quad(P(X0, 0, Z1), P(X1, 0, Z1), P(X1, 0, Z0), P(X0, 0, Z0), 3, 6), plank);
+  walls.add(quad(P(X0, 0, Z0), P(X0, 0, Z1), P(X0, H, Z1), P(X0, H, Z0), 6, 1.2), plankD);
+  walls.add(quad(P(X1, 0, Z1), P(X1, 0, Z0), P(X1, H, Z0), P(X1, H, Z1), 6, 1.2), plankD);
+  walls.add(quad(P(X1, 0, Z0), P(X0, 0, Z0), P(X0, H, Z0), P(X1, H, Z0), 3, 1.2), plankD);
+  walls.add(quad(P(X0, 0, Z1), P(X1, 0, Z1), P(X1, H, Z1), P(X0, H, Z1), 3, 1.2), plankD);
+  // ceiling with the hatch opening (x -0.4..1.2, z -1.3..0.3)
+  const hx0 = -0.4, hx1 = 1.2, hz0 = -1.3, hz1 = 0.3, ce = (a: number, c: number, d: number, e: number) => walls.add(quad(P(a, H, d), P(c, H, d), P(c, H, e), P(a, H, e), 1, 1), plankD);
+  ce(X0, X1, Z0, hz0); ce(X0, X1, hz1, Z1); ce(X0, hx0, hz0, hz1); ce(hx1, X1, hz0, hz1);
+  const sky = new THREE.Mesh(new THREE.PlaneGeometry(hx1 - hx0 + 0.4, hz1 - hz0 + 0.4).rotateX(Math.PI / 2), new THREE.MeshBasicMaterial({ color: new THREE.Color(2.4, 2.3, 2.1), fog: false }));
+  sky.position.set(...at("hold", (hx0 + hx1) / 2, H + 0.5, (hz0 + hz1) / 2)); root.add(sky);
+  for (let z = Z0 + 0.6; z < Z1; z += 1.2) walls.add(boxGeo(P(X0, H - 0.2, z - 0.1), P(X1, H, z + 0.1), 1), wood);
+  for (const z of [-3.5, -1.0, 1.5, 4.0]) for (const x of [X0, X1 - 0.18]) walls.add(boxGeo(P(x, 0, z - 0.09), P(x + 0.18, H, z + 0.09), 1), wood);
+  // ice blocks (two layers) and the sawdust fill box (its height is set per frame)
+  for (let x = -2.45; x < 2.5; x += 0.56) for (let z = -4.6; z < 1.7; z += 0.56) for (const y of [0.02, 0.5])
+    props.add(boxGeo(P(x, y, z), P(x + 0.48, y + 0.44, z + 0.48)), iceMat());
+  const sawdust = new THREE.Mesh(boxGeo(V(X0 + 0.02, 0, Z0 + 0.02), V(X1 - 0.02, 1, 2.05), 1), sawM());
+  sawdust.position.set(...at("hold", 0, 0, 0)); sawdust.receiveShadow = true; root.add(sawdust);
+  for (const [x, z, rr, hh] of [[-2.2, 3.7, 0.9, 0.7], [2.0, 4.6, 1.1, 0.8], [-0.2, 5.6, 0.8, 0.5]] as const)
+    props.add(new THREE.SphereGeometry(1, 20, 10, 0, Math.PI * 2, 0, Math.PI / 2).scale(rr, hh, rr), sawM(), new THREE.Matrix4().setPosition(...at("hold", x, 0, z)));
+  // ladder under the hatch, lantern, the post with the calendar's nail
+  for (const dx of [-0.25, 0.25]) props.add(boxGeo(P(0.4 + dx - 0.04, 0, hz1 - 0.1), P(0.4 + dx + 0.04, H + 0.3, hz1 - 0.02), 1), wood);
+  for (let y = 0.3; y < H; y += 0.33) props.add(boxGeo(P(0.13, y, hz1 - 0.1), P(0.67, y + 0.04, hz1 - 0.04)), wood);
+  props.add(new THREE.CylinderGeometry(0.07, 0.06, 0.2, 6).translate(...at("hold", 1.9, 1.95, 2.5)), lanternGlass());
+  const [px, , pz] = HOLD.post;
+  props.add(boxGeo(V(px - 0.1, 0, pz - 0.1), V(px + 0.1, H, pz + 0.1), 1), wood);
+  props.add(boxGeo(V(px - 0.21, 1.03, pz + 0.1), V(px + 0.21, 1.78, pz + 0.105)), lam("calBack", () => ({ color: "#6b4630" })));
+  // the calendar: a page under (the next month) and the top page (flips up about its top edge)
+  const underMat = twoTone(new THREE.MeshLambertMaterial({ color: "#ffffff" }));
+  const under = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.5), underMat);
+  under.position.set(px, 1.42, pz + 0.112); root.add(under);
+  const pageMat = twoTone(new THREE.MeshLambertMaterial({ color: "#ffffff", side: THREE.DoubleSide }));
+  const page = new THREE.Mesh(new THREE.PlaneGeometry(0.4, 0.5).translate(0, -0.25, 0), pageMat);
+  page.position.set(px, 1.67, pz + 0.118); root.add(page);
+  walls.build(root, false);
+  props.build(root, true);
+  return { sawdust, page, pageMat, underMat };
+};
+
+/** the lumber mill yard: the mill, log piles, a cart, and the sawdust mountains nobody wanted */
+export const buildMill = (root: THREE.Object3D, kit: Kit) => {
+  const b = new Batch(), r = rng(97), O = at("mill", 0, 0, 0)[0];
+  vegOrigin(O, -10);
+  house(b, O - 3, -16, 0, 12, 8, 6.5, 2); house(b, O + 9, -18, 0, 8, 7, 5, 0);
+  for (const [x, z, rr, hh] of [[-5.0, -4.2, 3.4, 3.0], [-11, -8, 5.2, 4.6], [3.4, -9.5, 4.0, 3.6], [13, -14, 6.0, 5.2], [-1.2, -1.2, 1.3, 1.0]] as const) {
+    const g = new THREE.ConeGeometry(rr, hh, 40, 6), pp = g.attributes.position as THREE.BufferAttribute;
+    for (let k = 0; k < pp.count; k++) { const y = pp.getY(k) / hh + 0.5, x = pp.getX(k), z = pp.getZ(k), d = Math.hypot(x, z) || 1, n = 1 + 0.06 * Math.sin(5 * Math.atan2(z, x) + rr); pp.setXYZ(k, x * n, (y ** 0.8 - 0.5) * hh, z * n); void d; }
+    g.translate(0, hh / 2, 0); g.computeVertexNormals();
+    b.add(g, sawM(), tr(O + x, 0, z));
+  }
+  const log = woodM("log", "#8a6040");
+  for (let l = 0; l < 3; l++) for (let i = 0; i < 4 - l; i++) b.add(new THREE.CylinderGeometry(0.26, 0.26, 4.2, 12).rotateZ(Math.PI / 2), log, tr(O + 9, 0.26 + l * 0.46, -3 - (i - (3 - l) / 2) * 0.54));
+  // cart: bed + wheels
+  const m = tr(O + 1.4, 0, 0.2, 0.5);
+  b.add(boxGeo(V(-1.0, 0.55, -0.6), V(1.0, 0.95, 0.6), 1), woodM("cart", "#9a7048"), m);
+  b.add(boxGeo(V(-0.9, 0.95, -0.5), V(0.9, 1.05, 0.5)), sawM(), m);
+  for (const s of [1, -1]) b.add(new THREE.CylinderGeometry(0.5, 0.5, 0.1, 18).rotateX(Math.PI / 2), woodM("wheel", "#6b4a32"), m.clone().multiply(tr(0, 0.5, s * 0.66)));
+  for (let i = 0; i < 40; i++) { const x = O - 40 + r() * 80, z = -30 - r() * 40; if (Math.abs(x - O) < 18 && z > -24) continue; prop(b, kit, i % 3 ? "tree_default" : "tree_cone", x, D0, z, 6 + r() * 5, r() * 6); }
+  for (let i = 0; i < 16; i++) prop(b, kit, "tree_fat", O + (r() < 0.5 ? -1 : 1) * (22 + r() * 30), D0, -10 + r() * 30, 5 + r() * 4, r() * 6);
+  hills(b, O, [[-200, -260, 190, 46, 120], [160, -320, 240, 60, 140], [320, -60, 170, 44, 130]], ["#6f9a56", "#5f8a4e"]);
+  b.build(root);
+};
+
+/** Calcutta: ghat steps down to the river, domed and flat-roofed buildings, palms, the far bank in the haze, and the
+ *  ice market (stalls with striped awnings, ice in sawdust on the counters, cold drinks) */
+export const buildCalcutta = (root: THREE.Object3D) => {
+  const b = new Batch(), r = rng(131), O = at("calcutta", 0, 0, 0)[0];
+  const stone = lam("ghatStone", () => ({ map: stoneHD("ghatHD", ["#e0c8a0", "#d4ba92", "#e8d4b0", "#c9ad86"], "#8f7a5c") }));
+  for (let i = 0; i < 3; i++) { const y = -0.33 * (i + 1), z = -1.0 * (i + 1); b.add(boxGeo(V(O - 60, y, z), V(O + 60, y + 0.33, z + 1.0), 2), stone); }
+  b.add(quad(V(O + 60, -1.3, -3), V(O - 60, -1.3, -3), V(O - 60, -0.99, -3), V(O + 60, -0.99, -3), 40, 1), stone);
+  const plaster = (c: string) => lam("plaster" + c, () => ({ map: rep(plasterTex(c), 1, 1) }));
+  const domed = (x: number, z: number, w: number, h: number, col: string, yaw = Math.PI) => {
+    const m = tr(x, 0, z, yaw), pm = plaster(col);
+    b.add(boxGeo(V(-w / 2, 0, -w / 2), V(w / 2, h, w / 2), 3), pm, m);
+    b.add(boxGeo(V(-w / 2 - 0.25, h, -w / 2 - 0.25), V(w / 2 + 0.25, h + 0.35, w / 2 + 0.25)), lam("cornice", () => ({ color: "#f2e6cc" })), m);
+    b.add(cyl(w * 0.3, w * 0.3, 1.0, 24), pm, m.clone().multiply(tr(0, h + 0.35, 0)));
+    b.add(new THREE.SphereGeometry(w * 0.32, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 1.25, 1), lam("dome", () => ({ color: "#f4ead8" })), m.clone().multiply(tr(0, h + 1.35, 0)));
+    b.add(new THREE.ConeGeometry(0.12, 1.0, 8).translate(0, 0.5, 0), lam("finial", () => ({ color: "#c9a03a" })), m.clone().multiply(tr(0, h + 1.35 + w * 0.4, 0)));
+    for (const [sx, sz] of [[-1, -1], [1, -1], [-1, 1], [1, 1]]) {
+      const cm = m.clone().multiply(tr(sx * (w / 2 - 0.4), h + 0.35, sz * (w / 2 - 0.4)));
+      for (const [qx, qz] of [[-0.25, -0.25], [0.25, -0.25], [-0.25, 0.25], [0.25, 0.25]]) b.add(cyl(0.05, 0.05, 0.9, 6), pm, cm.clone().multiply(tr(qx, 0, qz)));
+      b.add(new THREE.SphereGeometry(0.42, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2), lam("dome", () => ({ color: "#f4ead8" })), cm.clone().multiply(tr(0, 0.9, 0)));
+    }
+    // arched windows as dark insets
+    for (let k = -1; k <= 1; k++) b.add(boxGeo(V(k * w * 0.28 - 0.35, h * 0.35, w / 2), V(k * w * 0.28 + 0.35, h * 0.75, w / 2 + 0.02)), lam("archDark", () => ({ color: "#5a3f3a" })), m);
+  };
+  const minaret = (x: number, z: number, h: number) => {
+    b.add(cyl(0.75, 0.6, h, 16), plaster("#efe0c4"), tr(x, 0, z));
+    b.add(cyl(1.05, 1.05, 0.3, 16), lam("cornice", () => ({ color: "#f2e6cc" })), tr(x, h * 0.7, z));
+    b.add(new THREE.SphereGeometry(0.7, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 1.4, 1), lam("dome", () => ({ color: "#f4ead8" })), tr(x, h, z));
+  };
+  // the river front row (seen across the decks) and the market's back row
+  ([[-34, 26], [-12, 28], [14, 27], [36, 26]] as const).forEach(([x, z], i) => domed(O + x, z, 9 + (i % 2) * 2, 7 + (i % 3), ["#e8c48a", "#f0d8b0", "#e2b08a", "#efe0c4"][i]));
+  ([[-23, 9, 7, 2], [3, 8, 8.4, 1], [25, 9, 7, 2]] as const).forEach(([x, w, h, si]) => house(b, O + x, 27, Math.PI, w, 8, h, si));
+  minaret(O - 2, 33, 18);
+  ([[58, 1.0], [66, -0.5], [79, 0.5], [88, 0.0]] as const).forEach(([x, z], i) => domed(O + x, z, 8 + (i % 2) * 2, 6 + (i % 2) * 2, ["#e8c48a", "#efe0c4", "#e2b08a", "#f0d8b0"][i], 0));
+  minaret(O + 72.5, -1.5, 16);
+  ([[-18, 6, 7], [20, 5, 8], [-40, 12, 8], [44, 10, 7.5], [62, 21, 8.2], [83, 20, 7.6], [91, 9, 8.6], [55, 9, 7.4]] as const).forEach(([x, z, h], i) => palm(b, O + x, 0, z, h, 300 + i * 3));
+  // the far bank in the haze: low domes and palms
+  for (let i = 0; i < 26; i++) { const x = O - 260 + i * 21 + r() * 8, z = -240 - r() * 40; if (i % 3) palm(b, x, 0, z, 12 + r() * 6, 400 + i); else domed(x, z, 12, 8, "#e8c48a", 0); }
+  // market stalls (counters face +z), ice in sawdust trays, glasses and jars
+  for (const [x, a, c2] of [[64, "#d9583a", "#f2ead6"], [70, "#2f7f9a", "#f2ead6"], [76, "#c9a03a", "#f2ead6"]] as const) {
+    const z = MARKET.stall[2], X = O + x;
+    for (const [dx, dz] of [[-1.25, -0.9], [1.25, -0.9], [-1.25, 0.9], [1.25, 0.9]]) b.add(cyl(0.05, 0.05, dz < 0 ? 2.6 : 2.2, 6), woodM("pole", "#7a5638"), tr(X + dx, 0, z + dz));
+    b.add(quad(V(X - 1.45, 2.2, z + 1.05), V(X + 1.45, 2.2, z + 1.05), V(X + 1.45, 2.65, z - 1.0), V(X - 1.45, 2.65, z - 1.0), 2, 1), lam("awning" + a, () => ({ map: awningTex(a, c2), side: THREE.DoubleSide })));
+    b.add(boxGeo(V(X - 1.1, 0, z - 0.1), V(X + 1.1, 0.9, z + 0.75), 1), woodM("counter", "#9a7048"));
+    b.add(boxGeo(V(X - 0.95, 0.9, z + 0.0), V(X + 0.2, 1.02, z + 0.65)), sawM());
+    for (const [ix, iz] of [[-0.75, 0.15], [-0.42, 0.42], [-0.15, 0.12]]) b.add(boxGeo(V(X + ix - 0.13, 0.92, z + iz - 0.13), V(X + ix + 0.13, 1.1, z + iz + 0.13)), iceMat());
+    for (let k = 0; k < 4; k++) b.add(cyl(0.045, 0.05, 0.16, 10), lam("glass", () => ({ color: "#f4e7a8", emissive: new THREE.Color(0.18, 0.16, 0.08) })), tr(X + 0.42 + (k % 2) * 0.2, 0.9, z + 0.18 + Math.floor(k / 2) * 0.24));
+    b.add(cyl(0.16, 0.12, 0.35, 12), lam("jarClay", () => ({ color: "#b8643a" })), tr(X + 0.88, 0.9, z + 0.35));
+    barrel(b, X - 1.6, z + 0.3, 0.8);
+  }
+  b.build(root);
 };

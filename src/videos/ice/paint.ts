@@ -718,3 +718,216 @@ export const chainHD = () => ctex("chainHD", 256, 1024, (g) => {
   }
 });
 
+
+// ---------------- cellar short: winter street + root cellar (new set pieces; same painting rules as above) ----------------
+/** fresh snow, 1024 px = 4 m: near-white with soft cool hollows and warm-lit drifts, sparse sparkle dabs (no ink) */
+export const snowHD = () => ctex("snowHD", 1024, 1024, (g, r) => {
+  const S = 1024;
+  g.fillStyle = "#f1eeea"; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 46; i++) {
+    const x = U(r, 0, S), y = U(r, 0, S), rad = U(r, 60, 200), cool = r() < 0.6;
+    wrap2(S, S, x, y, rad * 1.4, (xx, yy) => blotch(g, xx, yy, rad, 1.4, cool ? "150,160,190" : "255,250,240", cool ? U(r, 0.08, 0.16) : 0.12));
+  }
+  for (let i = 0; i < 420; i++) {
+    const x = U(r, 0, S), y = U(r, 0, S), s = U(r, 1, 2.6), d = r() < 0.35;
+    g.fillStyle = d ? "rgba(140,150,185,0.28)" : "rgba(255,255,255,0.75)";
+    g.beginPath(); g.arc(x, y, s, 0, TAU); g.fill();
+  }
+});
+/** the cobbled lane under trodden snow: cobbles show through in the wheel/foot track, drifts at the edges */
+export const snowCobbleHD = () => { const t = ctex("snowCobbleHD", 2048, 2048, (g, r) => {
+  const S = 2048;
+  g.drawImage(cobbleHD().image as CanvasImageSource, 0, 0);
+  g.fillStyle = "rgba(243,240,236,0.66)"; g.fillRect(0, 0, S, S); // snow over everything: the setts only show faintly
+  for (let i = 0; i < 190; i++) {
+    const x = U(r, 0, S), y = U(r, 0, S), rad = U(r, 70, 280);
+    wrap2(S, S, x, y, rad * 1.3, (xx, yy) => blotch(g, xx, yy, rad, 1.3, "243,240,236", U(r, 0.6, 0.95)));
+  }
+  for (let i = 0; i < 900; i++) { // snow caught in the joints
+    const x = U(r, 0, S), y = U(r, 0, S);
+    g.fillStyle = "rgba(245,243,240,0.7)"; g.beginPath(); g.ellipse(x, y, U(r, 3, 12), U(r, 2, 5), 0, 0, TAU); g.fill();
+  }
+});
+t.repeat.set(0.5, 0.5);
+return t; };
+/** snow lying on a tiled roof: white with the tile courses just showing as soft ridges */
+export const snowRoofHD = () => ctex("snowRoofHD", 1024, 1024, (g, r) => {
+  const S = 1024, C = 64;
+  g.fillStyle = "#f2efeb"; g.fillRect(0, 0, S, S);
+  for (let row = 0; row < S / C; row++) {
+    const y = row * C;
+    g.fillStyle = "rgba(150,155,185,0.16)"; g.fillRect(0, y + C - 7, S, 7);
+    g.fillStyle = "rgba(255,255,255,0.5)"; g.fillRect(0, y + C - 12, S, 4);
+  }
+  for (let i = 0; i < 26; i++) {
+    const x = U(r, 0, S), y = U(r, 0, S), rad = U(r, 40, 140);
+    wrap2(S, S, x, y, rad * 1.4, (xx, yy) => blotch(g, xx, yy, rad, 1.4, r() < 0.4 ? "190,95,75" : "150,160,190", 0.1));
+  }
+});
+/** dark cellar stone with hoar frost in the joints and on the block edges (2 cool whites, feathery) */
+export const cellarStoneHD = () => ctex("cellarStoneHD", 1024, 1024, (g, r) => {
+  const S = 1024;
+  // grey chipped stone (verifier: the warm stone + stroke frost read as hay bales)
+  g.drawImage(stoneHD("cellarStone", ["#6e6a66", "#625f5c", "#78736d", "#5a5754"], "#34312f").image as CanvasImageSource, 0, 0);
+  for (let i = 0; i < 90; i++) { // chips: small light facets knocked off the block edges
+    const x = U(r, 0, S), y = Math.floor(r() * 8) * 128 + (r() < 0.5 ? U(r, 2, 14) : U(r, 110, 124)), s = U(r, 6, 16);
+    g.fillStyle = "rgba(170,165,160,0.55)"; g.beginPath(); g.moveTo(x, y); g.lineTo(x + s, y + U(r, -3, 3)); g.lineTo(x + s * 0.4, y + s * 0.7); g.closePath(); g.fill();
+  }
+  for (let i = 0; i < 1100; i++) { // hoar frost: fine pale dots gathered on the joints
+    const row = Math.floor(r() * 9), onJoint = r() < 0.8, x = U(r, 0, S), y = onJoint ? row * 128 + U(r, -10, 12) : U(r, 0, S);
+    g.fillStyle = r() < 0.5 ? "rgba(236,244,255,0.7)" : "rgba(205,222,250,0.55)";
+    g.beginPath(); g.arc(x, y, U(r, 0.8, 2.2), 0, TAU); g.fill();
+  }
+  for (let i = 0; i < 22; i++) {
+    const x = U(r, 0, S), y = U(r, 0, S), rad = U(r, 40, 120);
+    wrap2(S, S, x, y, rad * 1.3, (xx, yy) => blotch(g, xx, yy, rad, 1.3, "225,236,255", U(r, 0.12, 0.25)));
+  }
+});
+/** packed earth + flagstones of the cellar floor */
+export const cellarFloorHD = () => stoneHD("cellarFlags", ["#7a6a58", "#6f604f", "#83725f", "#695a4a"], "#463b31");
+/** potato skin: warm ochre-brown with darker eyes and soft dirt */
+export const potatoTex = () => ctex("potato", 256, 128, (g, r) => {
+  g.fillStyle = "#a6743f"; g.fillRect(0, 0, 256, 128);
+  for (let i = 0; i < 30; i++) { const x = U(r, 0, 256), y = U(r, 0, 128), rad = U(r, 10, 30); blotch(g, x, y, rad, 1.3, r() < 0.6 ? "120,85,45" : "235,200,140", 0.18); }
+  for (let i = 0; i < 14; i++) { const x = U(r, 10, 246), y = U(r, 15, 113); g.fillStyle = "rgba(90,60,35,0.7)"; g.beginPath(); g.ellipse(x, y, U(r, 2, 4), U(r, 1.5, 2.5), 0, 0, TAU); g.fill(); }
+});
+/** hoar frost shell for potatoes (transparent: white crystals, see-through between them) */
+export const frostTex = () => ctex("frostShell", 256, 128, (g, r) => {
+  g.clearRect(0, 0, 256, 128);
+  g.fillStyle = "rgba(235,243,255,0.05)"; g.fillRect(0, 0, 256, 128);
+  for (let i = 0; i < 200; i++) {
+    const x = U(r, 0, 256), y = U(r, 0, 128), a = U(r, 0, TAU), l = U(r, 2, 7);
+    g.strokeStyle = r() < 0.5 ? "rgba(255,255,255,0.95)" : "rgba(210,228,255,0.85)"; g.lineWidth = U(r, 0.8, 1.6);
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
+  }
+});
+/** the snowy yard seen through the cellar window at dusk: lit snow, a fence, a lamp-warm sky band (self-lit) */
+export const yardTex = () => ctex("yard", 512, 320, (g, r) => {
+  const sky = g.createLinearGradient(0, 0, 0, 200);
+  sky.addColorStop(0, "#4f4c8e"); sky.addColorStop(0.65, "#8a78b0"); sky.addColorStop(1, "#c9a0b4"); // violet dusk: the one cool accent
+  g.fillStyle = sky; g.fillRect(0, 0, 512, 210);
+  g.fillStyle = "#f0e2d6"; g.beginPath(); g.moveTo(0, 190); g.quadraticCurveTo(200, 160, 512, 185); g.lineTo(512, 320); g.lineTo(0, 320); g.fill();
+  g.fillStyle = "rgba(150,140,190,0.35)"; g.fillRect(0, 250, 512, 70);
+  for (let x = 20; x < 512; x += 64) { g.fillStyle = "#5a4a50"; g.fillRect(x, 150, 10, 60); g.fillStyle = "#f6f0ea"; g.fillRect(x - 2, 146, 14, 7); }
+  g.fillStyle = "#5a4a50"; g.fillRect(0, 168, 512, 6);
+  for (let i = 0; i < 40; i++) { g.fillStyle = "rgba(255,255,255,0.8)"; g.beginPath(); g.arc(U(r, 0, 512), U(r, 0, 320), U(r, 1, 2.5), 0, TAU); g.fill(); }
+});
+
+// ---------------- ice short ----------------
+/** warm beach / port sand: pale gold with soft drifts and a few shell flecks */
+export const sandHD = () => ctex("sandHD", 1024, 1024, (g, r) => {
+  const S = 1024;
+  g.fillStyle = "#e6c98f"; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 60; i++) {
+    const x = U(r, 0, S), y = U(r, 0, S), rad = U(r, 50, 180), lt = r() < 0.5;
+    wrap2(S, S, x, y, rad * 1.4, (xx, yy) => blotch(g, xx, yy, rad, 1.4, lt ? "250,232,190" : "196,160,110", U(r, 0.12, 0.25)));
+  }
+  for (let i = 0; i < 700; i++) {
+    g.fillStyle = r() < 0.5 ? "rgba(160,120,80,0.35)" : "rgba(255,248,225,0.6)";
+    g.beginPath(); g.arc(U(r, 0, S), U(r, 0, S), U(r, 0.8, 2.4), 0, TAU); g.fill();
+  }
+});
+/** frozen pond: pale blue-white ice, soft snow dust, long cracks, the cutters' grid scored in */
+export const pondIceHD = () => ctex("pondIceHD", 1024, 1024, (g, r) => {
+  const S = 1024;
+  g.fillStyle = "#cfe3ee"; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 40; i++) {
+    const x = U(r, 0, S), y = U(r, 0, S), rad = U(r, 60, 220), w = r() < 0.6;
+    wrap2(S, S, x, y, rad * 1.4, (xx, yy) => blotch(g, xx, yy, rad, 1.4, w ? "245,248,250" : "120,165,200", U(r, 0.12, 0.3)));
+  }
+  g.lineCap = "round";
+  for (let i = 0; i < 22; i++) {
+    let x = U(r, 0, S), y = U(r, 0, S), a = U(r, 0, TAU);
+    g.strokeStyle = "rgba(255,255,255,0.8)"; g.lineWidth = U(r, 1, 2.2); g.beginPath(); g.moveTo(x, y);
+    for (let k = 0; k < 8; k++) { a += U(r, -0.6, 0.6); x += Math.cos(a) * 30; y += Math.sin(a) * 30; g.lineTo(x, y); }
+    g.stroke();
+  }
+});
+/** sawdust: warm tan with fine chips (lumber mill heaps, the packing in the hold) */
+export const sawdustHD = () => ctex("sawdustHD", 1024, 1024, (g, r) => {
+  const S = 1024;
+  g.fillStyle = "#d9b27a"; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 50; i++) {
+    const x = U(r, 0, S), y = U(r, 0, S), rad = U(r, 40, 150), lt = r() < 0.5;
+    wrap2(S, S, x, y, rad * 1.4, (xx, yy) => blotch(g, xx, yy, rad, 1.4, lt ? "240,206,150" : "170,120,70", U(r, 0.15, 0.3)));
+  }
+  for (let i = 0; i < 2600; i++) {
+    g.fillStyle = r() < 0.5 ? "rgba(150,100,55,0.45)" : "rgba(250,225,175,0.7)";
+    g.save(); g.translate(U(r, 0, S), U(r, 0, S)); g.rotate(U(r, 0, TAU)); g.fillRect(-U(r, 1, 4), -1, U(r, 2, 8), U(r, 1, 2.2)); g.restore();
+  }
+});
+/** a hull side: dark tarred planks with near-black seams and a cream wale stripe */
+export const hullHD = () => ctex("hullHD", 1024, 512, (g, r) => {
+  const W = 1024, H = 512, C = 40;
+  for (let y = 0; y < H; y += C) {
+    g.fillStyle = jit(r, y > H * 0.5 && y < H * 0.62 ? "#e9dcbc" : "#6b4630", 0.08, 3, 0.1); g.fillRect(0, y, W, C);
+    g.fillStyle = "rgba(20,12,10,0.8)"; g.fillRect(0, y + C - 4, W, 4);
+    for (let x = U(r, 0, 300); x < W; x += U(r, 220, 420)) { g.fillStyle = "rgba(20,12,10,0.6)"; g.fillRect(x, y, 3, C); }
+  }
+});
+/** the striped beach towel (blue and white) */
+export const towelTex = () => ctex("towel", 512, 256, (g) => {
+  for (let i = 0; i < 8; i++) { g.fillStyle = ["#2f5fb0", "#f4f0e6", "#e05a3a", "#f4f0e6"][i % 4]; g.fillRect(0, i * 32, 512, 32); }
+  g.fillStyle = "rgba(0,0,0,0.06)"; for (let x = 0; x < 512; x += 6) g.fillRect(x, 0, 2, 256);
+});
+/** the newspaper page in the close-up: masthead bar, columns of grey scribble lines, a cartoon of a ship full of ice
+ *  dripping into a puddle (no readable words: the short shows no on-screen text) */
+export const newspaperTex = () => ctex("newspaper", 768, 1024, (g, r) => {
+  g.fillStyle = "#efe6cf"; g.fillRect(0, 0, 768, 1024);
+  g.fillStyle = "rgba(160,140,100,0.15)"; for (let i = 0; i < 30; i++) { g.beginPath(); g.arc(U(r, 0, 768), U(r, 0, 1024), U(r, 20, 90), 0, TAU); g.fill(); }
+  g.fillStyle = "#2a2226"; g.fillRect(40, 40, 688, 92); g.fillStyle = "#efe6cf"; g.fillRect(40, 140, 688, 6); g.fillStyle = "#2a2226"; g.fillRect(40, 152, 688, 4);
+  for (let x = 70; x < 700; x += 42) { g.fillStyle = "#efe6cf"; g.beginPath(); g.ellipse(x + 14, 86, 13, 26, 0, 0, TAU); g.fill(); } // masthead "letters" as shapes
+  const scrib = (x0: number, y0: number, w: number, n: number) => {
+    for (let k = 0; k < n; k++) { g.strokeStyle = "rgba(60,50,50,0.55)"; g.lineWidth = 4; g.beginPath(); let x = x0; g.moveTo(x, y0 + k * 22);
+      while (x < x0 + w * U(r, 0.75, 1)) { x += U(r, 8, 18); g.lineTo(x, y0 + k * 22 + U(r, -2, 2)); } g.stroke(); }
+  };
+  // the cartoon: a ship whose cargo melts into a puddle
+  g.fillStyle = "#f8f2e2"; g.fillRect(60, 190, 400, 330); g.strokeStyle = "#2a2226"; g.lineWidth = 6; g.strokeRect(60, 190, 400, 330);
+  g.fillStyle = "#9fd4ff"; g.beginPath(); g.ellipse(260, 470, 170, 30, 0, 0, TAU); g.fill(); g.stroke();
+  g.fillStyle = "#6b4630"; g.beginPath(); g.moveTo(130, 390); g.lineTo(390, 390); g.lineTo(350, 440); g.lineTo(170, 440); g.closePath(); g.fill(); g.stroke();
+  g.beginPath(); g.moveTo(260, 390); g.lineTo(260, 230); g.stroke();
+  g.fillStyle = "#f4f0e6"; g.beginPath(); g.moveTo(266, 240); g.lineTo(350, 300); g.lineTo(266, 370); g.closePath(); g.fill(); g.stroke();
+  for (const [x, y] of [[170, 360], [205, 350], [190, 325]]) { g.fillStyle = "#cfeefa"; g.fillRect(x, y, 34, 30); g.strokeRect(x, y, 34, 30); }
+  for (const [x, y] of [[180, 410], [215, 425], [300, 418]]) { g.fillStyle = "#9fd4ff"; g.beginPath(); g.ellipse(x, y + 30, 8, 13, 0, 0, TAU); g.fill(); g.stroke(); }
+  scrib(490, 200, 220, 14); scrib(60, 550, 300, 18); scrib(400, 550, 310, 18); scrib(60, 960, 650, 2);
+});
+/** one calendar page: coloured header band with a picture of the season, a grid of day boxes (no digits) */
+export const calendarTex = (i: number) => ctex("calendar" + i, 512, 640, (g) => {
+  const head = ["#3f6fb5", "#5d9a3a", "#d9783a", "#c84a5a", "#e0b040"][i % 5];
+  g.fillStyle = "#f6f1e4"; g.fillRect(0, 0, 512, 640);
+  g.fillStyle = head; g.fillRect(0, 0, 512, 210);
+  g.fillStyle = "#6b4630"; for (let x = 60; x < 480; x += 70) { g.beginPath(); g.arc(x, 18, 9, 0, TAU); g.fill(); }
+  g.strokeStyle = "#2a2226"; g.lineWidth = 6;
+  const cx = 256, cy = 118;
+  if (i % 2 === 0) { // sun
+    g.fillStyle = "#ffe36a"; g.beginPath(); g.arc(cx, cy, 52, 0, TAU); g.fill(); g.stroke();
+    for (let k = 0; k < 12; k++) { const a = (k / 12) * TAU; g.beginPath(); g.moveTo(cx + Math.cos(a) * 66, cy + Math.sin(a) * 66); g.lineTo(cx + Math.cos(a) * 88, cy + Math.sin(a) * 88); g.stroke(); }
+  } else { // a ship on a wave
+    g.fillStyle = "#6b4630"; g.beginPath(); g.moveTo(cx - 80, cy + 20); g.lineTo(cx + 80, cy + 20); g.lineTo(cx + 55, cy + 55); g.lineTo(cx - 55, cy + 55); g.closePath(); g.fill(); g.stroke();
+    g.fillStyle = "#f4f0e6"; g.beginPath(); g.moveTo(cx - 5, cy - 70); g.lineTo(cx + 60, cy + 10); g.lineTo(cx - 5, cy + 10); g.closePath(); g.fill(); g.stroke();
+    g.beginPath(); g.moveTo(cx - 5, cy - 75); g.lineTo(cx - 5, cy + 20); g.stroke();
+  }
+  g.strokeStyle = "rgba(42,34,38,0.55)"; g.lineWidth = 3;
+  for (let row = 0; row < 5; row++) for (let col = 0; col < 7; col++) g.strokeRect(36 + col * 63, 240 + row * 74, 56, 66);
+  g.fillStyle = "rgba(200,74,90,0.75)"; g.lineWidth = 5;
+  for (let k = 0; k < 9 + i * 4 && k < 35; k++) { const row = Math.floor(k / 7), col = k % 7; g.strokeStyle = "rgba(200,74,90,0.8)"; g.beginPath(); g.moveTo(44 + col * 63, 248 + row * 74); g.lineTo(84 + col * 63, 298 + row * 74); g.moveTo(84 + col * 63, 248 + row * 74); g.lineTo(44 + col * 63, 298 + row * 74); g.stroke(); }
+});
+/** striped market awning cloth */
+export const awningTex = (a: string, b: string) => ctex("awning" + a + b, 256, 256, (g) => {
+  for (let i = 0; i < 8; i++) { g.fillStyle = i % 2 ? b : a; g.fillRect(i * 32, 0, 32, 256); }
+  g.fillStyle = "rgba(0,0,0,0.08)"; g.fillRect(0, 230, 256, 26);
+});
+/** the evening sky seen through the cell window: warm gold to rose, a rooftop line (self-lit) */
+export const warmSkyTex = () => ctex("warmSky", 512, 320, (g) => {
+  const sky = g.createLinearGradient(0, 0, 0, 320);
+  sky.addColorStop(0, "#f2a070"); sky.addColorStop(0.55, "#ffd08a"); sky.addColorStop(1, "#ffe6b0");
+  g.fillStyle = sky; g.fillRect(0, 0, 512, 320);
+  g.fillStyle = "#8a6a8a"; g.beginPath(); g.moveTo(0, 260);
+  for (const [x, y] of [[60, 240], [60, 210], [140, 210], [140, 230], [230, 230], [230, 190], [250, 170], [270, 190], [270, 230], [380, 230], [380, 205], [470, 205], [470, 240], [512, 240]]) g.lineTo(x, y);
+  g.lineTo(512, 320); g.lineTo(0, 320); g.fill();
+});
+/** domed plaster for the Calcutta buildings */
+export const plasterTex = (col: string) => ctex("plaster" + col, 512, 512, (g, r) => {
+  g.fillStyle = col; g.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 40; i++) { const x = U(r, 0, 512), y = U(r, 0, 512), rad = U(r, 30, 120); wrap2(512, 512, x, y, rad * 1.4, (xx, yy) => blotch(g, xx, yy, rad, 1.4, r() < 0.5 ? "255,245,225" : "150,120,90", U(r, 0.06, 0.14))); }
+});
