@@ -73,7 +73,7 @@ export const brigAt = (id: number, f: number): BrigPose => {
 // shot 1-2 beach: Tudor holds out the block, the local stares; sweat runs
 export const BEACH = { tudor: at("beach", 0.55, 0, 0) as V3, local: at("beach", -0.55, 0, 0.12) as V3 };
 // shot 3 pond: three cutters saw a channel; a stack of cut blocks on the bank
-export const POND = { workers: [at("pond", -2.1, 0, -4.3), at("pond", 0.25, 0, -4.05), at("pond", 2.5, 0, -4.35)] as V3[] };
+export const POND = { workers: [at("pond", -1.05, 0, -4.3), at("pond", 0.1, 0, -4.05), at("pond", 1.2, 0, -4.35)] as V3[] };
 // harbor: the quay (top y 0) runs along x, water for z < 0, houses at z = 24; the gangplank meets the brig's side
 export const PLANK = { x: 2.2, z0: 0.5, z1: -1.75 }; // quay end -> deck end (deck end at DECK_Y + WATER_Y)
 export const HARBOR = { tudor: at("harbor", -1.1, 0, 3.0) as V3, stack: at("harbor", -2.7, 0, 2.2) as V3 };
@@ -103,7 +103,7 @@ export const COIN_F = cue(W.dollars);
 // shots 16-21 cell
 export const TUDOR_CELL: V3 = C(-0.45, BENCH.h - 0.02, BENCH.z + 0.08);
 export const TUDOR_WIN: V3 = C(0.15, 0, -2.75);
-export const GUARD_P: V3 = C(1.65, 0, 2.75);
+export const GUARD_P: V3 = C(0.3, 0, 3.25);
 export const YAWN = [cue(W.prison) - 6, cue(W.prison) + 26] as const;
 export const BULB = cue(W.figures);
 export const BOTTLE: V3 = C(-1.75, BENCH.h, BENCH.z + 0.04);
@@ -111,7 +111,7 @@ export const WRAP = [cue(W.wrapped), cue(W.wrapped) + 22] as const;
 export const towelAt = (f: number) => (f < 1023 ? 0 : smooth((f - WRAP[0]) / (WRAP[1] - WRAP[0])));
 export const HEAT_F = cue(W.heat);
 // shots 22, 25 hold: sawdust rises over the ice; the calendar flips four months
-export const HOLD = { workers: [at("hold", -1.25, 0, 2.6), at("hold", 1.05, 0, 2.85)] as V3[], tudor: at("hold", 2.3, 0, 3.7) as V3, post: at("hold", -1.0, 0, 3.0) as V3 };
+export const HOLD = { workers: [at("hold", -0.7, 0, 2.55), at("hold", 0.65, 0, 2.95)] as V3[], post: at("hold", -1.0, 0, 3.0) as V3 };
 export const sawdustAt = (f: number) => (f < 1163 ? 0.98 : 0.32 + 0.66 * smooth((f - 1163) / 57));
 export const FLIPS = [1342, cue(W.eighty) + 2, cue(W.of), cue(W.india)];
 // shot 26 calcutta: the hatch cover comes off
@@ -214,9 +214,9 @@ const CAMS: Record<number, Key[]> = {
   // 15 port: the puddles are bigger now
   15: [{ f: 736, s: hold("port", [1.6, 2.6, 6.8], [-1.4, 0.2, 2.0], 736, 0.006, { fov: 38 }) }],
   // 16 cell: from the corridor (the guard yawning in the foreground) toward Tudor on the bench, through the bars
-  16: [{ f: 754, s: hold("cell", [0.7, 1.65, 4.6], [-0.4, 0.95, -2.8], 754, 0.001, { fov: 38 }) }, { f: 756, dur: 36, s: hold("cell", [0.35, 1.35, 2.25], [-0.45, 0.95, -2.8], 792, 0.003, { fov: 36, roll: 0.03 }) }],
+  16: [{ f: 754, s: hold("cell", [0.05, 1.6, 5.05], [-0.4, 1.0, -2.8], 754, 0.001, { fov: 38 }) }, { f: 756, dur: 36, s: hold("cell", [-0.05, 1.45, 4.5], [-0.45, 0.95, -2.8], 792, 0.003, { fov: 36, roll: 0.03 }) }],
   // 17 inside: Tudor's light-bulb moment
-  17: [{ f: 836, s: hold("cell", [0.35, 1.05, -1.15], [-0.45, 1.05, -2.95], 836, 0.0025, { fov: 36 }) }, { f: 857, dur: 18, s: hold("cell", [0.25, 1.08, -1.45], [-0.45, 1.1, -2.95], 875, 0.003, { fov: 36, roll: -0.03 }) }],
+  17: [{ f: 836, s: hold("cell", [0.45, 1.25, -0.6], [-0.45, 1.3, -2.95], 836, 0.0025, { fov: 36 }) }, { f: 857, dur: 18, s: hold("cell", [0.35, 1.25, -0.85], [-0.45, 1.34, -2.95], 875, 0.003, { fov: 36, roll: -0.03 }) }],
   // 18 the icicle in the window, dripping
   18: [{ f: 894, s: hold("cell", [0.8, 1.72, -2.25], [0.95, 1.98, -3.55], 894, 0.003, { fov: 32, roll: 0.03 }) }],
   // 19 Tudor at the window, warm air drifting in
@@ -310,6 +310,5 @@ export type Fg = { a: number; b: number; kit: string; pos: V3; s?: number; yaw?:
 export const FOREGROUND: Fg[] = [
   { a: 407, b: 471, kit: "fencepost", pos: [-0.95, D0, 8.6], s: 0.95, yaw: 0.25 },
   { a: 366, b: 407, kit: "crate", pos: at("harbor", -2.45, 0, 7.6), s: 0.8, yaw: 0.4 },
-  { a: 471, b: 522, kit: "palm", pos: at("port", 5.2, 0, 10.6), s: 7.5, yaw: 0.6 },
   { a: 1471, b: 1510, kit: "barrel", pos: at("calcutta", 74.6, 0, 27.4), s: 0.95, yaw: 0.2 },
 ];

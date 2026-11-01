@@ -1026,12 +1026,12 @@ const quayWall = (b: Batch, x0: number, x1: number, z: number, y0: number, mat: 
   b.add(quad(V(x1, y0, z), V(x0, y0, z), V(x0, 0.02, z), V(x1, 0.02, z), (x1 - x0) / 3, -y0 / 3), mat); // faces the water (-z)
   b.add(boxGeo(V(x0, -0.05, z - 0.02), V(x1, 0.08, z + 0.45), 2), lam("copeHD", () => ({ map: stoneHD("copeHD") })));
 };
-const crate = (b: Batch, x: number, z: number, s: number, yaw = 0) => {
+export const crate = (b: Batch, x: number, z: number, s: number, yaw = 0) => {
   const m = tr(x, 0, z, yaw), w = woodM("crate", "#b08458");
   b.add(boxGeo(V(-s / 2, 0, -s / 2), V(s / 2, s, s / 2), 0.5), w, m);
   b.add(boxGeo(V(-s / 2 - 0.01, s * 0.15, -s / 2 - 0.01), V(s / 2 + 0.01, s * 0.25, s / 2 + 0.01)), woodM("crateBand", "#7a5638"), m);
 };
-const barrel = (b: Batch, x: number, z: number, s = 1) => {
+export const barrel = (b: Batch, x: number, z: number, s = 1) => {
   b.add(cyl(0.3 * s, 0.33 * s, 0.85 * s, 16), woodM("barrel", "#a8805a"), tr(x, 0, z));
   for (const y of [0.15, 0.7]) b.add(new THREE.TorusGeometry(0.315 * s, 0.018, 6, 24).rotateX(Math.PI / 2), ironM(), tr(x, y * s, z));
 };
@@ -1217,9 +1217,10 @@ export const buildMill = (root: THREE.Object3D, kit: Kit) => {
   vegOrigin(O, -10);
   house(b, O - 3, -16, 0, 12, 8, 6.5, 2); house(b, O + 9, -18, 0, 8, 7, 5, 0);
   for (const [x, z, rr, hh] of [[-5.0, -4.2, 3.4, 3.0], [-11, -8, 5.2, 4.6], [3.4, -9.5, 4.0, 3.6], [13, -14, 6.0, 5.2], [-1.2, -1.2, 1.3, 1.0]] as const) {
-    const g = new THREE.ConeGeometry(rr, hh, 40, 6), pp = g.attributes.position as THREE.BufferAttribute;
-    for (let k = 0; k < pp.count; k++) { const y = pp.getY(k) / hh + 0.5, x = pp.getX(k), z = pp.getZ(k), d = Math.hypot(x, z) || 1, n = 1 + 0.06 * Math.sin(5 * Math.atan2(z, x) + rr); pp.setXYZ(k, x * n, (y ** 0.8 - 0.5) * hh, z * n); void d; }
-    g.translate(0, hh / 2, 0); g.computeVertexNormals();
+    // smooth mound (a squashed dome with a softly peaked top), so the ink draws its silhouette, not facet creases
+    const g = new THREE.SphereGeometry(1, 40, 16, 0, Math.PI * 2, 0, Math.PI / 2), pp = g.attributes.position as THREE.BufferAttribute;
+    for (let k = 0; k < pp.count; k++) { const y = pp.getY(k); pp.setY(k, y ** 1.6); }
+    g.scale(rr, hh, rr); g.computeVertexNormals();
     b.add(g, sawM(), tr(O + x, 0, z));
   }
   const log = woodM("log", "#8a6040");

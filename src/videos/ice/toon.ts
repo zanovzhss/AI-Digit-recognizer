@@ -506,6 +506,12 @@ export const bucketHand = (o: Outfit, opts: FrontOpts): P2 => {
   return rotAbout(bucketArm(r, k)[2], rad(r.A), [300, r.hipY]);
 };
 
+/** ice short: where the two-handed "hold" grip is on the final canvas (design units), for a 3D block / paper there */
+export const holdPoint = (o: Outfit, opts: FrontOpts): P2 => {
+  const r = frontRig(o, opts);
+  return rotAbout([r.tcx, r.chin + 0.6 * r.HH], rad(r.A), [300, r.hipY]);
+};
+
 export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
   const { phase = 0, expr = "neutral", mode = "march", look = 0, blink = false, lift = 60, prop = null, tilt = 0, headTilt = 0, wave,
     light = DEF_LIGHT, facing = 0, seed = 1 } = opts;
