@@ -718,3 +718,93 @@ export const chainHD = () => ctex("chainHD", 256, 1024, (g) => {
   }
 });
 
+
+// ---------------- cellar short: winter street + root cellar (new set pieces; same painting rules as above) ----------------
+/** fresh snow, 1024 px = 4 m: near-white with soft cool hollows and warm-lit drifts, sparse sparkle dabs (no ink) */
+export const snowHD = () => ctex("snowHD", 1024, 1024, (g, r) => {
+  const S = 1024;
+  g.fillStyle = "#f1eeea"; g.fillRect(0, 0, S, S);
+  for (let i = 0; i < 46; i++) {
+    const x = U(r, 0, S), y = U(r, 0, S), rad = U(r, 60, 200), cool = r() < 0.6;
+    wrap2(S, S, x, y, rad * 1.4, (xx, yy) => blotch(g, xx, yy, rad, 1.4, cool ? "150,160,190" : "255,250,240", cool ? U(r, 0.08, 0.16) : 0.12));
+  }
+  for (let i = 0; i < 420; i++) {
+    const x = U(r, 0, S), y = U(r, 0, S), s = U(r, 1, 2.6), d = r() < 0.35;
+    g.fillStyle = d ? "rgba(140,150,185,0.28)" : "rgba(255,255,255,0.75)";
+    g.beginPath(); g.arc(x, y, s, 0, TAU); g.fill();
+  }
+});
+/** the cobbled lane under trodden snow: cobbles show through in the wheel/foot track, drifts at the edges */
+export const snowCobbleHD = () => { const t = ctex("snowCobbleHD", 2048, 2048, (g, r) => {
+  const S = 2048;
+  g.drawImage(cobbleHD().image as CanvasImageSource, 0, 0);
+  g.fillStyle = "rgba(243,240,236,0.38)"; g.fillRect(0, 0, S, S); // a thin dusting over everything
+  for (let i = 0; i < 150; i++) {
+    const x = U(r, 0, S), y = U(r, 0, S), rad = U(r, 70, 280);
+    wrap2(S, S, x, y, rad * 1.3, (xx, yy) => blotch(g, xx, yy, rad, 1.3, "243,240,236", U(r, 0.55, 0.9)));
+  }
+  for (let i = 0; i < 900; i++) { // snow caught in the joints
+    const x = U(r, 0, S), y = U(r, 0, S);
+    g.fillStyle = "rgba(245,243,240,0.7)"; g.beginPath(); g.ellipse(x, y, U(r, 3, 12), U(r, 2, 5), 0, 0, TAU); g.fill();
+  }
+});
+t.repeat.set(0.5, 0.5);
+return t; };
+/** snow lying on a tiled roof: white with the tile courses just showing as soft ridges */
+export const snowRoofHD = () => ctex("snowRoofHD", 1024, 1024, (g, r) => {
+  const S = 1024, C = 64;
+  g.fillStyle = "#f2efeb"; g.fillRect(0, 0, S, S);
+  for (let row = 0; row < S / C; row++) {
+    const y = row * C;
+    g.fillStyle = "rgba(150,155,185,0.16)"; g.fillRect(0, y + C - 7, S, 7);
+    g.fillStyle = "rgba(255,255,255,0.5)"; g.fillRect(0, y + C - 12, S, 4);
+  }
+  for (let i = 0; i < 26; i++) {
+    const x = U(r, 0, S), y = U(r, 0, S), rad = U(r, 40, 140);
+    wrap2(S, S, x, y, rad * 1.4, (xx, yy) => blotch(g, xx, yy, rad, 1.4, r() < 0.4 ? "190,95,75" : "150,160,190", 0.1));
+  }
+});
+/** dark cellar stone with hoar frost in the joints and on the block edges (2 cool whites, feathery) */
+export const cellarStoneHD = () => ctex("cellarStoneHD", 1024, 1024, (g, r) => {
+  const S = 1024;
+  g.drawImage(stoneHD("cellarStone", ["#6d6258", "#625850", "#776b5f", "#5a5048"], "#3e3630").image as CanvasImageSource, 0, 0);
+  for (let i = 0; i < 1400; i++) { // frost along the courses (rows every 128 px) and in random patches
+    const row = Math.floor(r() * 8), onJoint = r() < 0.7, x = U(r, 0, S), y = onJoint ? row * 128 + U(r, -8, 10) : U(r, 0, S);
+    const a = U(r, 0, TAU), l = U(r, 4, 16);
+    g.strokeStyle = r() < 0.5 ? "rgba(236,244,255,0.75)" : "rgba(200,220,250,0.6)"; g.lineWidth = U(r, 1, 2.2); g.lineCap = "round";
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
+  }
+  for (let i = 0; i < 22; i++) {
+    const x = U(r, 0, S), y = U(r, 0, S), rad = U(r, 40, 120);
+    wrap2(S, S, x, y, rad * 1.3, (xx, yy) => blotch(g, xx, yy, rad, 1.3, "225,236,255", U(r, 0.12, 0.25)));
+  }
+});
+/** packed earth + flagstones of the cellar floor */
+export const cellarFloorHD = () => stoneHD("cellarFlags", ["#7a6a58", "#6f604f", "#83725f", "#695a4a"], "#463b31");
+/** potato skin: warm ochre-brown with darker eyes and soft dirt */
+export const potatoTex = () => ctex("potato", 256, 128, (g, r) => {
+  g.fillStyle = "#c39a5e"; g.fillRect(0, 0, 256, 128);
+  for (let i = 0; i < 30; i++) { const x = U(r, 0, 256), y = U(r, 0, 128), rad = U(r, 10, 30); blotch(g, x, y, rad, 1.3, r() < 0.6 ? "120,85,45" : "235,200,140", 0.18); }
+  for (let i = 0; i < 14; i++) { const x = U(r, 10, 246), y = U(r, 15, 113); g.fillStyle = "rgba(90,60,35,0.7)"; g.beginPath(); g.ellipse(x, y, U(r, 2, 4), U(r, 1.5, 2.5), 0, 0, TAU); g.fill(); }
+});
+/** hoar frost shell for potatoes (transparent: white crystals, see-through between them) */
+export const frostTex = () => ctex("frostShell", 256, 128, (g, r) => {
+  g.clearRect(0, 0, 256, 128);
+  g.fillStyle = "rgba(235,243,255,0.1)"; g.fillRect(0, 0, 256, 128);
+  for (let i = 0; i < 380; i++) {
+    const x = U(r, 0, 256), y = U(r, 0, 128), a = U(r, 0, TAU), l = U(r, 2, 7);
+    g.strokeStyle = r() < 0.5 ? "rgba(255,255,255,0.95)" : "rgba(210,228,255,0.85)"; g.lineWidth = U(r, 0.8, 1.6);
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x + Math.cos(a) * l, y + Math.sin(a) * l); g.stroke();
+  }
+});
+/** the snowy yard seen through the cellar window at dusk: lit snow, a fence, a lamp-warm sky band (self-lit) */
+export const yardTex = () => ctex("yard", 512, 320, (g, r) => {
+  const sky = g.createLinearGradient(0, 0, 0, 200);
+  sky.addColorStop(0, "#8a7fa8"); sky.addColorStop(0.6, "#e8a888"); sky.addColorStop(1, "#ffd6a0");
+  g.fillStyle = sky; g.fillRect(0, 0, 512, 210);
+  g.fillStyle = "#f0e2d6"; g.beginPath(); g.moveTo(0, 190); g.quadraticCurveTo(200, 160, 512, 185); g.lineTo(512, 320); g.lineTo(0, 320); g.fill();
+  g.fillStyle = "rgba(150,140,190,0.35)"; g.fillRect(0, 250, 512, 70);
+  for (let x = 20; x < 512; x += 64) { g.fillStyle = "#5a4a50"; g.fillRect(x, 150, 10, 60); g.fillStyle = "#f6f0ea"; g.fillRect(x - 2, 146, 14, 7); }
+  g.fillStyle = "#5a4a50"; g.fillRect(0, 168, 512, 6);
+  for (let i = 0; i < 40; i++) { g.fillStyle = "rgba(255,255,255,0.8)"; g.beginPath(); g.arc(U(r, 0, 512), U(r, 0, 320), U(r, 1, 2.5), 0, TAU); g.fill(); }
+});

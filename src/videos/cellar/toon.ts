@@ -55,6 +55,8 @@ export const OFFICER: Outfit = { ...RIFLEMAN, hat: "shako_tall", buttons: "#e8c4
 export const KID: Outfit = { jacket: "#f08a2c", pants: "#3b5b9a", boots: "#f4f1ea", hat: "cap", cap: "#e2453c", build: "kid" };
 export const PARENT: Outfit = { jacket: "#7b5ac9", pants: "#3b3f52", boots: "#5a3b2a", hat: "hair", hair: "#5a3b2a" };
 export const SKINS = [SKIN, "#f5c9a0", "#ecd0b6", "#c99067"];
+/** cellar short: the farmer (bean head, flat cap, brown coat) */
+export const FARMER: Outfit = { jacket: "#8a5a3a", pants: "#4a4238", boots: "#3a2a20", hat: "flatcap", cap: "#6f6658", skin: "#f5c9a0", buttons: "#d8c39a" };
 
 export const soldier = (v = 0, extra: Partial<Outfit> = {}): Outfit => {
   const o: Outfit = { ...RIFLEMAN, skin: SKINS[v % 4] };
@@ -377,26 +379,31 @@ const hatOn = (p: Pen, o: Outfit, hp: P2[], H: Blob, cx: number, hc: number, lig
       const [tx, ty] = R([[cx, yb - ht - 6 * u]])[0];
       p.ell(tx, ty, 7 * u, 7 * u, "#2b7a4b", 2.5 * u); // green tuft
     }
-  } else if (o.hat === "cap" || o.hat === "hair") {
-    const cut = crown + (o.hat === "cap" ? 0.3 : 0.42) * HH;
+  } else if (o.hat === "cap" || o.hat === "hair" || o.hat === "flatcap") {
+    const flat = o.hat === "flatcap", cut = crown + (o.hat === "hair" ? 0.42 : flat ? 0.27 : 0.3) * HH;
     const keep = (x: number, y: number) => y < cut || (side && o.hat === "hair" && x < cx - 6 * u && y < hc + 0.42 * H.b);
     // start the arc at the first kept point after a dropped one, so the kept run is contiguous and the cut closes it
     const n = hp.length, startIdx = Math.max(0, hp.findIndex(([x, y], i) => keep(x, y) && !keep(hp[(i + n - 1) % n][0], hp[(i + n - 1) % n][1])));
     const arc = [...hp.slice(startIdx), ...hp.slice(0, startIdx)].filter(([x, y]) => keep(x, y))
-      .map(([x, y]) => [cx + (x - cx) * 1.03, hc + (y - hc) * 1.03] as P2);
+      .map(([x, y]) => (flat ? [cx + (x - cx) * 1.1 + 3 * u * (facing || 0), Math.max(crown + 0.05 * HH, hc + (y - hc) * 1.03)] : [cx + (x - cx) * 1.03, hc + (y - hc) * 1.03]) as P2);
     if (arc.length < 3) return;
     if (o.hat === "hair") { // scalloped lower edge
       const [x0, y0] = arc[arc.length - 1], [x1, y1] = arc[0];
       for (let i = 1; i < 6; i++) arc.push([x0 + ((x1 - x0) * i) / 6, y0 + ((y1 - y0) * i) / 6 + (i % 2 ? 4 * u : 0)]);
     }
-    const col = o.hat === "cap" ? o.cap! : o.hair!;
+    const col = o.hat === "hair" ? o.hair! : o.cap!;
     p.shadedFill(arc, col, mul(col, SH_FELT), light, H.a, 0.35);
     p.poly(arc, null, ow);
     if (o.hat === "hair") {
       const s = side ? -1 : facing || 1;
       p.stroke([[cx + s * 10 * u, cut - 30 * u], [cx + s * 2 * u, cut - 12 * u]], 1.2 * u);
     }
-    if (o.hat === "cap") {
+    if (flat) {
+      const deg = (a * 180) / Math.PI;
+      p.clip(arc, () => p.stroke([[cx - 0.6 * W, cut - 0.1 * HH], [cx + 0.6 * W, cut - 0.1 * HH]], 1.4 * u, mul(col, SH_FELT)));
+      if (side) p.poly(R([[cx + 42 * u, cut - 3 * u], [cx + 66 * u, cut + 3 * u], [cx + 42 * u, cut + 5 * u]]), shade(col, 0.78), ow);
+      else { const s = facing || 1, [px, py] = R([[cx + s * 6 * u, cut + 1 * u]])[0]; p.ell(px, py, 30 * u, 0.04 * HH, shade(col, 0.78), ow, 0, 180, deg); }
+    } else if (o.hat === "cap") {
       const deg = (a * 180) / Math.PI;
       if (side) p.poly(R([[cx + 40 * u, cut - 2 * u], [cx + 74 * u, cut + 4 * u], [cx + 40 * u, cut + 6 * u]]), shade(col, 0.8), ow);
       else {
@@ -424,7 +431,7 @@ const hatOn = (p: Pen, o: Outfit, hp: P2[], H: Blob, cx: number, hc: number, lig
 // ---------------- bodies ----------------
 export type Arms = [P2[], P2[]];
 /** held prop; for the hammer the number is the strike 0 (raised) .. 1 (struck) */
-export type Prop = null | "icecream" | "shako" | ["hammer", number];
+export type Prop = null | "icecream" | "shako" | ["hammer", number] | ["bucket", number];
 
 const BUILD: Record<Build, { a: number; torso: number; legs: number; tw: number }> = {
   adult: { a: 118, torso: 1.1, legs: 1.4, tw: 0.8 },
@@ -435,6 +442,8 @@ const BUILD: Record<Build, { a: number; torso: number; legs: number; tw: number 
 export type FrontOpts = {
   phase?: number; expr?: Expr; mode?: "march" | "stroll" | "stand" | "sit" | "fall"; look?: number; blink?: boolean | number; lift?: number;
   prop?: Prop; tilt?: number; headTilt?: number; wave?: number;
+  /** cellar short: knees bend and the hips drop (0..1); left arm reaches out-down (0..1); head dips in a nod (0..1) */
+  crouch?: number; reach?: number; nod?: number;
   /** canvas angle the key light comes FROM (painted crescent + thick outline side) */
   light?: number; facing?: -1 | 0 | 1; seed?: number;
 };
@@ -442,6 +451,34 @@ export type FrontOpts = {
 const footStroke = (p: Pen, a: P2, b: P2, w: number, col: string) => {
   if (col !== INK) p.stroke([a, b], w + 3, INK);
   p.stroke([a, b], w, col);
+};
+
+/** front-view rig numbers shared by bodyFront and bucketHand (so a 3D bucket can hang exactly from the drawn hand) */
+const frontRig = (o: Outfit, opts: FrontOpts) => {
+  const { phase = 0, mode = "march", tilt = 0, facing = 0, seed = 1, crouch = 0 } = opts;
+  const Bd = BUILD[o.build ?? "adult"], two = Math.PI * 2;
+  const H = headBlob(seed, Bd.a, facing), W = 2 * H.a, HH = 2 * H.b, u = W / 100;
+  const tall = (1 + Bd.torso + Bd.legs) * HH, sole = 975;
+  const bob = mode === "march" ? 0.025 * tall * Math.cos(2 * two * phase) : mode === "stroll" ? 0.015 * tall * Math.cos(2 * two * phase) : 0;
+  const torsoBot = (mode === "sit" ? sole - 0.2 * HH : sole - Bd.legs * HH + bob) + crouch * 0.26 * HH;
+  const chin = torsoBot - Bd.torso * HH, hipY = torsoBot - 0.12 * HH;
+  const sway = mode === "march" ? 1.6 * Math.sin(two * phase) : mode === "stroll" ? 1.0 * Math.sin(two * phase) : 0;
+  const A = tilt + sway, Ta = ((Bd.tw / 2) * W) / 1.06, tcx = 300 + 3 * u * facing;
+  return { Bd, H, W, HH, u, sole, torsoBot, chin, hipY, A, Ta, tcx };
+};
+/** bucket arm: k = 0 carried at the side, 1 lowered straight down from the shoulder (unrotated points for drawing) */
+const bucketArm = (r: ReturnType<typeof frontRig>, k: number): [P2, P2, P2] => {
+  const { Ta, tcx, chin, HH, u, A, hipY } = r;
+  const S: P2 = [tcx + 0.85 * Ta, chin + 0.12 * HH];
+  const H0: P2 = [tcx + 1.12 * Ta + 9 * u, chin + 1.02 * HH];
+  const Sf = rotAbout(S, rad(A), [300, hipY]), H1 = rotAbout([Sf[0] + 8 * u, Sf[1] + 1.0 * HH], -rad(A), [300, hipY]);
+  const Hd = lerp2(H0, H1, clamp(k, 0, 1));
+  return [S, [(S[0] + Hd[0]) / 2 + 7 * u, (S[1] + Hd[1]) / 2], Hd];
+};
+/** where the bucket hand is on the final canvas (design units, 600 x 1000, soles at y 975) */
+export const bucketHand = (o: Outfit, opts: FrontOpts): P2 => {
+  const r = frontRig(o, opts), k = Array.isArray(opts.prop) && opts.prop[0] === "bucket" ? opts.prop[1] : 0;
+  return rotAbout(bucketArm(r, k)[2], rad(r.A), [300, r.hipY]);
 };
 
 export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
@@ -452,7 +489,8 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
   const tall = (1 + Bd.torso + Bd.legs) * HH, sole = 975;
   // body bob 5 % (march) / 3 % (stroll) of the height, lowest at contact (phase 0 and 0.5)
   const bob = mode === "march" ? 0.025 * tall * Math.cos(2 * two * phase) : mode === "stroll" ? 0.015 * tall * Math.cos(2 * two * phase) : 0;
-  const torsoBot = mode === "sit" ? sole - 0.2 * HH : sole - Bd.legs * HH + bob;
+  const crouch = opts.crouch ?? 0, reach = opts.reach ?? 0, nod = opts.nod ?? 0;
+  const torsoBot = (mode === "sit" ? sole - 0.2 * HH : sole - Bd.legs * HH + bob) + crouch * 0.26 * HH;
   const chin = torsoBot - Bd.torso * HH, hc = chin - H.b, crown = hc - H.b, hipY = torsoBot - 0.12 * HH;
   const thick = thickAngle(light), ow = 5 * u;
   const legCol = mix(o.pants, INK, 0.55), armCol = mix(o.jacket, INK, 0.5), footCol = o.boots;
@@ -485,7 +523,7 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
     for (const [side, ph] of [[-1, 0], [1, 0.5]] as const) {
       const up = Math.max(0, Math.sin(two * (phase + ph))) * L;
       const hx = 300 + side * 15 * u, fx = 300 + side * 22 * u, fy = sole - 4 * u - up;
-      const k: P2 = [(hx + fx) / 2 + side * (1.5 * u + up * 0.16), (hipY + fy) / 2 - up * 0.08];
+      const k: P2 = [(hx + fx) / 2 + side * (1.5 * u + up * 0.16 + crouch * 13 * u), (hipY + fy) / 2 - up * 0.08 - crouch * 6 * u];
       p.stroke(curve([hx, hipY], k, [fx, fy]), legW, legCol);
       footStroke(p, [fx - side * 3 * u, fy], [fx + side * 13 * u, fy + 0.5 * u], footW, footCol);
     }
@@ -513,7 +551,12 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
   if (mode === "sit") for (const side of [-1, 1]) arms.push({ pts: [sh(side), [tcx + side * (1.1 * T.a + 6 * u), sh(side)[1] + 0.4 * HH], [tcx + side * (1.2 * T.a + 10 * u), torsoBot + 0.04 * HH]], front: false });
   else if (mode === "fall") for (const side of [-1, 1]) arms.push({ pts: [sh(side), [tcx + side * (1.15 * T.a + 12 * u), sh(side)[1] - 0.25 * HH], [tcx + side * (1.3 * T.a + 24 * u), sh(side)[1] - 0.68 * HH]], front: false });
   else {
-    arms.push({ pts: prop === "shako" ? hang(-1, 0) : hang(-1, -sw), front: false });
+    const bucket = Array.isArray(prop) && prop[0] === "bucket";
+    if (reach > 0) {
+      const S = sh(-1), h0 = hang(-1, bucket ? -0.4 * sw : -sw), R: P2 = [tcx - 1.2 * T.a - 34 * u, S[1] + 0.72 * HH];
+      const Hd = lerp2(h0[2], R, reach);
+      arms.push({ pts: [S, lerp2(h0[1], [(S[0] + R[0]) / 2 - 6 * u, (S[1] + R[1]) / 2], reach), Hd], front: false });
+    } else arms.push({ pts: prop === "shako" ? hang(-1, 0) : hang(-1, bucket ? -0.4 * sw : -sw), front: false });
     if (rifle) {
       const G = lerp2(R0, R1, 0.1);
       arms.push({ pts: [sh(1), [tcx + 1.12 * T.a + 5 * u, sh(1)[1] + 0.45 * HH], G], front: false });
@@ -523,6 +566,8 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
     } else if (prop === "icecream") {
       const S = sh(1);
       arms.push({ pts: [S, [tcx + 1.05 * T.a + 4 * u, S[1] + 0.45 * HH], [tcx + 0.5 * T.a, S[1] + 0.4 * HH]], front: true });
+    } else if (bucket) {
+      arms.push({ pts: bucketArm({ Bd, H, W, HH, u, sole, torsoBot, chin, hipY, A, Ta: T.a, tcx }, (prop as ["bucket", number])[1]), front: false });
     } else if (Array.isArray(prop)) {
       const S = sh(1), k = clamp(prop[1], 0, 1);
       const E = lerp2([tcx + 1.1 * T.a + 10 * u, S[1] - 0.15 * HH], [tcx + 1.2 * T.a + 10 * u, S[1] + 0.3 * HH], k);
@@ -577,7 +622,7 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
       p.poly([[hx - 8 * u, hy - 12 * u], [hx + 8 * u, hy - 12 * u], [hx, hy + 7 * u]], "#e0a35a", 1.8 * u);
       p.ell(hx, hy - 19 * u, 11 * u, 10 * u, "#f7c6d9", 2.2 * u);
       p.dot(hx, hy, 5.5 * u);
-    } else if (Array.isArray(prop)) {
+    } else if (Array.isArray(prop) && prop[0] === "hammer") {
       const ang = rad(-70 + 105 * clamp(prop[1], 0, 1));
       const Rh = (pts: P2[]) => rotPts(pts, ang, hx, hy);
       p.band(Rh([[hx, hy + 12 * u], [hx, hy - 44 * u]]), "#8a5a34", 5 * u, 1.5 * u, "round");
@@ -592,15 +637,15 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
     p.dot(hx, hy, 5.5 * u);
   }
   // ---- head: rotates with the body, plus its own tilt about the chin ----
-  const Ah = A + headTilt, [cpx, cpy] = rotAbout([300, chin], rad(A), [300, hipY]);
-  p.rot = Ah ? [rad(Ah), 300, chin, cpx - 300, cpy - chin] : null;
+  const Ah = A + headTilt, [cpx, cpy] = rotAbout([300, chin], rad(A), [300, hipY]), dip = nod * 0.07 * HH;
+  p.rot = Ah || dip ? [rad(Ah), 300, chin, cpx - 300, cpy - chin + dip] : null;
   hatBehind(p, o, H, 300, hc, light, thick, ow, false);
   const hp = blobPts(300, hc, H);
   p.shadedFill(hp, skin, mul(skin, SH_SKIN), light, H.a);
   p.inkRing(hp, ow, thick);
   hatOn(p, o, hp, H, 300, hc, light, seed, facing, false);
   const brim = !!o.hat && o.hat !== "hair" && o.hat !== "bonnet" && o.hat !== "cap";
-  faceFront(p, 300, hc, W, expr, facing, look, lid, brim, skin, o.moustache, o.build === "stout");
+  faceFront(p, 300, hc + nod * 9 * u, W, expr, facing, look, lid, brim, skin, o.moustache, o.build === "stout");
   p.rot = null;
 };
 
@@ -906,4 +951,19 @@ export const fxBlob = (p: Pen, col: string) => {
   const gr = g.createRadialGradient(64, 64, 0, 64, 64, 64);
   for (const [r, k] of [[0, 0], [0.5, 0.04], [0.64, 0.18], [0.76, 0.42], [0.87, 0.72], [0.95, 0.92], [1, 1]] as const) gr.addColorStop(r, mix(col, WHITE, k));
   g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+};
+
+// ---------------- cellar short effects ----------------
+/** soft snowflake on a 64 x 64 canvas: white disc, faint cool rim, no ink (it is weather, not a character) */
+export const fxSnow = (p: Pen) => {
+  const g = p.g, gr = g.createRadialGradient(32, 32, 0, 32, 32, 30);
+  gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(0.55, "rgba(250,252,255,1)"); gr.addColorStop(0.75, "rgba(225,235,255,0.9)"); gr.addColorStop(1, "rgba(225,235,255,0)");
+  g.fillStyle = gr; g.beginPath(); g.arc(32, 32, 30, 0, Math.PI * 2); g.fill();
+};
+/** warm heat wisp on a 256 x 256 canvas (soft, additive): a rising tear-drop of warm light, t = life 0..1 */
+export const fxWarm = (p: Pen, t: number) => {
+  const g = p.g, a = Math.sin(Math.PI * Math.min(1, Math.max(0, t))) ** 0.8;
+  const gr = g.createRadialGradient(128, 150, 0, 128, 150, 122);
+  gr.addColorStop(0, `rgba(255,214,150,${0.6 * a})`); gr.addColorStop(0.3, `rgba(255,180,100,${0.32 * a})`); gr.addColorStop(0.65, `rgba(255,150,70,${0.1 * a})`); gr.addColorStop(1, "rgba(255,140,60,0)");
+  g.fillStyle = gr; g.beginPath(); g.ellipse(128, 150, 92, 112, 0, 0, Math.PI * 2); g.fill();
 };
