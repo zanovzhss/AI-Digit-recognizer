@@ -80,9 +80,9 @@ export const HARBOR = { tudor: at("harbor", -1.1, 0, 3.0) as V3, stack: at("harb
 /** loading (shot 5): two cutters carry blocks from the stack up the plank onto the deck */
 export const carrierAt = (i: number, f: number): { p: V3; walking: boolean; phase: number } => {
   const f0 = 208 + i * 26, u = clamp01((f - f0) / 62);
-  const z = (i ? 4.4 : 3.2) + ((PLANK.z1 + 0.3) - (i ? 4.4 : 3.2)) * u;
+  const z = (i ? 4.4 : 3.2) + ((PLANK.z0 - 0.35) - (i ? 4.4 : 3.2)) * u;
   const y = z < PLANK.z0 ? ((PLANK.z0 - z) / (PLANK.z0 - PLANK.z1)) * (DECK_Y + WATER_Y) : 0;
-  return { p: at("harbor", PLANK.x + (i ? -0.15 : 0.1), y, z), walking: u > 0 && u < 1, phase: (((f - f0) * 1.6) / FPS / 1.6) % 1 };
+  return { p: at("harbor", PLANK.x + (i ? -0.05 : 0.08), y, z), walking: u > 0 && u < 1, phase: (((f - f0) * 1.6) / FPS / 1.6) % 1 };
 };
 // shot 7-9 street: the newsboy with the paper, the man who slips on the ice patch
 export const NEWSBOY_P: V3 = [-3.15, 0, 4.0];
@@ -95,7 +95,7 @@ export const slipperAt = (f: number): { p: V3; fall: number; walking: boolean } 
   return { p: [ICE_PATCH[0] + 0.05, 0.32 * Math.sin(Math.PI * Math.min(1, k * 1.2)) * (1 - k * 0.5), z + 0.25 * smooth(k)], fall: k, walking: f < SLIP };
 };
 // shots 10-12, 15 port: blocks melt into puddles, Tudor sweats; the wallet and the coin
-export const PORT = { stack: at("port", -1.4, 0, 2.3) as V3, tudor: at("port", -2.9, 0, 0.9) as V3, wallet: at("port", 2.4, 0.0, 3.2) as V3 };
+export const PORT = { stack: at("port", -1.4, 0, 2.3) as V3, tudor: at("port", -2.2, 0, 0.6) as V3, wallet: at("port", 2.4, 0.0, 3.2) as V3 };
 /** melt 0..1 of the port stack: shot 10 a little, shot 11 most of it, shot 15 nearly gone */
 export const meltAt = (id: number, f: number) => id === 10 ? 0.1 + 0.15 * clamp01((f - 471) / 51) : id === 11 ? 0.25 + 0.55 * smooth((f - 522) / 56) : id === 15 ? 0.94 : 0;
 export const WALLET_OPEN = [582, 600] as const;
@@ -103,7 +103,7 @@ export const COIN_F = cue(W.dollars);
 // shots 16-21 cell
 export const TUDOR_CELL: V3 = C(-0.45, BENCH.h - 0.02, BENCH.z + 0.08);
 export const TUDOR_WIN: V3 = C(0.15, 0, -2.75);
-export const GUARD_P: V3 = C(0.3, 0, 3.25);
+export const GUARD_P: V3 = C(0.85, 0, 2.7);
 export const YAWN = [cue(W.prison) - 6, cue(W.prison) + 26] as const;
 export const BULB = cue(W.figures);
 export const BOTTLE: V3 = C(-1.75, BENCH.h, BENCH.z + 0.04);
@@ -111,7 +111,7 @@ export const WRAP = [cue(W.wrapped), cue(W.wrapped) + 22] as const;
 export const towelAt = (f: number) => (f < 1023 ? 0 : smooth((f - WRAP[0]) / (WRAP[1] - WRAP[0])));
 export const HEAT_F = cue(W.heat);
 // shots 22, 25 hold: sawdust rises over the ice; the calendar flips four months
-export const HOLD = { workers: [at("hold", -0.7, 0, 2.55), at("hold", 0.65, 0, 2.95)] as V3[], post: at("hold", -1.0, 0, 3.0) as V3 };
+export const HOLD = { workers: [at("hold", -0.5, 0, 2.3), at("hold", 0.55, 0, 3.2)] as V3[], post: at("hold", -1.0, 0, 3.0) as V3 };
 export const sawdustAt = (f: number) => (f < 1163 ? 0.98 : 0.32 + 0.66 * smooth((f - 1163) / 57));
 export const FLIPS = [1342, cue(W.eighty) + 2, cue(W.of), cue(W.india)];
 // shot 26 calcutta: the hatch cover comes off
@@ -184,7 +184,7 @@ const brigFollow = (id: number, rel: V3, lookUp = 4, rest: Partial<Cam> = {}) =>
 
 const CAMS: Record<number, Key[]> = {
   // 1 beach: fast glide in from a wide over the sand to the two-shot (template glide, 30 f) then creep
-  1: [{ f: 0, s: hold("beach", [0.4, 3.4, 13.5], [0, 1.1, -3], 0, 0.001, { fov: 42 }) }, { f: 2, dur: 30, s: hold("beach", [-0.1, 1.42, 3.7], [0, 1.22, 0], 32, 0.003, { fov: 36, roll: 0.03 }) }],
+  1: [{ f: 0, s: hold("beach", [0.4, 3.4, 13.5], [0, 1.1, -3], 0, 0.001, { fov: 42 }) }, { f: 2, dur: 30, s: hold("beach", [-0.05, 1.3, 6.0], [0, 1.0, 0], 32, 0.0015, { fov: 38, roll: 0.02 }) }],
   // 2 close-up on the local, Tudor's shoulder and the ice in the right of the frame
   2: [{ f: 57, s: hold("beach", [0.95, 1.5, 1.75], [-0.5, 1.5, 0.12], 57, 0.004, { fov: 30, roll: -0.04 }) }],
   // 3 pond: eye-level medium-wide on the cutters, slow lateral glide
@@ -196,48 +196,48 @@ const CAMS: Record<number, Key[]> = {
   // 6 aerial: the brig leaves the snowy harbour
   6: [{ f: 293, s: (f) => { const b = brigAt(6, f); return dolly([b.pos[0] + 22, 34, b.pos[2] + 34], [b.pos[0] - 2, 0, b.pos[2] - 6], pushK(f, 293, 0.002), { fov: 40 }); } }],
   // 7 street: the newspaper close-up, the newsboy's face over it
-  7: [{ f: 331, s: hold("street", [-2.95, 1.0, 5.45], [-3.12, 0.92, 4.1], 331, 0.004, { fov: 34, roll: 0.04 }) }],
+  7: [{ f: 331, s: hold("street", [-2.9, 0.95, 5.95], [-3.12, 0.95, 4.1], 331, 0.0025, { fov: 36, roll: 0.03 }) }],
   // 8 harbor quay: the crowd laughs and points at the brig out on the water
-  8: [{ f: 366, s: hold("harbor", [-3.2, 1.5, 9.4], [-6.6, 1.25, 2.6], 366, 0.003, { fov: 36, roll: -0.03 }) }],
+  8: [{ f: 366, s: hold("harbor", [-3.6, 1.6, 12.4], [-6.5, 1.15, 3.1], 366, 0.0015, { fov: 40, roll: -0.02 }) }],
   // 9 street: the slip on the ice patch
-  9: [{ f: 407, s: hold("street", [-0.6, 1.45, 9.8], [-3.4, 0.9, 4.9], 407, 0.0025, { fov: 36 }) }],
+  9: [{ f: 407, s: hold("street", [0.3, 1.6, 12.5], [-2.9, 0.8, 5.0], 407, 0.0012, { fov: 40 }) }],
   // 10 Caribbean port wide: the brig in, the sun on the stack
   10: [{ f: 471, s: hold("port", [8.0, 4.6, 14.5], [-0.6, 0.9, 0.4], 471, 0.002, { fov: 40 }) }],
   // 11 close on the melting stack, Tudor sweating behind it
-  11: [{ f: 522, s: hold("port", [0.6, 0.85, 5.4], [-1.6, 0.6, 1.6], 522, 0.0035, { fov: 34, roll: 0.035 }) }],
+  11: [{ f: 522, s: hold("port", [0.9, 0.95, 6.4], [-1.7, 0.75, 1.5], 522, 0.002, { fov: 36, roll: 0.03 }) }],
   // 12 the empty wallet; the coin rolls away
-  12: [{ f: 578, s: hold("port", [1.75, 0.42, 4.25], [2.45, 0.06, 3.2], 578, 0.003, { fov: 32 }) },
+  12: [{ f: 578, s: hold("port", [1.95, 0.55, 4.5], [2.42, 0.04, 3.2], 578, 0.002, { fov: 34 }) },
     { f: 630, dur: 30, s: hold("port", [2.2, 0.4, 4.4], [3.1, 0.05, 3.25], 630, 0.002, { fov: 34 }) }],
   // 13-14 two quick departures from Boston: red sails, then green sails from the other side
-  13: [{ f: 660, s: brigFollow(13, [16, 2.4, 20], 5, { fov: 40, roll: 0.02 }) }],
-  14: [{ f: 709, s: brigFollow(14, [-18, 1.6, 17], 5, { fov: 40, roll: -0.03 }) }],
+  13: [{ f: 660, s: brigFollow(13, [22, 4.0, 30], 7.5, { fov: 40, roll: 0.02 }) }],
+  14: [{ f: 709, s: brigFollow(14, [-24, 3.6, 30], 7.5, { fov: 40, roll: -0.02 }) }],
   // 15 port: the puddles are bigger now
   15: [{ f: 736, s: hold("port", [1.6, 2.6, 6.8], [-1.4, 0.2, 2.0], 736, 0.006, { fov: 38 }) }],
   // 16 cell: from the corridor (the guard yawning in the foreground) toward Tudor on the bench, through the bars
-  16: [{ f: 754, s: hold("cell", [0.05, 1.6, 5.05], [-0.4, 1.0, -2.8], 754, 0.001, { fov: 38 }) }, { f: 756, dur: 36, s: hold("cell", [-0.05, 1.45, 4.5], [-0.45, 0.95, -2.8], 792, 0.003, { fov: 36, roll: 0.03 }) }],
+  16: [{ f: 754, s: hold("cell", [2.15, 1.55, 5.45], [-0.45, 0.95, -2.8], 754, 0.0015, { fov: 40 }) }],
   // 17 inside: Tudor's light-bulb moment
-  17: [{ f: 836, s: hold("cell", [0.45, 1.25, -0.6], [-0.45, 1.3, -2.95], 836, 0.0025, { fov: 36 }) }, { f: 857, dur: 18, s: hold("cell", [0.35, 1.25, -0.85], [-0.45, 1.34, -2.95], 875, 0.003, { fov: 36, roll: -0.03 }) }],
+  17: [{ f: 836, s: hold("cell", [0.45, 1.3, -0.45], [-0.45, 1.42, -2.95], 836, 0.0015, { fov: 38 }) }, { f: 857, dur: 18, s: hold("cell", [0.38, 1.3, -0.6], [-0.45, 1.45, -2.95], 875, 0.0015, { fov: 38, roll: -0.03 }) }],
   // 18 the icicle in the window, dripping
   18: [{ f: 894, s: hold("cell", [0.8, 1.72, -2.25], [0.95, 1.98, -3.55], 894, 0.003, { fov: 32, roll: 0.03 }) }],
   // 19 Tudor at the window, warm air drifting in
-  19: [{ f: 950, s: hold("cell", [-0.55, 1.4, -0.75], [0.45, 1.45, -3.05], 950, 0.0028, { fov: 36, roll: -0.03 }) }],
+  19: [{ f: 950, s: hold("cell", [-0.75, 1.45, 0.35], [0.35, 1.45, -3.05], 950, 0.0015, { fov: 38, roll: -0.02 }) }],
   // 20-21 the bottle on the bench gets wrapped in the towel; warm air bounces off
   20: [{ f: 1023, s: hold("cell", [-1.5, 0.92, -2.1], [-1.75, 0.66, -3.0], 1023, 0.003, { fov: 30 }) }],
   21: [{ f: 1082, s: hold("cell", [-1.3, 0.95, -1.75], [-1.75, 0.66, -3.0], 1082, 0.0025, { fov: 34, roll: 0.03 }) }],
   // 22 the hold: sawdust shovelled over the ice
-  22: [{ f: 1163, s: hold("hold", [0.6, 1.75, 6.2], [-0.1, 0.75, 0.2], 1163, 0.0025, { fov: 40 }) }],
+  22: [{ f: 1163, s: hold("hold", [0.3, 1.8, 6.8], [0.0, 0.8, 0.5], 1163, 0.0012, { fov: 40 }) }],
   // 23 the lumber mill yard and its sawdust mountains
   23: [{ f: 1220, s: hold("mill", [6.0, 2.3, 10.0], [-1.5, 1.6, -2.5], 1220, 0.0015, { fov: 40 }) }, { f: 1224, dur: 40, s: hold("mill", [4.2, 2.0, 8.2], [-1.8, 1.5, -2.5], 1264, 0.002, { fov: 40, roll: 0.02 }) }],
   // 24 the brig alone on a hot ocean, aerial
-  24: [{ f: 1291, s: brigFollow(24, [-16, 12, 24], 3, { fov: 40 }) }],
+  24: [{ f: 1291, s: brigFollow(24, [-22, 16, 36], 6, { fov: 40 }) }],
   // 25 the calendar on the hold's post flips four months
-  25: [{ f: 1331, s: (f) => { const s = hold("hold", [-0.78, 1.45, 4.35], [-1.0, 1.42, 3.06], 1331, 0.0025, { fov: 34 })(f); return { ...s, roll: 0.03 * Math.sin(f * 0.06) }; } }],
+  25: [{ f: 1331, s: (f) => { const s = hold("hold", [-0.82, 1.45, 4.85], [-1.0, 1.42, 3.06], 1331, 0.0012, { fov: 34 })(f); return { ...s, roll: 0.02 * Math.sin(f * 0.06) }; } }],
   // 26 Calcutta: on deck above the hatch as its cover comes off
   26: [{ f: 1418, s: hold("calcutta", [1.6, DECK_Y + WATER_Y + 2.4, -3.3], [0.0, DECK_Y + WATER_Y + 0.1, -6.2], 1418, 0.004, { fov: 40, roll: -0.03 }) }],
   // 27 the market, wide
   27: [{ f: 1471, s: hold("calcutta", [77, 3.8, 31], [71.5, 1.3, 11.5], 1471, 0.0025, { fov: 40 }) }],
   // 28 the stall: ice and cold drinks change hands
-  28: [{ f: 1510, s: hold("calcutta", [69.6, 1.55, 17.3], [70.0, 1.3, 12.4], 1510, 0.0022, { fov: 38, roll: 0.03 }) }],
+  28: [{ f: 1510, s: hold("calcutta", [69.6, 1.55, 18.6], [70.0, 1.25, 12.4], 1510, 0.0012, { fov: 40, roll: 0.02 }) }],
   // 29 Tudor's smile
   29: [{ f: 1602, s: hold("calcutta", [72.75, 1.62, 17.7], [73.3, 1.6, 15.0], 1602, 0.003, { fov: 32, roll: -0.03 }) }],
 };

@@ -1226,7 +1226,7 @@ export const buildMill = (root: THREE.Object3D, kit: Kit) => {
   const log = woodM("log", "#8a6040");
   for (let l = 0; l < 3; l++) for (let i = 0; i < 4 - l; i++) b.add(new THREE.CylinderGeometry(0.26, 0.26, 4.2, 12).rotateZ(Math.PI / 2), log, tr(O + 9, 0.26 + l * 0.46, -3 - (i - (3 - l) / 2) * 0.54));
   // cart: bed + wheels
-  const m = tr(O + 1.4, 0, 0.2, 0.5);
+  const m = tr(O + 3.6, 0, -2.5, 0.5);
   b.add(boxGeo(V(-1.0, 0.55, -0.6), V(1.0, 0.95, 0.6), 1), woodM("cart", "#9a7048"), m);
   b.add(boxGeo(V(-0.9, 0.95, -0.5), V(0.9, 1.05, 0.5)), sawM(), m);
   for (const s of [1, -1]) b.add(new THREE.CylinderGeometry(0.5, 0.5, 0.1, 18).rotateX(Math.PI / 2), woodM("wheel", "#6b4a32"), m.clone().multiply(tr(0, 0.5, s * 0.66)));

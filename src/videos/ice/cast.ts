@@ -297,10 +297,12 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
     }
     case "harbor": {
       if (id === 4 || id === 5) {
-        const tp: V3 = id === 4 ? HARBOR.tudor : at("harbor", -0.4, 0, 2.2);
+        const tp: V3 = id === 4 ? HARBOR.tudor : at("harbor", 1.25, 0, 6.2);
         fig(out, cam, TUD, tp, f, { mode: "stand", expr: "smile", look: id === 4 ? 0 : 1, facing: 0, headTilt: id === 4 ? -5 : 0 });
-        fig(out, cam, mk(21, worker(1), "w1"), at("harbor", -4.6, 0, 2.6), f, { mode: "stand", expr: "neutral", prop: "hold" });
-        heldAt(out, cam, mk(21, worker(1), "w1"), at("harbor", -4.6, 0, 2.6), { mode: "stand", prop: "hold" }, "ice");
+        if (id === 4) {
+          fig(out, cam, mk(21, worker(1), "w1"), at("harbor", -4.6, 0, 2.6), f, { mode: "stand", expr: "neutral", prop: "hold" });
+          heldAt(out, cam, mk(21, worker(1), "w1"), at("harbor", -4.6, 0, 2.6), { mode: "stand", prop: "hold" }, "ice");
+        }
       }
       if (id === 5) for (let i = 0; i < 2; i++) {
         const c = carrierAt(i, f), who = mk(22 + i, worker(2 + i), "c" + i);
@@ -329,9 +331,9 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
         const sl = slipperAt(f), who = mk(42, townsfolk(2), "tf2");
         const falling = f >= SLIP;
         fig(out, cam, who, sl.p, f, { mode: falling ? "fall" : "march", phase: falling ? 0 : q(((f / FPS) * 1.8) % 1, 60), lift: 30, expr: falling ? "shock" : "smile_closed" },
-          { roll: falling ? -1.25 * smooth(sl.fall * 1.3) : 0, shadow: true });
-        if (falling && f < SLIP + 30) { const k = q((f - SLIP) / 30, 30); out.fx.push({ key: `stars${k}`, cw: 420, ch: 220, draw: (p) => fxStars(p, k), x: sl.p[0] + cam.right.x * 1.15, y: 0.62, z: sl.p[2] + cam.right.z * 1.15, w: 0.9, h: 0.47 }); }
-        fig(out, cam, mk(30, NEWSBOY, "newsboy"), [-4.7, 0, 1.6], f, { mode: "stand", expr: falling ? "laugh" : "grin", prop: falling ? "point" : null }, { flip: true });
+          { roll: falling ? -0.95 * smooth(sl.fall * 1.3) : 0, shadow: true });
+        if (falling && f < SLIP + 30) { const k = q((f - SLIP) / 30, 30); out.fx.push({ key: `stars${k}`, cw: 420, ch: 220, draw: (p) => fxStars(p, k), x: sl.p[0] + cam.right.x * 1.2, y: 1.15, z: sl.p[2] + cam.right.z * 1.2, w: 0.9, h: 0.47 }); }
+        fig(out, cam, mk(30, NEWSBOY, "newsboy"), [-4.2, 0, 2.4], f, { mode: "stand", expr: falling ? "laugh" : "grin", prop: falling ? "point" : null }, { flip: true });
         fig(out, cam, mk(43, townsfolk(3), "tf3"), [-2.3, 0, 0.6], f, { mode: "stand", expr: falling ? "laugh" : "neutral" });
       }
       break;
@@ -408,18 +410,16 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
     }
     case "calcutta": {
       if (id === 26) {
-        const b = brigAt(26, f), dy = b.pos[1] + DECK_Y, open = f >= HATCH_OPEN[0] + 6;
-        fig(out, cam, mk(80, bengali(0), "b0"), [b.pos[0] - 0.9, dy, b.pos[2] - 1.35], f, { mode: "stand", expr: open ? "relief_open" : "neutral" });
-        fig(out, cam, mk(81, bengali(2), "b2"), [b.pos[0] + 1.9, dy, b.pos[2] - 0.7], f, { mode: "stand", expr: open ? "shock" : "neutral", look: -1 });
+        void brigAt; void DECK_Y; void HATCH_OPEN;
       } else {
         const [mx, , mz] = MARKET.stall;
         if (id === 27 || id === 28) {
           fig(out, cam, mk(82, SELLER, "seller"), [mx - 0.15, 0, mz - 0.45], f, { mode: "stand", expr: "grin", prop: "iceblock" });
-          fig(out, cam, mk(83, bengali(1), "b1"), [mx - 0.5, 0, mz + 1.35], f, { mode: "stand", expr: "smile_closed", prop: "drink" });
-          fig(out, cam, mk(84, bengali(2), "b2"), [mx + 0.7, 0, mz + 1.55], f, { mode: "stand", expr: "relief_open", prop: "iceblock" }, { flip: true });
+          fig(out, cam, mk(83, bengali(1), "b1"), [mx - 0.35, 0, mz + 1.35], f, { mode: "stand", expr: "smile_closed", prop: "drink" });
+          fig(out, cam, mk(84, bengali(2), "b2"), [mx + 0.35, 0, mz + 1.85], f, { mode: "stand", expr: "relief_open", prop: "iceblock" }, { flip: true });
         }
         const crowd: [number, number, number, Expr][] = [[-7.6, 1.6, 3, "smile"], [-5.4, 2.4, 4, "grin"], [-6.3, 0.9, 5, "smile_closed"], [5.4, 1.4, 6, "grin"], [6.6, 2.6, 7, "smile"],
-          [-3.0, 4.0, 8, "smile_closed"], [4.4, 7.4, 9, "grin"], [0.6, 6.4, 10, "smile"], [-1.8, 7.6, 11, "grin"], [8.8, 5.0, 12, "smile_closed"]];
+          [-3.0, 4.0, 8, "smile_closed"], [4.4, 7.4, 9, "grin"], [1.6, 9.0, 10, "smile"], [-1.8, 7.6, 11, "grin"], [8.8, 5.0, 12, "smile_closed"]];
         crowd.forEach(([dx, dz, v, e], i) => fig(out, cam, mk(85 + i, bengali(v), "b" + v), [mx + dx, 0, mz + dz], f,
           { mode: i % 4 === 3 ? "stroll" : "stand", phase: q(((f / FPS) * 0.8 + i * 0.27) % 1, 60), expr: e, prop: i % 3 === 0 ? "drink" : i % 3 === 1 ? "iceblock" : null }, { flip: i % 2 === 1 }));
         fig(out, cam, TUD, MARKET.tudor, f, { mode: "stand", expr: id === 29 && f >= cue(W.man) + 4 ? "smile_closed" : "smile", look: id === 29 ? 0 : -1, facing: id === 29 ? 0 : -1, headTilt: id === 29 ? -4 : 0 });

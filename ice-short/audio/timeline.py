@@ -1,6 +1,7 @@
 # Picture timeline of "The Man Who Sold Ice to the Tropics", mirrored (read-only) from src/videos/ice/story.ts so every
 # sound lands on its frame. Lock these before rendering sound: any later timing change in story.ts means re-running mix.py.
 import json
+import math
 import os
 import wave
 
@@ -11,7 +12,7 @@ _v.close()
 DUR = VOICE_N / VOICE_SR       # exact length of voice.wav (55.1706 s); the mix is exactly this long at 48 kHz
 TOTAL = round(DUR * FPS)       # 1655 frames
 fr = lambda f: f / FPS
-cue = lambda s: round(s * FPS) - 2          # story.ts cue(): reactions land 2 frames before the word
+cue = lambda s: math.floor(s * FPS + 0.5) - 2   # = story.ts cue() (JS Math.round): reactions land 2 frames before the word
 
 W = dict(never=1.97, you=3.63, and1=5.48, loaded=6.99, ship=7.33, headed=9.82, the=11.11, newspaper=11.24, joke=12.28,
          prove=13.64, slippery=13.97, it=15.78, melts=17.46, and2=19.32, dollars=21.21, so=22.08, and3=23.7, again2=23.97,
