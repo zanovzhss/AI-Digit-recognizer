@@ -273,7 +273,7 @@ const farmer = (id: number, f: number, cam: CamInfo, out: Stage) => {
 
 // ---------------- weather + heat ----------------
 /** snow falling past the cellar window (outside, between the window opening and the painted yard) */
-export const WINDOW = { x: -1.0, y: 1.84, w: 0.56, h: 0.38 }; // cellar-local centre on the back wall
+export const WINDOW = { x: 0.12, y: 1.62, w: 0.5, h: 0.36 }; // cellar-local centre on the back wall (beside his head in shot 4)
 const snow = (t: number, out: Stage) => {
   for (let i = 0; i < 26; i++) {
     const sp = 0.32 + 0.18 * hh(i, 1), ph = hh(i, 2), dz = 0.12 + 0.3 * hh(i, 3);
@@ -286,6 +286,12 @@ const snow = (t: number, out: Stage) => {
 };
 /** light snowfall over the lane (shot 1): flakes in a box around the hatch, falling 0.6-0.9 m/s with a slow drift */
 const streetSnow = (t: number, out: Stage) => {
+  for (let i = 0; i < 70; i++) { // near layer in front of the eye-level lens (big, soft in the lens blur)
+    const sp = 0.5 + 0.25 * hh(i, 31), H = 4.2;
+    const x = -3.4 + 3.6 * hh(i, 32) + 0.15 * Math.sin(t * 1.1 + i), z = 5.6 + 3.4 * hh(i, 33) + 0.12 * Math.cos(t * 0.8 + i);
+    const y = D0 + H - ((t * sp + hh(i, 34) * H) % H), r = 0.02 + 0.02 * hh(i, 35);
+    out.fx.push({ key: "snow", cw: 64, ch: 64, draw: fxSnow, x, y, z, w: r * 2, h: r * 2 });
+  }
   for (let i = 0; i < 170; i++) {
     const sp = 0.6 + 0.3 * hh(i, 21), H = 11;
     const x = -7 + 9 * hh(i, 22) + 0.25 * Math.sin(t * 0.9 + i), z = -4 + 15 * hh(i, 23) + 0.2 * Math.cos(t * 0.7 + i * 1.3);
@@ -302,11 +308,12 @@ const heat = (f: number, out: Stage) => {
     const life = 1.1 + 0.5 * hh(i, 7), born = GLOW.f0 + i * 2.6;
     const u = (f - born) / (life * FPS);
     if (u < 0 || u >= 1) continue;
-    const e = smooth(u), sx = (hh(i, 8) - 0.5) * 0.14, sz = (hh(i, 9) - 0.5) * 0.12;
-    const x = bx + sx + tx * e, z = bz + sz + tz * e, y = BUCKET.water + 0.03 + 0.2 * Math.sin(Math.PI * Math.min(1, u * 1.1)) + 0.02 * e;
-    const w = 0.2 + 0.16 * u;
+    // ribbons stand on the ice and lean over into the crate as they rise (screen-space lean toward the potatoes)
+    const e = smooth(u), sx = (hh(i, 8) - 0.5) * 0.16, sz = (hh(i, 9) - 0.5) * 0.12;
+    const x = bx + sx + tx * 0.5 * e, z = bz + sz + tz * 0.5 * e, h = 0.34 + 0.12 * hh(i, 10);
+    const y = BUCKET.water + h * 0.45 + 0.08 * e;
     const k = q(u, 30);
-    out.fx.push({ key: `warm${k}`, cw: 256, ch: 256, draw: (p) => fxWarm(p, k), x, y, z, w, h: w * 1.15, soft: true, glow: 1.5 });
+    out.fx.push({ key: `warm${k}`, cw: 128, ch: 512, draw: (p) => fxWarm(p, k), x, y, z, w: h * 0.2, h, rot: -0.2 * e, soft: true, glow: 1.15 });
   }
 };
 

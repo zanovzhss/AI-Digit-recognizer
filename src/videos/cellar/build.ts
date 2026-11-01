@@ -510,15 +510,18 @@ export const house = (b: Batch, x: number, z: number, yaw: number, w: number, d:
   b.add(quad(V(hw + o, h - 0.25, -hd - o), V(-hw - o, h - 0.25, -hd - o), V(-hw - o, h + rh, 0), V(hw + o, h + rh, 0), ru, rv), rm, m);
   const cx = hw * 0.45 * (si % 2 ? 1 : -1);
   b.add(boxGeo(V(cx - 0.4, h + rh * 0.3, -hd * 0.35 - 0.4), V(cx + 0.4, h + rh + 1.1, -hd * 0.35 + 0.4), 2), lam("chim", () => ({ map: rep(brick(), 1, 1) })), m);
-  houseDetail(b, m, w, d, h, rh, cx);
+  houseDetail(b, m, w, d, h, rh, cx, snow);
   if (snow) { // snow cap on the chimney and a soft snow lip hanging over both eaves
     const top = h + rh + 1.1 + 0.16;
     ub(b, snowMat(), m, cx - 0.5, cx + 0.5, top, top + 0.13, -hd * 0.35 - 0.5, -hd * 0.35 + 0.5);
     for (const s of [-1, 1]) ub(b, snowMat(), m, -hw - o, hw + o, h - 0.36, h - 0.18, s * (hd + o) - 0.09, s * (hd + o) + 0.09);
   }
 };
-const snowRoofMat = () => lam("snowRoof", () => ({ map: snowRoofHD(), side: THREE.DoubleSide }));
-export const snowMat = () => lam("snowCap", () => ({ color: "#f3f0ec" }));
+const snowRoofMat = () => lam("snowRoof", () => ({ map: snowRoofHD(), side: THREE.DoubleSide, emissive: SNOW_GLOW, emissiveMap: snowRoofHD() }));
+/** snow keeps a cool self-lit share (like the template's unlit sign face) so it stays the brightest, near-white thing
+ *  under the orange golden key: lit side peach-white, shade side pale lavender (verifier round 1, fix 1) */
+export const SNOW_GLOW = new THREE.Color(0.3, 0.32, 0.4);
+export const snowMat = () => lam("snowCap", () => ({ color: "#f3f0ec", emissive: SNOW_GLOW }));
 
 // round 4: real 3D relief on every house (was a flat window-textured box): stone plinth, cornice under the eaves,
 // window sills + lintel hoods matching facadeHD's window layout, front door step + door hood, chimney cap and pot
@@ -528,7 +531,7 @@ const capM = () => lam("chimCap", () => ({ color: "#9a8778" }));
 const plinthM = () => lam("plinthHD", () => ({ map: stoneHD("copeHD") }));
 const ub = (b: Batch, mat: THREE.Material, m: THREE.Matrix4, x0: number, x1: number, y0: number, y1: number, z0: number, z1: number) =>
   b.add(UB, mat, m.clone().multiply(new THREE.Matrix4().compose(V((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2), new THREE.Quaternion(), V(x1 - x0, y1 - y0, z1 - z0))));
-const houseDetail = (b: Batch, m: THREE.Matrix4, w: number, d: number, h: number, rh: number, chx: number) => {
+const houseDetail = (b: Batch, m: THREE.Matrix4, w: number, d: number, h: number, rh: number, chx: number, snow = false) => {
   const hw = w / 2, hd = d / 2, tm = trimM(), floors = Math.max(1, Math.floor(h / 2.8));
   b.add(boxGeo(V(-hw - 0.07, -0.05, -hd - 0.07), V(hw + 0.07, 0.45, hd + 0.07), 2), plinthM(), m);          // plinth
   ub(b, tm, m, -hw - 0.12, hw + 0.12, h - 0.52, h - 0.25, hd, hd + 0.17);                                   // cornice front
@@ -549,6 +552,7 @@ const houseDetail = (b: Batch, m: THREE.Matrix4, w: number, d: number, h: number
       for (const [y0, y1, dep, half] of [[yb - 0.2, yb - 0.08, 0.14, 0.6], [yb + 1.33, yb + 1.43, 0.08, 0.55]] as const) {
         const ax = px - out[1] * half, az = pz + out[0] * half, bx = px + out[1] * half, bz = pz - out[0] * half;
         ub(b, tm, m, Math.min(ax, bx, ax + out[0] * dep), Math.max(ax, bx, ax + out[0] * dep), y0, y1, Math.min(az, bz, az + out[1] * dep), Math.max(az, bz, az + out[1] * dep));
+        if (snow) ub(b, snowMat(), m, Math.min(ax, bx, ax + out[0] * dep) + 0.02, Math.max(ax, bx, ax + out[0] * dep) - 0.02, y1, y1 + 0.06, Math.min(az, bz, az + out[1] * dep) + 0.01, Math.max(az, bz, az + out[1] * dep) - 0.01);
       }
     }
   };
@@ -720,7 +724,7 @@ const prism = (b: Batch, mat: THREE.Material, a: [number, number], c: [number, n
 };
 /** a snowy fence post (also used as the foreground framing prop) */
 export const fencePost = (b: Batch, x: number, z: number, h: number, yaw = 0, rail = true) => {
-  const m = new THREE.Matrix4().makeRotationY(yaw).setPosition(x, D0, z), wood = lam("fenceWood", () => ({ map: rep(beamHD(), 0.5, 1), color: "#a7835c" }));
+  const m = new THREE.Matrix4().makeRotationY(yaw).setPosition(x, D0, z), wood = lam("fenceWood", () => ({ map: rep(beamHD(), 0.5, 1), color: "#6b4a32" }));
   ub(b, wood, m, -0.075, 0.075, 0, h, -0.075, 0.075);
   b.add(new THREE.SphereGeometry(0.11, 14, 8, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.75, 1), snowMat(), m.clone().multiply(new THREE.Matrix4().makeTranslation(0, h - 0.01, 0)));
   if (rail) for (const y of [0.42, 0.82]) {
@@ -747,7 +751,20 @@ export const buildStreet = (root: THREE.Object3D, kit: Kit, rays: Ray[] = []) =>
   prism(b, cheek, [x0, D0], [x0, D0 + top + 0.06], [x1 + 0.08, D0], z0 - 0.14, z0);
   prism(b, cheek, [x0, D0], [x0, D0 + top + 0.06], [x1 + 0.08, D0], z1, z1 + 0.14);
   b.add(boxGeo(V(x1 - 0.02, D0, z0 - 0.14), V(x1 + 0.12, D0 + 0.12, z1 + 0.14), 0), cheek);
-  b.add(quad(V(x0 + 0.02, D0 + 0.02, z0), V(x0 + 0.02, D0 + 0.02, z1), V(x1, D0 + 0.02, z1), V(x1, D0 + 0.02, z0)), lam("hatchWell", () => ({ color: "#1d1820" })));
+  // the well under the door: dark brown boards with a warm glow coming up the cellar steps (verifier fix 2)
+  const well = new THREE.MeshBasicMaterial({ map: ctex("hatchWell", 256, 256, (g) => {
+    const gr = g.createLinearGradient(0, 0, 256, 0); // u runs from the wall (x0) to the outer lip (x1)
+    gr.addColorStop(0, "#c27a3a"); gr.addColorStop(0.45, "#5a3420"); gr.addColorStop(1, "#24160f");
+    g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+    g.fillStyle = "rgba(20,10,6,0.55)"; for (let y = 30; y < 256; y += 46) g.fillRect(0, y, 256, 6);
+  }) });
+  b.add(quad(V(x0 + 0.02, D0 + 0.02, z0), V(x0 + 0.02, D0 + 0.02, z1), V(x1, D0 + 0.02, z1), V(x1, D0 + 0.02, z0)), well);
+  // snow drifts along the house fronts (skip the doors and the hatch)
+  for (let z = -13.4; z < 11; z += 0.9 + 0.5 * r()) {
+    if ([-9.1, -0.4, 7.55].some((dz) => Math.abs(z - dz) < 1.0) || (z > HATCH.z0 - 0.4 && z < HATCH.z1 + 0.4)) continue;
+    const s = 0.5 + 0.35 * r();
+    b.add(new THREE.SphereGeometry(1, 16, 8, 0, Math.PI * 2, 0, Math.PI / 2).scale(0.42 * s, 0.32 * s, 0.75 * s).translate(-5.95, D0, z), snowMat());
+  }
   // snowy fence line along the far side of the lane (x = 3), posts every 2.4 m
   for (let z = -40.4; z < 26; z += 2.4) if (Math.abs(z - 7.85) > 1.3) {
     if (!inTheWay(FENCE_X - 0.15, FENCE_X + 0.15, D0, D0 + 1.1, z - 1.2, z + 0.1, true)) fencePost(b, FENCE_X, z, 1.05 + 0.08 * (r() - 0.5));
@@ -778,6 +795,13 @@ export const buildStreet = (root: THREE.Object3D, kit: Kit, rays: Ray[] = []) =>
   b.build(root);
   sight = [];
 };
+/** the flame inside the lantern: white-hot HDR core */
+export const lanternCore = () => {
+  let m = mats.get("lanternCore");
+  if (!m) { m = new THREE.MeshBasicMaterial({ color: new THREE.Color(9, 7.6, 5.2) }); mats.set("lanternCore", m); }
+  return m;
+};
+export const LANTERN = C(0.26, 1.7, -0.9);
 /** lantern glass: self-lit HDR (only emissives bloom: threshold 1.0) */
 export const lanternGlass = () => {
   let m = mats.get("lanternGlass");
@@ -846,8 +870,15 @@ export const buildCellar = (root: THREE.Object3D, win: { x: number; y: number; w
     const py = 0.33 + layer * 0.075 + (1 - Math.abs(u - 0.5) * 2) * 0.04 * layer;
     const s = 0.042 + 0.014 * r(), q = new THREE.Quaternion().setFromEuler(new THREE.Euler(r() * 3, r() * 3, r() * 3));
     const m = new THREE.Matrix4().compose(P(px, py, pz), q, V(s * 1.35, s, s * 1.05));
-    props.add(sph, pot, m);
-    const g = sph.clone().applyMatrix4(new THREE.Matrix4().compose(P(px, py, pz), q, V(s * 1.35 * 1.06, s * 1.06, s * 1.05 * 1.06)));
+    const lump = sph.clone(), lp = lump.attributes.position as THREE.BufferAttribute, ph = [r() * 6, r() * 6, r() * 6];
+    for (let k = 0; k < lp.count; k++) {
+      const x = lp.getX(k), y = lp.getY(k), z = lp.getZ(k);
+      const d = 1 + 0.09 * Math.sin(3 * x + ph[0]) * Math.cos(2 * y + ph[1]) + 0.06 * Math.sin(4 * z + ph[2]);
+      lp.setXYZ(k, x * d, y * d, z * d);
+    }
+    lump.computeVertexNormals();
+    props.add(lump, pot, m);
+    const g = lump.clone().applyMatrix4(new THREE.Matrix4().compose(P(px, py, pz), q, V(s * 1.35 * 1.06, s * 1.06, s * 1.05 * 1.06)));
     (px < cr.x - 0.05 ? nearG : farG).push(g.toNonIndexed());
   }
   for (const [list, mat] of [[nearG, frostNear], [farG, frostFar]] as const) {
@@ -862,13 +893,14 @@ export const buildCellar = (root: THREE.Object3D, win: { x: number; y: number; w
   props.add(boxGeo(P(x1 - 0.32, 1.25, -1.2), P(x1, 1.29, 0.6), 1), wood);
   for (let i = 0; i < 5; i++) props.add(new THREE.CylinderGeometry(0.06, 0.06, 0.17, 12).translate(...C(x1 - 0.17, 1.375, -1.0 + i * 0.36)), lam("jar" + (i % 2), () => ({ color: i % 2 ? "#c9874a" : "#8fae6a" })));
   // the lantern: hook from the middle beam, iron frame, HDR glass
-  const LP = C(0.4, 1.86, -0.9);
+  const LP = LANTERN;
   props.add(new THREE.CylinderGeometry(0.008, 0.008, h - 0.22 - LP[1] - 0.18, 6).translate(LP[0], (h - 0.22 + LP[1] + 0.18) / 2, LP[2]), iron);
   props.add(new THREE.CylinderGeometry(0.075, 0.075, 0.025, 6).translate(LP[0], LP[1] + 0.13, LP[2]), iron);
   props.add(new THREE.ConeGeometry(0.085, 0.06, 6).translate(LP[0], LP[1] + 0.17, LP[2]), iron);
   props.add(new THREE.CylinderGeometry(0.08, 0.07, 0.025, 6).translate(LP[0], LP[1] - 0.115, LP[2]), iron);
   for (let k = 0; k < 6; k++) { const a = (k / 6) * Math.PI * 2; props.add(new THREE.CylinderGeometry(0.006, 0.006, 0.23, 4).translate(LP[0] + Math.cos(a) * 0.07, LP[1], LP[2] + Math.sin(a) * 0.07), iron); }
   props.add(new THREE.CylinderGeometry(0.066, 0.06, 0.22, 6).translate(LP[0], LP[1], LP[2]), lanternGlass());
+  props.add(new THREE.SphereGeometry(0.028, 10, 8).scale(1, 1.5, 1).translate(LP[0], LP[1] - 0.02, LP[2]), lanternCore());
   walls.build(root, false);
   props.build(root, true);
   void CX; void ctex;

@@ -962,8 +962,13 @@ export const fxSnow = (p: Pen) => {
 };
 /** warm heat wisp on a 256 x 256 canvas (soft, additive): a rising tear-drop of warm light, t = life 0..1 */
 export const fxWarm = (p: Pen, t: number) => {
-  const g = p.g, a = Math.sin(Math.PI * Math.min(1, Math.max(0, t))) ** 0.8;
-  const gr = g.createRadialGradient(128, 150, 0, 128, 150, 122);
-  gr.addColorStop(0, `rgba(255,214,150,${0.6 * a})`); gr.addColorStop(0.3, `rgba(255,180,100,${0.32 * a})`); gr.addColorStop(0.65, `rgba(255,150,70,${0.1 * a})`); gr.addColorStop(1, "rgba(255,140,60,0)");
-  g.fillStyle = gr; g.beginPath(); g.ellipse(128, 150, 92, 112, 0, 0, Math.PI * 2); g.fill();
+  // a wavy ribbon of warm air on a 128 x 512 canvas, drawn bottom (ice) to top (potatoes); soft wide glow + bright core
+  const g = p.g, a = Math.sin(Math.PI * Math.min(1, Math.max(0, t))) ** 0.8, ph = t * 9;
+  const path = () => { g.beginPath(); for (let y = 500; y >= 12; y -= 8) { const u = (500 - y) / 488, x = 64 + 26 * Math.sin(u * 7 + ph) * u; if (y === 500) g.moveTo(x, y); else g.lineTo(x, y); } };
+  g.lineCap = "round"; g.lineJoin = "round";
+  for (const [w, al] of [[60, 0.12], [34, 0.22], [14, 0.5], [5, 0.85]] as const) {
+    const gr = g.createLinearGradient(0, 512, 0, 0);
+    gr.addColorStop(0, `rgba(255,190,110,0)`); gr.addColorStop(0.2, `rgba(255,200,130,${al * a})`); gr.addColorStop(0.75, `rgba(255,170,90,${al * a * 0.8})`); gr.addColorStop(1, "rgba(255,150,70,0)");
+    g.strokeStyle = gr; g.lineWidth = w; path(); g.stroke();
+  }
 };

@@ -124,14 +124,15 @@ const S1b = (f: number) => dolly([1.25, 1.5, 10.1], [-4.45, 1.0, 5.25], pushK(f,
 // shot 2: medium-full of the farmer at the crate, slow creeping push-in toward his face
 const S2a = (f: number) => dolly(C(0.12, 1.28, 2.05), C(-0.2, 0.88, -1.4), pushK(f, 60, 0.0028), { fov: 40 });
 // shot 3: close-up of the bucket surface, a slow 20-degree orbit (smootherstep over the shot) + creep
-const ORBIT = { r: 0.95, h: 0.95, a0: -26, a1: -6 };
+// framing: the bucket bottom-centre, the potatoes in the top third (verifier fix 4); orbit about the point between them
+const ORBIT = { r: 1.2, h: 1.0, a0: -65, a1: -45 }; // the bucket sits on the lens -> look line at -55 deg
 const S3a = (f: number): Shot => {
   const u = glide((f - 120) / 55), a = ((ORBIT.a0 + (ORBIT.a1 - ORBIT.a0) * u) * Math.PI) / 180, k = pushK(f, 120, 0.0022);
-  const [bx, , bz] = BUCKET_C, look: V3 = [bx + 0.24, BUCKET.water + 0.02, bz - 0.22];
-  return { pos: [bx + Math.sin(a) * ORBIT.r * k, BUCKET.water + ORBIT.h * k, bz + Math.cos(a) * ORBIT.r * k], look, fov: 40, roll: 0.03 };
+  const [bx, , bz] = BUCKET_C, look: V3 = [bx + 0.34, 0.3, bz - 0.24];
+  return { pos: [look[0] + Math.sin(a) * ORBIT.r * k, look[1] + ORBIT.h * k, look[2] + Math.cos(a) * ORBIT.r * k], look, fov: 40, roll: 0.03 };
 };
 // shot 4: medium shot of the farmer (thighs up), the window with falling snow behind him; creeping push
-const S4a = (f: number) => dolly(C(-0.3, 1.45, 0.85), C(-0.52, 1.4, -1.22), pushK(f, 175, 0.003), { fov: 38, roll: 0.03 });
+const S4a = (f: number) => dolly(C(-0.3, 1.38, 0.85), C(-0.46, 1.33, -1.22), pushK(f, 175, 0.003), { fov: 38, roll: 0.03 });
 
 const CAMS: Record<number, Key[]> = {
   1: [{ f: 0, s: S1a }, { f: 6, dur: 40, s: S1b }],

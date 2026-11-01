@@ -5,14 +5,14 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { staticFile } from "remotion";
-import { Batch, V, lam, Kit, Ray, kitClone, buildStreet, buildCellar, fencePost, CellarParts } from "./build";
+import { Batch, V, lam, Kit, Ray, kitClone, buildStreet, buildCellar, fencePost, CellarParts, SNOW_GLOW, LANTERN } from "./build";
 import { ctex, snowHD, snowCobbleHD, beamHD, rep, cloudHD } from "./paint";
 import { Pen } from "./toon";
 import { LIGHTS, LOOK, LightPreset } from "./lights";
 import { TONE, CHAR, twoTone, untone } from "./shade";
 import { NOINK } from "./ink";
 import { Pool, Actor, Fx, stage, WINDOW } from "./cast";
-import { FPS, D0, SHOTS, camAt, V3, FOREGROUND, ShotDef, HATCH, hatchOpen, BUCKET, iceAt, frostAt, GLOW, smooth, LANE_X1 } from "./story";
+import { FPS, D0, SHOTS, camAt, V3, FOREGROUND, ShotDef, HATCH, hatchOpen, BUCKET, iceAt, frostAt, GLOW, smooth, LANE_X1, SETDOWN } from "./story";
 
 // ---------------- assets ----------------
 // Kenney CC0 kit (optional): public/bridge/kenney/<name>.glb; missing models are skipped (vegetation is drawn by build.ts)
@@ -58,7 +58,7 @@ const sightLines = (): Ray[] => {
 
 /** the water surface in the bucket: dark water; ice crystals grow in from the rim (k 0..1), frosting over */
 const ICE_N = 512;
-const drawIce = (g: CanvasRenderingContext2D, k: number, warm: number) => {
+const drawIce = (g: CanvasRenderingContext2D, k: number, warm: number, rip: number) => {
   const S = ICE_N, c = S / 2, R = S / 2;
   let seed = 7;
   const r = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
@@ -66,8 +66,17 @@ const drawIce = (g: CanvasRenderingContext2D, k: number, warm: number) => {
   bg.addColorStop(0, "#3f7690"); bg.addColorStop(0.7, "#2e5e78"); bg.addColorStop(1, "#244a62");
   g.fillStyle = bg; g.fillRect(0, 0, S, S);
   g.fillStyle = "rgba(255,255,255,0.10)"; g.beginPath(); g.ellipse(c - 70, c - 90, 120, 40, -0.5, 0, Math.PI * 2); g.fill(); // sheen
+  if (rip > 0 && rip < 1) for (let j = 0; j < 3; j++) { // the bucket was just set down: rings run out to the rim
+    const u = rip - j * 0.22;
+    if (u <= 0 || u >= 1) continue;
+    g.strokeStyle = `rgba(215,236,250,${0.6 * (1 - u)})`; g.lineWidth = 7 * (1 - u) + 2; g.beginPath(); g.arc(c, c, 30 + (R - 34) * u, 0, Math.PI * 2); g.stroke();
+  }
   if (k > 0) {
-    g.fillStyle = `rgba(214,232,246,${0.42 * smooth((k - 0.35) / 0.65)})`; g.beginPath(); g.arc(c, c, R, 0, Math.PI * 2); g.fill();
+    // frost grows in from the rim as a ring, the centre stays dark open water until the end
+    const rin = R * Math.max(0.0, 1 - 0.95 * k);
+    const fr = g.createRadialGradient(c, c, rin, c, c, R);
+    fr.addColorStop(0, "rgba(214,232,246,0)"); fr.addColorStop(Math.min(0.99, 0.25 + 0.2 * k), "rgba(214,232,246,0.38)"); fr.addColorStop(1, "rgba(236,246,255,0.75)");
+    g.fillStyle = fr; g.beginPath(); g.arc(c, c, R, 0, Math.PI * 2); g.fill();
     g.lineCap = "round";
     const branch = (x: number, y: number, a: number, len: number, w: number, depth: number) => {
       const ex = x + Math.cos(a) * len, ey = y + Math.sin(a) * len;
@@ -78,10 +87,10 @@ const drawIce = (g: CanvasRenderingContext2D, k: number, warm: number) => {
         for (const s of [-1, 1]) branch(bx, by, a + s * (Math.PI / 3), bl, w * 0.6, depth + 1);
       }
     };
-    for (let i = 0; i < 11; i++) {
-      const a = (i / 11) * Math.PI * 2 + r() * 0.3, L = R * (0.5 + 0.45 * r()) * Math.min(1, k * (1.1 + 0.3 * r()));
+    for (let i = 0; i < 34; i++) { // feathers of frost of random length from the rim (no even spokes)
+      const a = r() * Math.PI * 2, L = R * (0.12 + 0.5 * r() ** 2) * Math.min(1, k * (1.1 + 0.3 * r()));
       if (L < 4) continue;
-      branch(c + Math.cos(a) * R * 0.98, c + Math.sin(a) * R * 0.98, a + Math.PI + (r() - 0.5) * 0.4, L, 6, 0);
+      branch(c + Math.cos(a) * R * 0.98, c + Math.sin(a) * R * 0.98, a + Math.PI + (r() - 0.5) * 0.9, L, 3.5 + 2 * r(), 0);
     }
   }
   if (warm > 0) { // the heat leaving the ice: a soft warm bloom in the middle
@@ -155,7 +164,7 @@ export class World {
 
     // ---- the lane: snow ground, trodden snowy cobbles, houses / fence / trees (sight-line culled) ----
     const b = new Batch();
-    const snowM = lam("snowHD", () => ({ map: snowHD() })), laneM = lam("snowCobbleHD", () => ({ map: snowCobbleHD() }));
+    const snowM = lam("snowHD", () => ({ map: snowHD(), emissive: SNOW_GLOW, emissiveMap: snowHD() })), laneM = lam("snowCobbleHD", () => ({ map: snowCobbleHD(), emissive: SNOW_GLOW, emissiveMap: snowCobbleHD() }));
     b.add(quadUp(-700, 700, -700, 700, 350, 350), snowM);
     b.add(quadUp(-6, LANE_X1, -160, 60, (LANE_X1 + 6) / 4, 220 / 4, 0.01), laneM);
     b.build(R);
@@ -174,6 +183,10 @@ export class World {
 
     // ---- the root cellar (far off at CX) ----
     this.cellar = buildCellar(R, WINDOW);
+    // lantern halo (additive, depth-tested): the practical light's glow in the air around it (verifier fix 7)
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: haloTex(), color: new THREE.Color(1.0, 0.62, 0.3).multiplyScalar(0.55), transparent: true,
+      blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+    halo.position.set(LANTERN[0], LANTERN[1], LANTERN[2]); halo.scale.setScalar(0.9); halo.layers.set(NOINK); R.add(halo);
 
     // ---- the steel bucket: tapered open drum, rolled rim, two ears, wire handle, water / ice surface ----
     const steel = twoTone(new THREE.MeshPhongMaterial({ color: "#a3a9b2", specular: "#d8dce2", shininess: 70, side: THREE.DoubleSide }), 0.15);
@@ -278,8 +291,9 @@ export class World {
     // ---- hatch door: slope angle (closed) -> 105 deg up against the wall (open) ----
     this.door.rotation.set(0, 0, -(this.door.userData.slope as number) + hatchOpen(f) * (Math.PI * 105) / 180);
     // ---- ice + frost ----
-    const k = Math.round(iceAt(f) * 40) / 40, warm = Math.round(smooth((f - GLOW.f0 + 2) / 10) * 20) / 20, key = `${k}|${warm}`;
-    if (key !== this.iceKey) { drawIce(this.iceCv.getContext("2d")!, k, warm); this.iceTex.needsUpdate = true; this.iceKey = key; }
+    const k = Math.round(iceAt(f) * 40) / 40, warm = Math.round(smooth((f - GLOW.f0 + 2) / 10) * 20) / 20;
+    const rip = f >= SETDOWN.land && f < SETDOWN.land + 26 ? (f - SETDOWN.land + 1) / 26 : 0, key = `${k}|${warm}|${rip}`;
+    if (key !== this.iceKey) { drawIce(this.iceCv.getContext("2d")!, k, warm, rip); this.iceTex.needsUpdate = true; this.iceKey = key; }
     this.cellar.frostNear.opacity = frostAt(f); this.cellar.frostFar.opacity = 0.45 + 0.55 * frostAt(f);
     // ---- cast + effects ----
     const right = V(0, 0, 0).setFromMatrixColumn(cam.matrixWorld, 0);
