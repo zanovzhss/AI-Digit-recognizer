@@ -32,8 +32,8 @@ export const CX = 1500;
 export const C = (x: number, y: number, z: number): V3 => [CX + x, y, z]; // cellar-local -> world
 export const CELLAR = { x0: -2.6, x1: 2.6, z0: -3.4, z1: 2.6, h: 2.35 };
 
-// street: three townhouses on the left (fronts on x = -6, facing +x), cobbled lane x -6..-0.4, snowy fence line at x = 0
-export const LANE_X1 = -0.4, FENCE_X = 0.05;
+// street: three townhouses on the left (fronts on x = -6, facing +x), cobbled lane x -6..-1.35, snowy fence line at x = -0.95
+export const LANE_X1 = -1.35, FENCE_X = -0.95;
 export const HATCH = { x0: -6.0, x1: -4.75, z0: 5.25, z1: 6.75, top: 0.85 }; // bulkhead door against the middle house
 export const HATCH_OPEN = [cue(W.cellar) - 2, cue(W.cellar) + 9] as const; // door swings up as he reaches it (creak on "cellar")
 export const hatchOpen = (f: number) => smooth((f - HATCH_OPEN[0]) / (HATCH_OPEN[1] - HATCH_OPEN[0]));
@@ -181,5 +181,5 @@ export const focusAt = (id: number, f: number): V3 => { const d = dofAt(f); retu
 /** near framing objects (built outside the sight-line test): a snowy fence post in the street shot's bottom-right corner */
 export type Fg = { a: number; b: number; kit: string; pos: V3; s?: number; yaw?: number };
 export const FOREGROUND: Fg[] = [
-  { a: 0, b: 60, kit: "fencepost", pos: [-0.42, D0, 8.62], s: 1.3, yaw: 0.25 },
+  { a: 0, b: 60, kit: "fencepost", pos: [-0.95, D0, 7.85], s: 0.86, yaw: 0.25 },
 ];

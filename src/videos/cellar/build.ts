@@ -749,7 +749,7 @@ export const buildStreet = (root: THREE.Object3D, kit: Kit, rays: Ray[] = []) =>
   b.add(boxGeo(V(x1 - 0.02, D0, z0 - 0.14), V(x1 + 0.12, D0 + 0.12, z1 + 0.14), 0), cheek);
   b.add(quad(V(x0 + 0.02, D0 + 0.02, z0), V(x0 + 0.02, D0 + 0.02, z1), V(x1, D0 + 0.02, z1), V(x1, D0 + 0.02, z0)), lam("hatchWell", () => ({ color: "#1d1820" })));
   // snowy fence line along the far side of the lane (x = 3), posts every 2.4 m
-  for (let z = -40.3; z < 26; z += 2.4) if (Math.abs(z - 8.3) > 1.3) {
+  for (let z = -40.4; z < 26; z += 2.4) if (Math.abs(z - 7.85) > 1.3) {
     if (!inTheWay(FENCE_X - 0.15, FENCE_X + 0.15, D0, D0 + 1.1, z - 1.2, z + 0.1, true)) fencePost(b, FENCE_X, z, 1.05 + 0.08 * (r() - 0.5));
   }
   // beyond the fence: snowy orchard / pines, a gas lamp by the hatch (warm practical), hills white
