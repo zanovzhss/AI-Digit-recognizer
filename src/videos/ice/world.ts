@@ -315,7 +315,7 @@ export class World {
     this.brig.sail.color.set(bp.sail);
     this.plank.visible = id <= 5;
     const lk = id === 26 ? smooth((f - HATCH_OPEN[0]) / (HATCH_OPEN[1] - HATCH_OPEN[0])) : 0;
-    this.brig.lid.position.set(0.4, 1.52 + 0.5 * Math.sin(Math.PI * Math.min(1, lk * 1.4)) * (1 - lk) + 0.05 * lk, 1.9 * lk);
+    this.brig.lid.position.set(0.4, 1.52 + 0.5 * Math.sin(Math.PI * Math.min(1, lk * 1.4)) * (1 - lk) - 0.27 * lk, -1.3 * lk);
     this.brig.lid.rotation.set(0.25 * Math.sin(Math.PI * lk), 0, 0);
     // ---- port: the stack melts into puddles ----
     const m = meltAt(id, f), inPort = s.place === "port";
@@ -347,7 +347,8 @@ export class World {
     for (const fl of FLIPS) { if (f >= fl + 7) n++; else if (f >= fl) { flip = (f - fl) / 7; break; } }
     const ck = `${n}|${flip > 0}`;
     if (ck !== this.calKey) { this.hold.pageMat.map = calendarTex(n); this.hold.underMat.map = calendarTex(n + 1); this.calKey = ck; }
-    this.hold.page.rotation.x = -Math.PI * 0.96 * smooth(flip);
+    this.hold.page.rotation.x = -Math.PI * 0.6 * smooth(flip);
+    this.hold.page.position.y = 1.67 + 0.9 * smooth(flip) ** 1.4;
     // ---- cast + effects ----
     const right = V(0, 0, 0).setFromMatrixColumn(cam.matrixWorld, 0);
     const st = stage(id, t, { pos: cam.position, right });

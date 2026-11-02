@@ -76,7 +76,7 @@ export const BEACH = { tudor: at("beach", 0.55, 0, 0) as V3, local: at("beach", 
 export const POND = { workers: [at("pond", -1.05, 0, -4.3), at("pond", 0.1, 0, -4.05), at("pond", 1.2, 0, -4.35)] as V3[] };
 // harbor: the quay (top y 0) runs along x, water for z < 0, houses at z = 24; the gangplank meets the brig's side
 export const PLANK = { x: 2.2, z0: 0.5, z1: -1.75 }; // quay end -> deck end (deck end at DECK_Y + WATER_Y)
-export const HARBOR = { tudor: at("harbor", -1.1, 0, 3.0) as V3, stack: at("harbor", -2.7, 0, 2.2) as V3 };
+export const HARBOR = { tudor: at("harbor", -1.1, 0, 3.0) as V3, stack: at("harbor", -1.25, 0, 1.5) as V3 };
 /** loading (shot 5): two cutters carry blocks from the stack up the plank onto the deck */
 export const carrierAt = (i: number, f: number): { p: V3; walking: boolean; phase: number } => {
   const f0 = 208 + i * 26, u = clamp01((f - f0) / 62);
@@ -111,7 +111,7 @@ export const WRAP = [cue(W.wrapped), cue(W.wrapped) + 22] as const;
 export const towelAt = (f: number) => (f < 1023 ? 0 : smooth((f - WRAP[0]) / (WRAP[1] - WRAP[0])));
 export const HEAT_F = cue(W.heat);
 // shots 22, 25 hold: sawdust rises over the ice; the calendar flips four months
-export const HOLD = { workers: [at("hold", -0.5, 0, 2.3), at("hold", 0.55, 0, 3.2)] as V3[], post: at("hold", -1.0, 0, 3.0) as V3 };
+export const HOLD = { workers: [at("hold", -0.38, 0, 2.3), at("hold", 0.55, 0, 3.2)] as V3[], post: at("hold", -1.0, 0, 3.0) as V3 };
 export const sawdustAt = (f: number) => (f < 1163 ? 0.98 : 0.32 + 0.66 * smooth((f - 1163) / 57));
 export const FLIPS = [1342, cue(W.eighty) + 2, cue(W.of), cue(W.india)];
 // shot 26 calcutta: the hatch cover comes off
@@ -225,7 +225,7 @@ const CAMS: Record<number, Key[]> = {
   20: [{ f: 1023, s: hold("cell", [-1.5, 0.92, -2.1], [-1.75, 0.66, -3.0], 1023, 0.003, { fov: 30 }) }],
   21: [{ f: 1082, s: hold("cell", [-1.3, 0.95, -1.75], [-1.75, 0.66, -3.0], 1082, 0.0025, { fov: 34, roll: 0.03 }) }],
   // 22 the hold: sawdust shovelled over the ice
-  22: [{ f: 1163, s: hold("hold", [0.3, 1.8, 6.8], [0.0, 0.8, 0.5], 1163, 0.0012, { fov: 40 }) }],
+  22: [{ f: 1163, s: hold("hold", [0.3, 1.8, 6.8], [0.0, 0.8, 0.5], 1163, 0.0004, { fov: 40 }) }],
   // 23 the lumber mill yard and its sawdust mountains
   23: [{ f: 1220, s: hold("mill", [6.0, 2.3, 10.0], [-1.5, 1.6, -2.5], 1220, 0.0015, { fov: 40 }) }, { f: 1224, dur: 40, s: hold("mill", [4.2, 2.0, 8.2], [-1.8, 1.5, -2.5], 1264, 0.002, { fov: 40, roll: 0.02 }) }],
   // 24 the brig alone on a hot ocean, aerial
@@ -233,7 +233,7 @@ const CAMS: Record<number, Key[]> = {
   // 25 the calendar on the hold's post flips four months
   25: [{ f: 1331, s: (f) => { const s = hold("hold", [-0.82, 1.45, 4.85], [-1.0, 1.42, 3.06], 1331, 0.0012, { fov: 34 })(f); return { ...s, roll: 0.02 * Math.sin(f * 0.06) }; } }],
   // 26 Calcutta: on deck above the hatch as its cover comes off
-  26: [{ f: 1418, s: hold("calcutta", [1.6, DECK_Y + WATER_Y + 2.4, -3.3], [0.0, DECK_Y + WATER_Y + 0.1, -6.2], 1418, 0.004, { fov: 40, roll: -0.03 }) }],
+  26: [{ f: 1418, s: hold("calcutta", [0.4, DECK_Y + WATER_Y + 4.4, -2.8], [0.4, DECK_Y + WATER_Y + 0.15, -6.6], 1418, 0.0012, { fov: 40, roll: -0.02 }) }],
   // 27 the market, wide
   27: [{ f: 1471, s: hold("calcutta", [77, 3.8, 31], [71.5, 1.3, 11.5], 1471, 0.0025, { fov: 40 }) }],
   // 28 the stall: ice and cold drinks change hands

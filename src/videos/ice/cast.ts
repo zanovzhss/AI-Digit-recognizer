@@ -272,7 +272,7 @@ const warmAir = (out: Stage, f: number, f0: number, a: V3, b: V3, n: number, len
   }
 };
 const saw = (f: number, i: number) => 0.5 + 0.5 * Math.sin((f / FPS) * Math.PI * 2 * 1.5 + i * 2.1);
-const shovel = (f: number, i: number) => { const x = ((f / FPS) * 0.9 + i * 0.45) % 1; return x < 0.55 ? 0.15 * smooth(x / 0.55) : 0.15 + 0.85 * smooth((x - 0.55) / 0.3); };
+const shovel = (f: number, i: number) => { const x = ((f / FPS) * 0.9 + i * 0.45) % 1; return x < 0.5 ? 0.15 * smooth(x / 0.5) : x < 0.8 ? 0.15 + 0.85 * smooth((x - 0.5) / 0.3) : 1 - smooth((x - 0.8) / 0.2); };
 
 /** everything with a face (and the held props) in shot `id` at frame f */
 export const stage = (id: number, t: number, cam: CamInfo): Stage => {
@@ -326,7 +326,6 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
         const p: V3 = [NEWSBOY_P[0], NEWSBOY_P[1], NEWSBOY_P[2]];
         const fo = fig(out, cam, who, p, f, { mode: "stand", expr: "grin", prop: "hold", headTilt: 4 * Math.sin(f * 0.3) });
         heldAt(out, cam, who, p, fo, "paper", 0.2 + wave, 1);
-        for (let i = 0; i < 3; i++) fig(out, cam, mk(44 + i, townsfolk(i + 1), "tf" + (i + 1)), [-4.6 + i * 1.1, 0, -6 - i * 3.5], f, { mode: "stroll", phase: q(((f / FPS) * 0.9 + i * 0.3) % 1, 60), expr: "neutral" });
       } else {
         const sl = slipperAt(f), who = mk(42, townsfolk(2), "tf2");
         const falling = f >= SLIP;
@@ -344,8 +343,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
         fig(out, cam, TUD, PORT.tudor, f, { mode: "stand", expr: id === 15 ? "dazed" : "nervous", look: 1, facing: 1 });
         sweat(out, cam, PORT.tudor, f, 3, 1.62, 11);
         if (id === 10) {
-          fig(out, cam, mk(50, { ...worker(0), skin: "#8a5636", hat: null, jacket: "#f2ead6" }, "pw0"), at("port", 3.2, 0, 1.8), f, { mode: "stand", expr: "laugh" });
-          fig(out, cam, mk(51, { ...worker(2), skin: "#a8704a", hat: null, jacket: "#e8c48a" }, "pw1"), at("port", 4.4, 0, 3.6), f, { mode: "stand", expr: "grin" });
+          fig(out, cam, mk(50, { ...worker(0), skin: "#8a5636", hat: null, jacket: "#f2ead6" }, "pw0"), at("port", 1.6, 0, 3.2), f, { mode: "stand", expr: "laugh" });
         }
         const [sx, , sz] = PORT.stack;
         drips(out, sx, 0.9 * (1 - m) + 0.1, sz + 0.35, f, 4, 0.9 * (1 - m) + 0.1, 1.4, 3);
@@ -388,8 +386,8 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
           fig(out, cam, mk(70 + i, worker(i + 1), "hw" + i), p, f, { mode: "stand", expr: "neutral", prop: ["shovel", k], tilt: -8 * (1 - k) + 4, crouch: 0.3 * (1 - k) }, { flip: i === 1 });
           // sawdust thrown in an arc from the blade toward the fill on the up-swing
           const x = ((f / FPS) * 0.9 + i * 0.45) % 1;
-          if (x > 0.6 && x < 0.95) for (let j = 0; j < 7; j++) {
-            const u = (x - 0.6) / 0.35 + hh(j, i) * 0.15, side = i ? -1 : 1;
+          if (x > 0.58 && x < 0.9) for (let j = 0; j < 7; j++) {
+            const u = (x - 0.58) / 0.32 + hh(j, i) * 0.15, side = i ? -1 : 1;
             out.fx.push({ key: "dust", cw: 64, ch: 64, draw: fxSawdust, x: p[0] + side * (0.4 + 0.9 * u) + (hh(j, 3) - 0.5) * 0.3, y: 1.5 + 0.9 * u - 1.6 * u * u + (hh(j, 4) - 0.5) * 0.2, z: p[2] - 1.0 * u - 0.2 * hh(j, 5), w: 0.06, h: 0.06, rot: j });
           }
         });
@@ -401,8 +399,8 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       const k = q(shovel(f, 0), 20), wp = at("mill", -2.4, 0, -0.9);
       fig(out, cam, mk(73, worker(3), "mw"), wp, f, { mode: "stand", expr: "neutral", prop: ["shovel", k], tilt: -8 * (1 - k) + 4, crouch: 0.3 * (1 - k) }, { flip: true });
       const x = ((f / FPS) * 0.9) % 1;
-      if (x > 0.6 && x < 0.95) for (let j = 0; j < 8; j++) {
-        const u = (x - 0.6) / 0.35 + hh(j, 7) * 0.15;
+      if (x > 0.58 && x < 0.9) for (let j = 0; j < 8; j++) {
+        const u = (x - 0.58) / 0.32 + hh(j, 7) * 0.15;
         out.fx.push({ key: "dust", cw: 64, ch: 64, draw: fxSawdust, x: wp[0] - 0.4 - 1.2 * u, y: 1.4 + 1.2 * u - 1.4 * u * u, z: wp[2] - 1.2 * u, w: 0.07, h: 0.07, rot: j });
       }
       fig(out, cam, TUD, at("mill", 1.0, 0, 2.2), f, { mode: "stand", expr: "grin", prop: "point" }, { flip: true });

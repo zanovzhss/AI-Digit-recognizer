@@ -1073,7 +1073,7 @@ export const buildHarbor = (root: THREE.Object3D, kit: Kit): THREE.Object3D => {
   pb.add(boxGeo(V(-0.32, -0.05, -L / 2), V(0.32, 0.03, L / 2), 1), woodM("plank", "#9a7048"),
     new THREE.Matrix4().makeRotationX(ang).setPosition(O + PLANK.x, (DECK_Y + WATER_Y) / 2, (PLANK.z0 + PLANK.z1) / 2));
   pb.build(plank); root.add(plank);
-  iceStack(b, at("harbor", -2.7, 0, 0)[0], 0, 2.2, 4, 2, 3);
+  iceStack(b, at("harbor", -1.25, 0, 0)[0], 0, 1.5, 3, 2, 2);
   iceStack(b, O + 6.5, 0, 4.0, 3, 2, 2);
   for (let x = -60; x <= 60; x += 6.5) if (Math.abs(x - 2.2) > 1.2) b.add(cyl(0.16, 0.2, 0.55, 10), ironM(), tr(O + x, 0, 0.55));
   for (const [x, z] of [[-6.8, 1.4], [-7.4, 1.9], [7.2, 1.5], [9.5, 6.5]]) barrel(b, O + x, z);
