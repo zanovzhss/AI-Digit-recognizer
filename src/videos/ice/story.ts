@@ -421,10 +421,10 @@ export const DOF: Dof[] = [
   { f: 407, cInf: 9, focus: () => [ICE_PATCH[0], 1.2, ICE_PATCH[2]] },
   { f: 471, cInf: 0 },
   { f: 522, cInf: 13, focus: () => [PORT.stack[0], 0.4, PORT.stack[2]] },
-  { f: 578, cInf: 14, focus: () => [PORT.wallet[0], 0.03, PORT.wallet[2]] },
+  { f: 578, cInf: 14, focus: (f) => camRig(12, f).look }, // the wallet, then the rolling coin
   { f: 660, cInf: 0 },
   { f: 736, cInf: 9, focus: () => [PORT.stack[0], 0.1, PORT.stack[2]] },
-  { f: 754, cInf: 10, focus: () => [TUDOR_CELL[0], 1.05, TUDOR_CELL[2]] },
+  { f: 754, cInf: 10, focus: (f) => lerp3([TUDOR_CELL[0], 1.05, TUDOR_CELL[2]], [GUARD_P[0], EYE_H, GUARD_P[2]], glide((f - 762) / 12)) }, // Tudor, racking to the guard before his yawn
   { f: 836, cInf: 11, focus: () => [TUDOR_CELL[0], 1.1, TUDOR_CELL[2]] },
   { f: 894, cInf: 13, focus: () => C(CELL_WIN.x, CELL_WIN.y + 0.1, CELLAR.z0 - 0.1) },
   { f: 950, cInf: 11, focus: () => [TUDOR_WIN[0], EYE_H, TUDOR_WIN[2]] },
@@ -439,11 +439,13 @@ export const DOF: Dof[] = [
   { f: 1510, cInf: 11, focus: () => [MARKET.stall[0], 1.5, MARKET.stall[2] + 0.9] },
   { f: 1602, cInf: 14, focus: () => [MARKET.tudor[0], EYE_H, MARKET.tudor[2]] },
 ];
+/** sharpness pass: every blur strength at 60 % of the table (all at or under the template's documented values) */
+export const DOF_SCALE = 0.6;
 export const dofAt = (f: number) => {
   let i = 0; while (i + 1 < DOF.length && f >= DOF[i + 1].f) i++;
   const d = DOF[i], p = DOF[Math.max(0, i - 1)];
   const k = d.dur ? Math.min(1, (f - d.f) / d.dur) : 1;
-  return { cInf: p.cInf + (d.cInf - p.cInf) * k, focus: d.focus };
+  return { cInf: DOF_SCALE * (p.cInf + (d.cInf - p.cInf) * k), focus: d.focus };
 };
 export const focusAt = (id: number, f: number): V3 => { const d = dofAt(f); return d.focus ? d.focus(f) : camAt(id, f).look; };
 

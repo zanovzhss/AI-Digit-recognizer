@@ -1,8 +1,9 @@
-// Camera motion blur for the fly-through transitions and the always-moving camera: every pixel is reprojected from
-// its depth into the camera of a moment earlier (the shutter interval), and the colour is gathered along that
-// screen-space path. The world is static apart from the cast, so camera reprojection gives the right streaks for
-// whips (rotation: depth-independent), fly-throughs (translation: near things smear more) and orbits. Deterministic:
-// the previous camera comes from camAt(id, f - shutter), a pure function of the shot and frame.
+// Camera motion blur for the fast moves only (whips, fly-throughs, passes): every pixel is reprojected into the
+// camera of half a frame earlier, assuming it sits at the subject's focus distance, and the colour is gathered along
+// that screen-space path. No depth read: in this composer chain a second depth-reading effect after the lens blur got
+// a stale depth texture and smeared in-focus subjects with the whole camera rotation. At the focus distance the
+// subject itself reprojects exactly; during whips (pure rotation) every depth does. `amount` scales the streak with
+// the camera's own speed (Bridge.tsx): zero on glides, orbits and holds, full on whips and flights.
 // Pixel lengths are specified at 1080x1920 and scale with the output height, like the other post parameters.
 import { Effect, EffectAttribute, BlendFunction } from "postprocessing";
 import { Uniform, Matrix4, Vector2 } from "three";
@@ -11,20 +12,21 @@ const frag = /* glsl */ `
 uniform mat4 mbViewInv;    // current camera matrixWorld
 uniform mat4 mbPrevVP;     // previous projection * previous view
 uniform vec2 mbProj;       // current projection [0][0], [1][1]
+uniform float mbDepth;     // assumed view distance of every pixel (the focus distance)
 uniform float mbMaxPx;     // longest streak (px at 1080x1920)
-uniform float mbOn;        // 0 = bypass
+uniform float mbAmount;    // 0 = off .. 1 = full streak
 
 float mbHash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
 
-void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth, out vec4 outputColor) {
-  if (mbOn < 0.5) { outputColor = inputColor; return; }
-  float vz = getViewZ(depth);
+void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor) {
+  if (mbAmount < 0.01) { outputColor = inputColor; return; }
+  float vz = -mbDepth;
   vec2 ndc = uv * 2.0 - 1.0;
   vec4 view = vec4(ndc.x * -vz / mbProj.x, ndc.y * -vz / mbProj.y, vz, 1.0);
   vec4 clip = mbPrevVP * (mbViewInv * view);
   vec2 prev = clip.w > 0.0 ? clip.xy / clip.w * 0.5 + 0.5 : uv;
   vec2 px = vec2(1080.0, 1920.0);
-  vec2 v = (uv - prev) * px;                    // streak in 1080x1920 px
+  vec2 v = (uv - prev) * px * mbAmount;         // streak in 1080x1920 px
   float L = length(v);
   if (L < 0.75) { outputColor = inputColor; return; }
   if (L > mbMaxPx) v *= mbMaxPx / L;
@@ -40,13 +42,13 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, const in float depth,
 }`;
 
 export class MotionBlurEffect extends Effect {
-  constructor(maxPx = 220) {
+  constructor(maxPx = 100) {
     super("MotionBlurEffect", frag, {
       blendFunction: BlendFunction.NORMAL,
-      attributes: EffectAttribute.DEPTH | EffectAttribute.CONVOLUTION,
+      attributes: EffectAttribute.CONVOLUTION,
       uniforms: new Map<string, Uniform>([
         ["mbViewInv", new Uniform(new Matrix4())], ["mbPrevVP", new Uniform(new Matrix4())],
-        ["mbProj", new Uniform(new Vector2(1, 1))], ["mbMaxPx", new Uniform(maxPx)], ["mbOn", new Uniform(1)],
+        ["mbProj", new Uniform(new Vector2(1, 1))], ["mbDepth", new Uniform(5)], ["mbMaxPx", new Uniform(maxPx)], ["mbAmount", new Uniform(0)],
       ]),
     });
   }
@@ -57,5 +59,6 @@ export class MotionBlurEffect extends Effect {
     (u.get("mbPrevVP")!.value as Matrix4).multiplyMatrices(prevProj, prevViewInverse);
     (u.get("mbProj")!.value as Vector2).set(curProj.elements[0], curProj.elements[5]);
   }
-  set on(v: boolean) { this.uniforms.get("mbOn")!.value = v ? 1 : 0; }
+  set depth(v: number) { this.uniforms.get("mbDepth")!.value = v; }
+  set amount(v: number) { this.uniforms.get("mbAmount")!.value = v; }
 }

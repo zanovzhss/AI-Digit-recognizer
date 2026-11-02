@@ -42,6 +42,12 @@ const makeBloom = () => {
 
 const fwd = new THREE.Vector3(), fpt = new THREE.Vector3();
 const prevCam = new THREE.PerspectiveCamera();
+const tp = new THREE.Vector3();
+/** how far (px at 1080 wide) the point on the view axis at distance d moves on screen between prev and cur */
+const screenTravel = (cur: THREE.PerspectiveCamera, prev: THREE.PerspectiveCamera, d: number) => {
+  tp.set(0, 0, -d).applyMatrix4(cur.matrixWorld).project(prev);
+  return tp.z >= 1 ? 1000 : Math.hypot(tp.x * 540, tp.y * 960);
+};
 
 const useKit = () => {
   const [kit, setKit] = useState<Kit | null>(null);
@@ -58,7 +64,7 @@ const Inner: React.FC<{ id: number; kit: Kit }> = ({ id, kit }) => {
   const on = useMemo(toggles, []);
   const fx = useMemo(() => ({
     ink: new InkPass(scene, camera as THREE.PerspectiveCamera),
-    lens: new LensBlur({ maxCoC: 24, nearScale: 1.2 }),
+    lens: new LensBlur({ maxCoC: 14, nearScale: 0.35 }), // background blur; near foreground only gently
     bloom: makeBloom(),
     tone: new ToneMappingEffect({ mode: ToneMappingMode.NEUTRAL }),
     grade: new GradeEffect(GRADES.day, GRADE_STRENGTH.day),
@@ -95,6 +101,10 @@ const Inner: React.FC<{ id: number; kit: Kit }> = ({ id, kit }) => {
   prevCam.fov = pc.fov; prevCam.aspect = cam.aspect; prevCam.near = cam.near; prevCam.far = cam.far;
   prevCam.updateProjectionMatrix(); prevCam.updateMatrixWorld();
   fx.mblur.setCameras(cam.matrixWorld, cam.projectionMatrix, prevCam.projectionMatrix, prevCam.matrixWorldInverse);
+  // streak only on fast moves: the screen travel over the shutter of a point at the focus distance and of a far point
+  // (px at 1080 wide); none below ~60 px (glides, orbits, holds), full from ~160 px (whips, fly-throughs)
+  fx.mblur.depth = fx.lens.focus;
+  fx.mblur.amount = THREE.MathUtils.smoothstep(Math.max(screenTravel(cam, prevCam, fx.lens.focus), screenTravel(cam, prevCam, 400)), 60, 160);
   gradeFor(fx.grade, SHOTS[id - 1].light);
   fx.grain.seed = f; // deterministic per frame
   return (
