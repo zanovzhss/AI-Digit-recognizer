@@ -312,7 +312,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       if (id === 6) ([[-10.2, 2.4], [-9.1, 4.6], [-8.4, 3.1], [-4.8, 6.2], [-3.9, 3.4], [-2.6, 5.1], [-6.6, 8.4]] as const).forEach(([x, z], i) =>
         fig(out, cam, mk(40 + i, townsfolk(i), "tf" + i), at("harbor", x, 0, z), f, { mode: "stand", expr: "laugh", prop: i % 2 ? "point" : null, wave: i % 2 ? undefined : q(0.5 + 0.5 * Math.sin(f * 0.4 + i), 6) }, { flip: i % 3 === 0 }));
       if (id === 8) {
-        const P: [number, number, number, boolean][] = [[-8.1, 2.0, 0, false], [-7.2, 3.3, 1, true], [-5.4, 1.6, 2, false], [-4.8, 4.4, 3, true], [-6.3, 5.9, 4, false], [-8.6, 6.6, 5, true]];
+        const P: [number, number, number, boolean][] = [[-7.7, 2.0, 0, false], [-7.0, 3.4, 1, true], [-5.5, 1.8, 2, false], [-5.3, 4.5, 3, true], [-6.4, 6.0, 4, false], [-7.9, 6.4, 5, true]];
         P.forEach(([x, z, v, pt], i) => {
           const bob = Math.abs(Math.sin(f * 0.45 + i * 1.3));
           fig(out, cam, mk(40 + v, townsfolk(v), "tf" + v), at("harbor", x, 0, z), f, { mode: "stand", expr: f < cue(W.joke) && i % 2 ? "grin" : "laugh", prop: pt ? "point" : null, wave: pt ? undefined : q(bob, 6),

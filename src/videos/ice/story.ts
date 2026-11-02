@@ -190,15 +190,15 @@ const RIGS: Record<number, Rig> = {
   // 4 harbor: Tudor from below, proud, the brig behind
   4: { look: fixed("harbor", -1.0, 1.35, 2.8), A: S(4.8, 42, -9, 35, -2), B: S(3.4, 14, -11, 34, -3) },
   // 5 on deck: crane down toward the plank as the blocks come aboard
-  5: { look: fixed("harbor", 2.3, 0.9, 1.6), A: S(6.6, 162, 13, 40, 2), B: S(5.0, 140, 6, 40, 1) },
+  5: { look: fixed("harbor", 2.3, 0.9, 1.6), A: S(6.8, 166, 15, 40, 2), B: S(6.0, 156, 10, 40, 1) },
   // 6 aerial: orbit the brig as it leaves the snowy harbour
   6: { look: (f) => { const b = brigAt(6, f); return [b.pos[0] - 2, 0, b.pos[2] - 6]; }, A: S(64, 60, 40), B: S(42, 10, 30) },
   // 7 street: the newspaper from below, sliding round the newsboy
   7: { look: fixed("street", -3.12, 0.9, 4.1), A: S(2.6, -14, -7, 36, 2), B: S(1.9, 14, -3, 36, 3) },
   // 8 harbor quay: low through the laughing crowd
-  8: { look: fixed("harbor", -6.5, 1.15, 3.6), A: S(8.4, 32, -1, 40, -1), B: S(6.2, 6, -5, 38, -2) },
+  8: { look: fixed("harbor", -6.5, 1.15, 3.8), A: S(10.4, 30, 0, 40, -1), B: S(9.4, 14, -3, 38, -2) },
   // 9 street: ground-level push down the lane to the slip
-  9: { look: fixed("street", -2.9, 0.8, 5.0), A: S(7.8, 26, 3, 40), B: S(5.4, 0, -1, 40, 1.5) },
+  9: { look: fixed("street", -3.0, 0.8, 5.2), A: S(7.8, 26, 3, 40), B: S(6.6, 8, -1, 40, 1.5) },
   // 10 Caribbean port wide (scale): crane down onto the quay
   10: { look: fixed("port", -0.6, 0.9, 0.4), A: S(22, 52, 22, 40), B: S(12, 12, 7, 40) },
   // 11 the melting stack, Tudor sweating behind it, from below
@@ -222,7 +222,7 @@ const RIGS: Record<number, Rig> = {
   20: { look: fixed("cell", -1.75, 0.66, -3.0), A: S(1.2, 70, 28, 30), B: S(0.8, -20, 8, 30) },
   21: { look: fixed("cell", -1.75, 0.66, -3.0), A: S(1.4, -40, 6, 34, 1), B: S(1.0, 50, 18, 34, 3) },
   // 22 the hold: sawdust shovelled over the ice
-  22: { look: fixed("hold", 0, 0.8, 0.5), A: S(7.0, 24, 15, 40), B: S(4.8, -16, 2, 40, -1) },
+  22: { look: fixed("hold", 0.1, 1.0, 2.0), A: S(4.6, 22, 12, 40), B: S(4.5, 2, 5, 40, -1) },
   // 23 the mill yard, low past the logs
   23: { look: fixed("mill", -1.78, 1.51, -2.5), A: S(12.5, 50, 6, 40), B: S(8.2, 10, -1, 40, 1.5) },
   // 24 the brig alone on the hot ocean, aerial orbit (scale)

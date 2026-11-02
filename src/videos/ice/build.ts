@@ -1422,7 +1422,7 @@ export const dressPlaces = (root: THREE.Object3D, kit: Kit) => {
   footprints(b, [[H - 20, 9], [H - 9, 6.5], [H - 2.5, 4.2], [H + 1.8, 1.4]]);
   footprints(b, [[H - 6, 20], [H - 7.5, 12], [H - 6.6, 5]]);
   footprints(b, [[H + 14, 19], [H + 6, 9], [H + 2.6, 2.2]]);
-  for (const [x, z] of [[-13, 2.6], [-4.5, 9.8], [8.6, 3.4]] as const) if (clearAt(H + x, z, 0.3, 0.5)) sack(b, H + x, 0, z, 1, x);
+  for (const [x, z] of [[-13, 2.6], [-11.2, 9.8], [8.6, 3.4]] as const) if (clearAt(H + x, z, 0.3, 0.5)) sack(b, H + x, 0, z, 1, x);
   snowField(b, H, 10, 40, 16, 62);
 
   // the Caribbean port: a full dock floor of boards on the quay, coils, crates, sacks, a stall and a cart
