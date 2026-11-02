@@ -253,7 +253,7 @@ const fly = (pre: number, post: number, lift = 0): Tr => ({ kind: "fly", pre, po
 const whip = (dir: 1 | -1, pre = 7, post = 8, deg = 63): Tr => ({ kind: "whip", pre, post, dir, deg });
 const wipe = (w: Wipe, dir: 1 | -1, pre = 6, post = 6): Tr => ({ kind: "wipe", pre, post, dir, wipe: w });
 export const TRANS: Record<number, Tr> = {
-  1: fly(5, 6), 2: wipe("hull", 1), 3: wipe("crate", -1), 4: fly(5, 5, 0.6), 5: fly(5, 5, 6), 6: wipe("sail", 1), 7: wipe("crate", 1),
+  1: fly(5, 6), 2: wipe("hull", 1), 3: wipe("crate", -1), 4: fly(5, 5, 3), 5: fly(5, 5, 6), 6: wipe("sail", 1), 7: wipe("crate", 1),
   8: wipe("hull", -1), 9: wipe("hull", -1), 10: fly(5, 5, 2), 11: fly(5, 5), 12: wipe("crate", 1), 13: wipe("sail", -1), 14: wipe("sail", 1),
   15: wipe("crate", -1), 16: fly(7, 7), 17: fly(6, 6), 18: fly(6, 6), 19: fly(6, 6), 20: fly(6, 6), 21: wipe("sail", 1), 22: wipe("sail", -1),
   23: whip(-1), 24: wipe("hull", 1), 25: wipe("sail", 1), 26: fly(5, 5, 8), 27: fly(5, 5, 1), 28: fly(5, 5),
@@ -372,8 +372,8 @@ const screenX = (id: number, f: number, p: V3) => {
 };
 /** a framing prop near the lens. A close prop sweeps across the frame as the camera orbits, so the placement is
  *  searched (anchor moment, side distance, depth): in view (|x| < 1.1) for at least a quarter of the shot, over the
- *  middle of the frame (|x| < 0.6, where the subject is) for at most 15 % of it, as much screen time as possible */
-const fgOf = (id: number, kit: string, u: number, dist: number, sx: number, sc = 1, yaw = 0.4, y = 0): Fg | null => {
+ *  middle of the frame (|x| < 0.6, where the subject is) for at most 8 % of it, as much screen time as possible */
+const fgOf = (id: number, kit: string, u: number, dist: number, sx: number, sc = 1, yaw = 0.4, y = 0, maxOver = 0.08): Fg | null => {
   const s = SHOTS[id - 1];
   let best: { pos: V3; score: number } | null = null;
   for (const dk of [1, 1.4, 1.9]) for (const ak of [1, 1.2, 1.45]) for (const uu of [u, 0.1, 0.3, 0.5, 0.7, 0.9]) {
@@ -386,14 +386,16 @@ const fgOf = (id: number, kit: string, u: number, dist: number, sx: number, sc =
       if (Math.abs(x) < 1.1) seen++;
     }
     const score = seen - 4 * over - 3 * (dk - 1) * n * 0.1;
-    if (seen >= n / 4 && over <= n * 0.15 && (!best || score > best.score)) best = { pos, score };
+    if (seen >= n / 4 && over <= n * maxOver && (!best || score > best.score)) best = { pos, score };
   }
   return best ? { a: s.a, b: s.b, kit, pos: best.pos, s: sc, yaw } : null;
 };
 export const FOREGROUND: Fg[] = ([
-  fgOf(1, "barrel", 0.8, 1.6, -1.25, 0.9), fgOf(3, "ice", 0.7, 2.2, 1.25, 0.8), fgOf(4, "lantern", 0.6, 1.4, -1.2, 2.8),
-  fgOf(8, "crate", 0.6, 2.0, 1.15, 0.9), fgOf(9, "fencepost", 0.7, 1.4, -1.1, 1.1), fgOf(10, "palm", 0.6, 5.5, -0.95, 7),
-  fgOf(11, "barrel", 0.6, 1.4, 1.25, 0.8), fgOf(12, "rope", 0.6, 0.55, -0.85, 0.45), fgOf(15, "crate", 0.5, 1.9, -1.15, 0.8),
-  fgOf(22, "barrel", 0.6, 1.9, -1.2, 0.8), fgOf(23, "cart", 0.6, 4.0, 1.3, 1.5, 2.2), fgOf(26, "rope", 0.6, 2.0, -0.7, 1, 0, DECK_Y + WATER_Y),
-  fgOf(27, "barrel", 0.6, 3.0, 0.9), fgOf(28, "crate", 0.6, 1.9, -1.25, 0.8), fgOf(29, "barrel", 0.6, 1.5, 1.15),
+  // low crates / barrels (they cross legs, not faces) may pass the middle a little longer
+  fgOf(1, "barrel", 0.8, 1.6, -1.25, 0.9, 0.4, 0, 0.12), fgOf(3, "ice", 0.7, 2.2, 1.25, 0.8), fgOf(4, "lantern", 0.6, 1.4, -1.2, 2.8),
+  fgOf(5, "barrel", 0.5, 1.8, 1.2, 0.8, 0.4, DECK_Y + WATER_Y, 0.12), fgOf(8, "crate", 0.6, 2.0, 1.15, 0.9, 0.4, 0, 0.12),
+  fgOf(9, "fencepost", 0.7, 1.4, -1.1, 1.1), fgOf(10, "palm", 0.6, 5.5, -0.95, 7), fgOf(12, "rope", 0.6, 0.55, -0.85, 0.45),
+  fgOf(15, "crate", 0.5, 1.9, -1.15, 0.8), fgOf(22, "barrel", 0.6, 1.9, -1.2, 0.8), fgOf(23, "cart", 0.6, 4.0, 1.3, 1.5, 2.2),
+  fgOf(26, "rope", 0.6, 2.0, -0.7, 1, 0, DECK_Y + WATER_Y), fgOf(27, "barrel", 0.6, 3.0, 0.9, 1, 0.4, 0, 0.12),
+  fgOf(28, "crate", 0.6, 1.9, -1.25, 0.8, 0.4, 0, 0.12), fgOf(29, "barrel", 0.6, 1.5, 1.15),
 ]).filter((g): g is Fg => g !== null);

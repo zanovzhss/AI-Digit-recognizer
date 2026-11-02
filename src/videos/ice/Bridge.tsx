@@ -62,7 +62,7 @@ const Inner: React.FC<{ id: number; kit: Kit }> = ({ id, kit }) => {
     bloom: makeBloom(),
     tone: new ToneMappingEffect({ mode: ToneMappingMode.NEUTRAL }),
     grade: new GradeEffect(GRADES.day, GRADE_STRENGTH.day),
-    mblur: new MotionBlurEffect(160),
+    mblur: new MotionBlurEffect(100),
     grain: new GrainEffect({ amount: 0.025, cellPx: 1.5 }), // film grain, OFF by default (inputProps post.grain): the reference measures no grain and it quadruples the file size
   }), [camera, scene]);
   useEffect(() => () => fx.ink.dispose(), [fx]);

@@ -237,9 +237,10 @@ export class World {
     //      unlit painted boards / cloth with irregular dark seams, so they read in any scene and keep moving even
     //      while they cover the frame ----
     const wipeTex = (k: Wipe) => ctex("wipe" + k, 512, 256, (g, r) => {
-      const [base, alt, seam] = k === "hull" ? ["#4a3020", "#5c3c28", "#120a06"] : k === "crate" ? ["#b78656", "#9a6c42", "#3a2414"] : ["#f2ead8", "#e4d8bf", "#8a7a62"];
-      for (let x = 0; x < 512;) {
-        const w = 26 + r() * 70; g.fillStyle = r() < 0.5 ? base : alt; g.fillRect(x, 0, w, 256);
+      // planks alternate light / dark (weathered vs tarred, sunlit vs folded cloth) so the frame keeps changing while it covers it
+      const [base, alt, seam] = k === "hull" ? ["#7a5436", "#2e1c12", "#0c0604"] : k === "crate" ? ["#d2a46e", "#7a5030", "#2a180c"] : ["#f6efe0", "#b8a888", "#6a5a44"];
+      for (let x = 0, i = 0; x < 512; i++) {
+        const w = 26 + r() * 70; g.fillStyle = i % 2 ? alt : base; g.fillRect(x, 0, w, 256);
         g.fillStyle = seam; g.fillRect(x + w - (k === "sail" ? 4 : 7), 0, k === "sail" ? 4 : 7, 256); x += w;
       }
       if (k === "crate") { g.fillStyle = seam; g.fillRect(0, 40, 512, 22); g.fillRect(0, 196, 512, 22); }
