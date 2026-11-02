@@ -139,9 +139,10 @@ const PL: [PlaceId, Light, number?, number?][] = [
   ["calcutta", "golden"], ["calcutta", "golden"], ["calcutta", "golden"], ["calcutta", "golden"], // 26-29
 ];
 export const SHOTS: ShotDef[] = PL.map(([place, light, sunAz, sunEl], i) => ({ id: i + 1, a: B[i], b: B[i + 1], light, place, sunAz, sunEl }));
-/** hard cuts only; the white flash after the hook */
+/** hard cuts only (crossfades unused) */
 export const XFADE: Record<number, number> = {};
-export const FLASH_AT = B[2];
+/** no white flash: the brief allows one only on the single big impact, and none of the cuts is one */
+export const FLASH_AT: number | null = null;
 
 export const shotAt = (f: number) => SHOTS.find((s) => f >= s.a && f < s.b) ?? SHOTS[SHOTS.length - 1];
 export const layersAt = (f: number): { id: number; alpha: number }[] => {
@@ -155,11 +156,7 @@ export const layersAt = (f: number): { id: number; alpha: number }[] => {
 // ---------------- camera ----------------
 // Cinematic pass: the camera never holds. Every shot is one eased move (orbit / push / crane, with a slow float on
 // top) around its subject, and every shot boundary is a transition that straddles the unchanged cut frame:
-//   fly  - same place: one continuous flight from shot k's framing into shot k+1's (both rigs keep moving under it)
-//   whip - place change: shot k whips away with accelerating yaw, shot k+1 arrives mid-whip and settles; the switch
-//          happens at peak angular speed, inside the motion blur (motionblur.ts)
-//   wipe - place change: a foreground object (crate, ship hull, sail) sweeps across the lens and the switch happens
-//          while it covers the frame (world.ts poses the wiper from wipeAt)
+//   (the transitions section below: whips, flights, match cuts, tilts, hard cuts and passes of real objects)
 export type Cam = { pos: V3; look: V3; fov: number; roll: number };
 /** a framing around a subject: distance (m), azimuth (deg from +z toward +x), elevation (deg; negative = lens below
  *  the look point, looking up), fov (deg), roll (deg) */
@@ -200,7 +197,7 @@ const RIGS: Record<number, Rig> = {
   // 9 street: ground-level push down the lane to the slip
   9: { look: fixed("street", -3.0, 0.8, 5.2), A: S(7.8, 26, 3, 40), B: S(6.6, 8, -1, 40, 1.5) },
   // 10 Caribbean port wide (scale): crane down onto the quay
-  10: { look: fixed("port", -0.6, 0.9, 0.4), A: S(22, 52, 22, 40), B: S(12, 12, 7, 40) },
+  10: { look: fixed("port", -0.6, 0.9, 0.4), A: S(22, 52, 30, 40), B: S(12, 12, 7, 40) },
   // 11 the melting stack, Tudor sweating behind it, from below
   11: { look: fixed("port", -1.7, 0.75, 1.5), A: S(6.0, 46, 1, 36, 2), B: S(4.2, 16, -5, 34, 3) },
   // 12 the empty wallet on the dock boards; the look follows the coin as it rolls away
@@ -220,7 +217,7 @@ const RIGS: Record<number, Rig> = {
   19: { look: fixed("cell", 0.35, 1.45, -3.05), A: S(3.8, -45, -8, 38, -1), B: S(2.6, 0, -2, 38, -2) },
   // 20-21 the bottle and the towel: one orbit carried across the cut
   20: { look: fixed("cell", -1.75, 0.66, -3.0), A: S(1.2, 70, 28, 30), B: S(0.8, -20, 8, 30) },
-  21: { look: fixed("cell", -1.75, 0.66, -3.0), A: S(1.4, -40, 6, 34, 1), B: S(1.0, 50, 18, 34, 3) },
+  21: { look: fixed("cell", -1.75, 0.66, -3.0), A: S(1.4, -20, 6, 34, 1), B: S(1.0, 50, 18, 34, 3) },
   // 22 the hold: sawdust shovelled over the ice
   22: { look: fixed("hold", 0.1, 1.0, 2.0), A: S(4.6, 22, 12, 40), B: S(4.5, 2, 5, 40, -1) },
   // 23 the mill yard, low past the logs
@@ -238,64 +235,158 @@ const RIGS: Record<number, Rig> = {
   // 29 Tudor's smile, from below
   29: { look: fixed("calcutta", 73.3, 1.6, 15.0), A: S(3.1, -40, -9, 32, -2), B: S(2.0, 8, -4, 32, -3) },
 };
-const MOVE_X = 1.06;
+const MOVE_X = 1.14;
 /** the shot's own move (no transitions, no kicks): what the sight lines, the sun and the foreground props are built for */
 export const camRig = (id: number, f: number): Cam => {
-  // the move runs 3 % past A and B at either end (MOVE_X = 1.06): a little more travel, framings kept
+  // the move runs 7 % past A and B at either end (MOVE_X = 1.14): a little more travel, framings kept
   const s = SHOTS[id - 1], r = RIGS[id], k = mixS(r.A, r.B, 0.5 + (ease((f - s.a) / (s.b - s.a)) - 0.5) * MOVE_X);
   const c = sph(r.look(f), k), a = 0.016 * k.d; // float: a slow drift of ~1.6 % of the distance
   return { ...c, pos: [c.pos[0] + a * Math.sin(f * 0.085 + id), c.pos[1] + 0.6 * a * Math.sin(f * 0.11 + 2 * id), c.pos[2] + a * Math.cos(f * 0.075 + id)] };
 };
 
-// ---------------- transitions (key k = the boundary between shot k and shot k+1) ----------------
-export type Wipe = "crate" | "hull" | "sail";
-type Tr = { kind: "fly" | "whip" | "wipe"; pre: number; post: number; dir?: 1 | -1; deg?: number; lift?: number; wipe?: Wipe };
-const fly = (pre: number, post: number, lift = 0): Tr => ({ kind: "fly", pre, post, lift });
-// whip: peak turn ~17 deg/frame (about 3/4 of the frame width): faster than that the blurred frames all look alike
-const whip = (dir: 1 | -1, pre = 7, post = 8, deg = 63): Tr => ({ kind: "whip", pre, post, dir, deg });
-const wipe = (w: Wipe, dir: 1 | -1, pre = 6, post = 6): Tr => ({ kind: "wipe", pre, post, dir, wipe: w });
+// ---------------- transitions (key k = the boundary between shot k and shot k+1, on its unchanged cut frame) ----------------
+// Six kinds, picked by what the line is about (transitions.md lists them all). Every move eases with the template's
+// smootherstep (glide); hard cuts land on a strong word with a flip kick. Nothing is inserted into the scene: the
+// object wipes use the brig's own sail and hull and a Calcutta passer-by, all of them really in the shot.
+//   whip  - fast sideways swing (yaw), landing on a face that comes in close to the lens and settles back
+//   fly   - the camera keeps flying forward (and down); the place changes at peak speed inside the motion blur.
+//           Inside one place it is one continuous flight between the two framings.
+//   match - the outgoing camera centres one object, the incoming one starts on a matching shape at the same place
+//           and size in the frame, then glides into its own move
+//   tilt  - tilt up to the sky or down to the ground, then back down / up into the new place
+//   cut   - a plain hard cut on the word, with a 7-frame flip kick and a creeping push-in
+//   pass  - object wipe: a real object of the shot passes right in front of the lens (camera-driven)
+type Kind = "whip" | "fly" | "match" | "tilt" | "cut" | "pass";
+type Tr = { kind: Kind; pre: number; post: number; dir?: 1 | -1; deg?: number; lift?: number; push?: number; drop?: number;
+  a?: (f: number) => Cam; b?: (f: number) => Cam; via?: (f: number) => Cam; side?: "in" | "out" | "both" };
+/** a framing around a target point (for match cuts and passes) */
+const camOn = (look: (f: number) => V3, s: Sph) => (f: number) => sph(look(f), s);
+const whip = (dir: 1 | -1, pre: number, post: number, deg = 55): Tr => ({ kind: "whip", pre, post, dir, deg });
+/** fly: same place = continuous flight with a lift; place change = forward flight (push x rig distance) and drop (m) */
+const fly = (pre: number, post: number, lift = 0, push = 0, drop = 0): Tr => ({ kind: "fly", pre, post, lift, push, drop });
+const match = (pre: number, post: number, a: (f: number) => Cam, b: (f: number) => Cam): Tr => ({ kind: "match", pre, post, a, b });
+/** tilt: dir +1 = up to the sky, -1 = down to the ground */
+const tilt = (dir: 1 | -1, pre: number, post: number, deg = 72): Tr => ({ kind: "tilt", pre, post, dir, deg });
+/** cut: instant, then a punch-word push-in (template: ~0.5 %/f) settling into the shot's own move over `post` frames */
+const cut = (post = 10): Tr => ({ kind: "cut", pre: 0, post });
+/** pass: `via` is the camera beside the passing object. Between two places it drives one side of the cut only and the
+ *  other side keeps moving with a fast push (out) or a flying arrival (in), `push` x rig distance */
+const pass = (pre: number, post: number, via: (f: number) => Cam, side: "in" | "out" | "both" = "both", push = 0): Tr => ({ kind: "pass", pre, post, via, side, push });
+// brig-local point -> world (local +x = bow), for the sail / hull passes
+const onBrig = (id: number, f: number, x: number, y: number, z: number): V3 => {
+  const b = brigAt(id, f), c = Math.cos(b.yaw), s = Math.sin(b.yaw);
+  return [b.pos[0] + x * c + z * s, b.pos[1] + y, b.pos[2] - x * s + z * c];
+};
+const BULB_PT: V3 = [TUDOR_CELL[0], TUDOR_CELL[1] + 1.45, TUDOR_CELL[2] + 0.05];
 export const TRANS: Record<number, Tr> = {
-  1: fly(5, 6), 2: wipe("hull", 1), 3: wipe("crate", -1), 4: fly(5, 5, 3), 5: fly(5, 5, 6), 6: wipe("sail", 1), 7: wipe("crate", 1),
-  8: wipe("hull", -1), 9: wipe("hull", -1), 10: fly(5, 5, 2), 11: fly(5, 5), 12: wipe("crate", 1), 13: wipe("sail", -1), 14: wipe("sail", 1),
-  15: wipe("crate", -1), 16: fly(7, 7), 17: fly(6, 6), 18: fly(6, 6), 19: fly(6, 6), 20: fly(6, 6), 21: wipe("sail", 1), 22: wipe("sail", -1),
-  23: whip(-1), 24: wipe("hull", 1), 25: wipe("sail", 1), 26: fly(5, 5, 8), 27: fly(5, 5, 1), 28: fly(5, 5),
+  1: whip(1, 4, 6),                                       // "never seen snow": whip onto the local's face
+  2: tilt(1, 7, 7),                                       // tropics -> 1806 Boston: up into the sky, down onto the pond
+  3: whip(-1, 5, 4, 50),                                  // "...and Frederic Tudor": whip onto Tudor's face
+  4: cut(),                                               // hard cut on "loaded"
+  5: fly(6, 6, 6),                                        // the ship sets off: one flight up off the deck
+  6: cut(),                                               // hard cut on "the newspaper"
+  7: whip(1, 5, 6),                                       // "calls it a joke": whip onto the laughing crowd
+  8: cut(),                                               // hard cut on "prove"
+  9: match(10, 4, camOn(() => [ICE_PATCH[0], 0.02, ICE_PATCH[2]], S(2.4, 10, 65, 40)),
+    camOn(() => at("port", PORT.stack[0] - OFF.port, 1.0, PORT.stack[2]), S(3.6, 10, 65, 40))), // ice patch -> the melting stack
+  10: fly(5, 5, 2),                                       // "most of the ice melts": flight down to the stack
+  11: tilt(-1, 6, 6, 45),                                 // "...even lands": tilt down onto the boards and the wallet
+  12: pass(3, 6, (f) => {                                 // "so he tries again": the departing brig's own sail sweeps the lens
+    const u = clamp01((f - 657) / 9), zz = 1.6 + 6.0 * glide(u); // already sliding on the cut frame
+    return { pos: onBrig(13, f, 6.4, 6.4, zz), look: onBrig(13, f, 3.4, 6.4, zz), fov: 40, roll: 0 };
+  }, "in", 0.8),
+  13: match(3, 3, camOn(brigLook(13, 10.2), S(40, 12, -4, 40)), camOn(brigLook(14, 10.2), S(40, 12, -4, 40))), // brig -> brig
+  14: fly(6, 7, 0, 0.45, 3),                              // "again and again": flying on with the voyage into the port
+  15: tilt(-1, 5, 6, 30),                                     // "by 1812": down into the puddles, up from the cell floor
+  16: whip(1, 5, 6, 80),                                  // "figures it out": whip onto Tudor
+  17: match(2, 3, camOn(() => BULB_PT, S(0.9, 15, -5, 38)), camOn(() => C(CELL_WIN.x, CELL_WIN.y, CELLAR.z0), S(1.0, 0, -5, 38))), // bulb -> window
+  18: cut(),                                              // hard cut on "it needs"
+  19: tilt(-1, 4, 5, 55),                                 // "warm air": down to the bench and the bottle
+  20: cut(),                                              // hard cut on "towel"
+  21: match(3, 4, camOn(() => [BOTTLE[0], BOTTLE[1] + 0.15, BOTTLE[2]], S(0.75, 20, 12, 34)),
+    camOn(() => at("hold", 0.03, 0.72, 1.8), S(2.2, 55, 20, 34))), // the wrapped bottle -> ice packed in sawdust
+  22: tilt(-1, 6, 7, 50),                                 // "lumber mills": down onto the sawdust, up from the mill's sandy yard
+  23: fly(7, 7, 0, 0.4, 2),                               // "in 1833 he ships": flying out over the ocean
+  24: pass(6, 6, (f) => {                                 // "...to India": dive at the brig's hull, through into the hold
+    const u = clamp01((f - 1325) / 6), y = 1.5 - 1.1 * eIn(u);
+    return { pos: onBrig(24, f, -1.5 + 3 * glide(u), y, 4.0), look: onBrig(24, f, -1.5 + 3 * glide(u), y - 0.3, 0), fov: 40, roll: 0 };
+  }, "out", 0.6),
+  25: match(3, 4, camOn(() => at("hold", -1.0, 1.42, 3.12), S(1.4, 0, 0, 34)), camOn((f) => onBrig(26, f, 0.4, 1.52, 0), S(5.5, 0, 85, 40))), // calendar page -> hatch lid
+  26: fly(6, 6, 8),                                       // "arrive": from the ship to the market in one flight
+  27: pass(6, 6, (f) => {                                 // "a city": past a strolling buyer, close to the lens
+    const p = at("calcutta", 74.4, 1.05, 19.4), u = clamp01((f - 1504) / 12), dx = -1.1 + 2.2 * glide(u);
+    return { pos: [p[0] + 0.55 + dx, p[1], p[2] + 0.5], look: [p[0] - 3.5 + dx, 1.2, p[2] - 6.0], fov: 40, roll: 0 };
+  }),
+  28: whip(-1, 5, 6),                                     // "...from the man": whip onto Tudor's smile
 };
 /** yaw the view about the lens (whips), with a little roll into the turn */
 const yawAbout = (c: Cam, ang: number): Cam => {
   const dx = c.look[0] - c.pos[0], dz = c.look[2] - c.pos[2], cs = Math.cos(ang), sn = Math.sin(ang);
   return { ...c, look: [c.pos[0] + dx * cs + dz * sn, c.look[1], c.pos[2] - dx * sn + dz * cs], roll: c.roll + 0.12 * ang };
 };
+/** pitch the view about the lens (tilts), clamped short of straight up / down */
+const pitchAbout = (c: Cam, ang: number): Cam => {
+  const d: V3 = [c.look[0] - c.pos[0], c.look[1] - c.pos[1], c.look[2] - c.pos[2]], L = Math.hypot(...d), h = Math.hypot(d[0], d[2]) || 1e-6;
+  const e = Math.max(-1.5, Math.min(1.5, Math.atan2(d[1], h) + ang));
+  return { ...c, look: [c.pos[0] + (d[0] / h) * Math.cos(e) * L, c.pos[1] + Math.sin(e) * L, c.pos[2] + (d[2] / h) * Math.cos(e) * L] };
+};
+/** smootherstep halves: ease-in (fastest at u = 1) and ease-out (fastest at u = 0), each with glide's peak speed */
+const eIn = (u: number) => 2 * glide(u / 2), eOut = (u: number) => 2 * glide(0.5 + u / 2) - 1;
+const fwdOf = (c: Cam): V3 => { const d: V3 = [c.look[0] - c.pos[0], c.look[1] - c.pos[1], c.look[2] - c.pos[2]], L = Math.hypot(...d) || 1; return [d[0] / L, d[1] / L, d[2] / L]; };
+const along = (c: Cam, v: V3, k: number, dy = 0): Cam => ({ ...c, pos: [c.pos[0] + v[0] * k, c.pos[1] + v[1] * k + dy, c.pos[2] + v[2] * k], look: [c.look[0] + v[0] * k, c.look[1] + v[1] * k + dy, c.look[2] + v[2] * k] });
 /** camera of shot id at frame f before kicks: its rig, taken over near its boundaries by the transitions */
 const camT = (id: number, f: number): Cam => {
   const s = SHOTS[id - 1], out = TRANS[id], inn = TRANS[id - 1];
-  if (out && f >= s.b - out.pre) {
-    const u = (f - (s.b - out.pre)) / (out.pre + out.post);
-    if (out.kind === "fly") { const c = mixC(camRig(id, f), camRig(id + 1, f), glide(u)); c.pos[1] += (out.lift ?? 0) * Math.sin(Math.PI * clamp01(u)); return c; }
-    if (out.kind === "whip") return yawAbout(camRig(id, f), out.dir! * out.deg! * D2R * ((f - (s.b - out.pre)) / out.pre) ** 2);
-    return camRig(id, f);
+  const samePlace = (k: number) => SHOTS[k - 1].place === SHOTS[k].place;
+  if (out && out.kind !== "cut" && f >= s.b - out.pre) {
+    const u = (f - (s.b - out.pre) + 1) / out.pre, c = camRig(id, f); // u reaches 1 on the last frame before the cut
+    switch (out.kind) {
+      case "whip": return yawAbout(c, out.dir! * out.deg! * D2R * eIn(u));
+      case "tilt": return pitchAbout(along(c, [0, 0, 0], 0, out.dir! * 0.5 * eIn(u)), out.dir! * out.deg! * D2R * eIn(u));
+      case "match": return mixC(c, out.a!(f), eIn(u)); // matched on motion: arrives at speed
+      case "pass": {
+        if (out.side !== "in") return mixC(c, out.via!(f), eIn(u));
+        const R = Math.hypot(c.pos[0] - c.look[0], c.pos[1] - c.look[1], c.pos[2] - c.look[2]);
+        return along(c, fwdOf(c), out.push! * R * eIn(u));
+      }
+      case "fly": {
+        if (samePlace(id)) { const v = (f - (s.b - out.pre)) / (out.pre + out.post), m = mixC(c, camRig(id + 1, f), glide(v)); m.pos[1] += out.lift! * Math.sin(Math.PI * clamp01(v)); return m; }
+        const R = Math.hypot(c.pos[0] - c.look[0], c.pos[1] - c.look[1], c.pos[2] - c.look[2]);
+        return along(c, fwdOf(c), out.push! * R * eIn(u), -out.drop! * eIn(u));
+      }
+    }
   }
-  if (inn && f < s.a + inn.post) {
-    const u = (f - (s.a - inn.pre)) / (inn.pre + inn.post);
-    if (inn.kind === "fly") { const c = mixC(camRig(id - 1, f), camRig(id, f), glide(u)); c.pos[1] += (inn.lift ?? 0) * Math.sin(Math.PI * clamp01(u)); return c; }
-    if (inn.kind === "whip") return yawAbout(camRig(id, f), -inn.dir! * inn.deg! * D2R * (1 - (f - s.a) / inn.post) ** 2);
-    return camRig(id, f);
+  if (inn && inn.kind === "cut" && f >= s.a && f < s.a + inn.post) {
+    const c = camRig(id, f), R = Math.hypot(c.pos[0] - c.look[0], c.pos[1] - c.look[1], c.pos[2] - c.look[2]);
+    return along(c, fwdOf(c), -0.05 * R * (1 - eOut((f - s.a) / inn.post)));
+  }
+  if (inn && inn.kind !== "cut" && f < s.a + inn.post) {
+    const u = (f - s.a) / inn.post, c = camRig(id, f);
+    switch (inn.kind) {
+      case "whip": { // lands on the face: the lens comes in to ~70 % of the distance and settles back with the swing
+        const k = 1 - 0.3 * (1 - glide(clamp01(u))), d: V3 = [c.pos[0] - c.look[0], c.pos[1] - c.look[1], c.pos[2] - c.look[2]];
+        return yawAbout({ ...c, pos: [c.look[0] + d[0] * k, c.look[1] + d[1] * k, c.look[2] + d[2] * k] }, -inn.dir! * inn.deg! * D2R * (1 - eOut(u)));
+      }
+      case "tilt": return pitchAbout(along(c, [0, 0, 0], 0, inn.dir! * 0.5 * (1 - eOut(u))), inn.dir! * inn.deg! * D2R * (1 - eOut(u)));
+      case "match": return mixC(inn.b!(f), c, eOut(clamp01(u))); // and leaves at speed
+      case "pass": {
+        if (inn.side !== "out") return mixC(inn.via!(f), c, eOut(clamp01(u)));
+        const R = Math.hypot(c.pos[0] - c.look[0], c.pos[1] - c.look[1], c.pos[2] - c.look[2]);
+        return along(c, fwdOf(c), -inn.push! * R * (1 - eOut(u)));
+      }
+      case "fly": {
+        if (samePlace(id - 1)) { const v = (f - (s.a - inn.pre)) / (inn.pre + inn.post), m = mixC(camRig(id - 1, f), c, glide(v)); m.pos[1] += inn.lift! * Math.sin(Math.PI * clamp01(v)); return m; }
+        const R = Math.hypot(c.pos[0] - c.look[0], c.pos[1] - c.look[1], c.pos[2] - c.look[2]);
+        return along(c, fwdOf(c), -inn.push! * R * (1 - eOut(u)), inn.drop! * (1 - eOut(u)));
+      }
+    }
   }
   return camRig(id, f);
 };
-/** the foreground wiper of a wipe transition at frame f of shot id: x = its centre in half-frame widths. It is 4
- *  half-widths wide and never stops: it enters, covers the frame for ~4 frames around the switch and leaves on the other
- *  side, its planks / seams streaming past the lens the whole time (mild ease at both ends) */
-export const WIPE_W = 4, WIPE_X0 = 3.3;
-export const wipeAt = (id: number, f: number): { kind: Wipe; x: number } | null => {
-  const s = SHOTS[id - 1], out = TRANS[id], inn = TRANS[id - 1];
-  const tr = out?.kind === "wipe" && f >= s.b - out.pre - 1 ? { t: out, b: s.b } : inn?.kind === "wipe" && f < s.a + inn.post + 1 ? { t: inn, b: s.a } : null;
-  if (!tr) return null;
-  const u = clamp01((f - (tr.b - tr.t.pre - 1)) / (tr.t.pre + tr.t.post + 2)), v = 0.6 * u + 0.4 * smooth(u);
-  return { kind: tr.t.wipe!, x: tr.t.dir! * WIPE_X0 * (1 - 2 * v) };
-};
 
-// impact kicks (flip sign every frame, decay over 7 f): the slip, the bulb, the hatch
-const KICKS: [number, number][] = [[(SLIP + 4) / FPS, 1], [BULB / FPS, 0.6], [(HATCH_OPEN[0] + 1) / FPS, 0.5]];
+// impact kicks (flip sign every frame, decay over 7 f): the slip, the bulb, the hatch, and the hard cuts' words
+const CUT_KICKS: [number, number][] = Object.entries(TRANS).filter(([, t]) => t.kind === "cut").map(([k]) => [SHOTS[Number(k) - 1].b / FPS, 0.7]);
+const KICKS: [number, number][] = [[(SLIP + 4) / FPS, 1], [BULB / FPS, 0.6], [(HATCH_OPEN[0] + 1) / FPS, 0.5], ...CUT_KICKS];
 export const kickAt = (t: number) => {
   let a = 0;
   for (const [t0, g] of KICKS) {
@@ -396,7 +487,7 @@ export const FOREGROUND: Fg[] = ([
   // low crates / barrels (they cross legs, not faces) may pass the middle a little longer
   fgOf(1, "barrel", 0.8, 1.6, -1.25, 0.9, 0.4, 0, 0.12), fgOf(3, "ice", 0.7, 2.2, 1.25, 0.8), fgOf(4, "lantern", 0.6, 1.4, -1.2, 2.8),
   fgOf(5, "barrel", 0.5, 1.8, 1.2, 0.8, 0.4, DECK_Y + WATER_Y, 0.12), fgOf(8, "crate", 0.6, 2.0, 1.15, 0.9, 0.4, 0, 0.12),
-  fgOf(9, "fencepost", 0.7, 1.4, -1.1, 1.1), fgOf(10, "palm", 0.6, 5.5, -0.95, 7), fgOf(12, "rope", 0.6, 0.55, -0.85, 0.45),
+  fgOf(9, "fencepost", 0.7, 1.4, -1.1, 1.1), fgOf(12, "rope", 0.6, 0.55, -0.85, 0.45),
   fgOf(15, "crate", 0.5, 1.9, -1.15, 0.8), fgOf(22, "barrel", 0.6, 1.9, -1.2, 0.8), fgOf(23, "cart", 0.6, 4.0, 1.3, 1.5, 2.2),
   fgOf(26, "rope", 0.6, 2.0, -0.7, 1, 0, DECK_Y + WATER_Y), fgOf(27, "barrel", 0.6, 3.0, 0.9, 1, 0.4, 0, 0.12),
   fgOf(28, "crate", 0.6, 1.9, -1.25, 0.8, 0.4, 0, 0.12), fgOf(29, "barrel", 0.6, 1.5, 1.15),

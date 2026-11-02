@@ -9,12 +9,12 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { staticFile } from "remotion";
 import { Batch, V, lam, Kit, Ray, kitClone, buildStreet, fencePost, SNOW_GLOW, buildBrig, BrigParts, buildPond, buildHarbor, buildBeach, buildPort, buildCell,
   CellParts, buildHold, HoldParts, buildMill, buildCalcutta, iceMat, palm, crate, barrel, vegOrigin, dressPlaces, setDressRays, iceStack, ropeCoil, bucket } from "./build";
-import { ctex, planksHD, snowHD, snowCobbleHD, beamHD, rep, cloudHD, waterNear, waterFar, sandHD, grassHD, stoneHD, towelTex, newspaperTex, calendarTex } from "./paint";
+import { ctex, snowHD, snowCobbleHD, beamHD, rep, cloudHD, waterNear, waterFar, sandHD, grassHD, stoneHD, towelTex, newspaperTex, calendarTex } from "./paint";
 import { LIGHTS, LOOK, LightPreset } from "./lights";
 import { TONE, CHAR, LFB, twoTone, untone } from "./shade";
 import { NOINK } from "./ink";
 import { Pool, Actor, Fx, stage } from "./cast";
-import { FPS, D0, SHOTS, camAt, camRig, wipeAt, Wipe, WIPE_W, V3, FOREGROUND, ShotDef, HATCH, LANE_X1, OFF, at, brigAt, WATER_Y, PORT, meltAt, WALLET_OPEN, COIN_F, smooth, clamp01,
+import { FPS, D0, SHOTS, camAt, camRig, V3, FOREGROUND, ShotDef, HATCH, LANE_X1, OFF, at, brigAt, WATER_Y, PORT, meltAt, WALLET_OPEN, COIN_F, smooth, clamp01,
   BOTTLE, towelAt, sawdustAt, FLIPS, HATCH_OPEN, ICE_PATCH } from "./story";
 
 // ---------------- assets ----------------
@@ -85,7 +85,6 @@ export class World {
   private wallet: { flap: THREE.Group; coin: THREE.Mesh };
   private cell: CellParts; private towel: THREE.Mesh;
   private hold: HoldParts; private calKey = "";
-  private wipers: Partial<Record<Wipe, THREE.Mesh>> = {};
   private frustum = new THREE.Frustum();
   private m4 = new THREE.Matrix4(); private v = new THREE.Vector3(); private sph = new THREE.Sphere();
 
@@ -233,24 +232,6 @@ export class World {
       grp.position.set(...fg.pos); grp.rotation.y = fg.yaw ?? 0; grp.visible = false;
       this.fgs.push({ o: grp, a: fg.a, b: fg.b }); R.add(grp);
     }
-    // ---- the wipe transitions' foreground objects (a tarred hull, a crate side, a sail) streaming past the lens:
-    //      unlit painted boards / cloth with irregular dark seams, so they read in any scene and keep moving even
-    //      while they cover the frame ----
-    const wipeTex = (k: Wipe) => ctex("wipe" + k, 512, 256, (g, r) => {
-      // planks alternate light / dark (weathered vs tarred, sunlit vs folded cloth) so the frame keeps changing while it covers it
-      const [base, alt, seam] = k === "hull" ? ["#7a5436", "#2e1c12", "#0c0604"] : k === "crate" ? ["#d2a46e", "#7a5030", "#2a180c"] : ["#f6efe0", "#b8a888", "#6a5a44"];
-      for (let x = 0, i = 0; x < 512; i++) {
-        const w = 26 + r() * 70; g.fillStyle = i % 2 ? alt : base; g.fillRect(x, 0, w, 256);
-        g.fillStyle = seam; g.fillRect(x + w - (k === "sail" ? 4 : 7), 0, k === "sail" ? 4 : 7, 256); x += w;
-      }
-      if (k === "crate") { g.fillStyle = seam; g.fillRect(0, 40, 512, 22); g.fillRect(0, 196, 512, 22); }
-      if (k === "hull") { g.fillStyle = "#2a1a10"; for (let y = 30; y < 256; y += 64) g.fillRect(0, y, 512, 5); }
-      if (k === "sail") { g.strokeStyle = "#6a5a44"; g.lineWidth = 6; g.beginPath(); g.moveTo(0, 60); g.bezierCurveTo(170, 120, 340, 20, 512, 90); g.stroke(); }
-    });
-    for (const k of ["crate", "hull", "sail"] as Wipe[]) {
-      const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: wipeTex(k), fog: false, color: new THREE.Color(k === "sail" ? 1.15 : 1, k === "sail" ? 1.15 : 1, k === "sail" ? 1.15 : 1) }));
-      m.visible = false; m.frustumCulled = false; m.renderOrder = 10; R.add(m); this.wipers[k] = m;
-    }
   }
 
   /** CellarShort's bulkhead hatch door on the street, closed */
@@ -341,14 +322,6 @@ export class World {
     WU.wShade.value.set(...wc.shade); WU.wTime.value = t;
     // ---- foreground framing objects: inside their frames AND their own shot ----
     for (const g of this.fgs) g.o.visible = f >= g.a && f < g.b && g.a < s.b && g.b > s.a;
-    // ---- wipe: the object sweeps across the lens, 0.35 m in front of it, covering the frame at x = 0 ----
-    const w = wipeAt(id, f);
-    for (const k of Object.keys(this.wipers) as Wipe[]) this.wipers[k]!.visible = !!w && w.kind === k;
-    if (w) {
-      const m = this.wipers[w.kind]!, dz = 0.35, hy = dz * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)), hx = hy * (9 / 16);
-      m.quaternion.copy(cam.quaternion); m.scale.set(WIPE_W * hx, 2.6 * hy, 1);
-      m.position.set(w.x * hx, 0, -dz).applyQuaternion(cam.quaternion).add(cam.position);
-    }
     // ---- the brig ----
     const bp = brigAt(id, f), bg = this.brig.group;
     bg.visible = bp.show; bg.position.set(...bp.pos); bg.rotation.set(bp.roll, bp.yaw, 0, "YXZ");
