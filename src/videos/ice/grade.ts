@@ -23,6 +23,7 @@ uniform vec3 gradeTintS;    // zero-luma RGB offsets (sRGB-encoded units)
 uniform vec3 gradeTintM;
 uniform vec3 gradeTintH;
 uniform vec2 gradeVig;      // x = strength k, y = start radius r0
+uniform vec2 gradeND;       // graduated filter: x = top lift, y = bottom darkening (sky brighter than the ground)
 uniform float gradeAmount;
 
 vec3 gradeEncode(vec3 c) {   // linear -> sRGB
@@ -60,6 +61,7 @@ void mainImage(const in vec4 inputColor, const in vec2 uv, out vec4 outputColor)
   vec2 p = uv * 2.0 - 1.0;
   float r = length(p) * 0.70710678;
   c *= 1.0 - gradeVig.x * smoothstep(gradeVig.y, 1.0, r);
+  c *= 1.0 + gradeND.x * smoothstep(0.45, 1.0, uv.y) - gradeND.y * smoothstep(0.55, 1.0, 1.0 - uv.y);
   c = clamp(c, 0.0, 1.0);
   outputColor = vec4(gradeDecode(mix(src, c, gradeAmount)), inputColor.a);
 }`;
@@ -89,6 +91,7 @@ export type GradeParams = {
   sat: [number, number, number];                 // shadows, mids, highlights
   tintS: [number, number]; tintM: [number, number]; tintH: [number, number];   // (Cb, Cr) per zone
   vig: [number, number];                         // strength, start radius
+  nd?: [number, number];                         // graduated filter: top lift, bottom darkening
 };
 
 // __GRADES__ (fitted by scripts/fit2.py, written by scripts/emit_ts.py)
@@ -123,6 +126,7 @@ export class GradeEffect extends Effect {
         ["gradeTintM", new Uniform(tintRGB(...p.tintM))],
         ["gradeTintH", new Uniform(tintRGB(...p.tintH))],
         ["gradeVig", new Uniform(new Vector2(...p.vig))],
+        ["gradeND", new Uniform(new Vector2(...(p.nd ?? [0, 0])))],
         ["gradeAmount", new Uniform(amount)],
       ]),
     });
@@ -135,6 +139,7 @@ export class GradeEffect extends Effect {
       sat: [L(p.sat[0], q.sat[0]), L(p.sat[1], q.sat[1]), L(p.sat[2], q.sat[2])],
       tintS: [L(p.tintS[0], q.tintS[0]), L(p.tintS[1], q.tintS[1])], tintM: [L(p.tintM[0], q.tintM[0]), L(p.tintM[1], q.tintM[1])],
       tintH: [L(p.tintH[0], q.tintH[0]), L(p.tintH[1], q.tintH[1])], vig: [L(p.vig[0], q.vig[0]), L(p.vig[1], q.vig[1])],
+      nd: [L(p.nd?.[0] ?? 0, q.nd?.[0] ?? 0), L(p.nd?.[1] ?? 0, q.nd?.[1] ?? 0)],
     } : p;
     const u = this.uniforms;
     u.get("gradeKy")!.value = r.ky.slice();
@@ -144,6 +149,7 @@ export class GradeEffect extends Effect {
     u.get("gradeTintM")!.value = tintRGB(...r.tintM);
     u.get("gradeTintH")!.value = tintRGB(...r.tintH);
     (u.get("gradeVig")!.value as Vector2).set(...r.vig);
+    (u.get("gradeND")!.value as Vector2).set(...(r.nd ?? [0, 0]));
   }
   get amount() { return this.uniforms.get("gradeAmount")!.value as number; }
   set amount(v: number) { this.uniforms.get("gradeAmount")!.value = v; }
@@ -155,16 +161,18 @@ export class GradeEffect extends Effect {
 //   day: mid knot .60 for median Y' ~.57, darks pressed (.1 -> .085), a hint of violet in shadows.
 //   golden: stronger S (darks .1 -> .09, mids .5 -> .54), blue-violet shadow tint, orange highlight tint, heavier vignette.
 export const GRADE_DAY2: GradeParams = {
-  ky: [0, 0.1, 0.28, 0.6, 0.835, 0.945, 1],
-  sat: [1.0, 1.05, 1.0],
-  tintS: [0.01, 0.002], tintM: [0, 0], tintH: [0.006, 0],
-  vig: [0.12, 0.45],
+  // cinematic pass: firmer S (deeper darks, hotter highlights), a real vignette and a graduated filter (sky lifted,
+  // ground pressed) so the frame reads top-bright / centre-bright like the reference
+  ky: [0, 0.075, 0.25, 0.62, 0.9, 0.985, 1],
+  sat: [1.0, 1.08, 1.0],
+  tintS: [0.016, 0.004], tintM: [0, 0], tintH: [0.006, 0],
+  vig: [0.32, 0.25], nd: [0.06, 0.16],
 };
 export const GRADE_GOLDEN2: GradeParams = {
-  ky: [0, 0.09, 0.245, 0.54, 0.8, 0.93, 1],
+  ky: [0, 0.065, 0.23, 0.6, 0.9, 0.985, 1],
   sat: [1.0, 1.12, 1.15],
-  tintS: [0.02, 0.002], tintM: [0, 0], tintH: [-0.012, 0.006],
-  vig: [0.2, 0.4],
+  tintS: [0.024, 0.002], tintM: [0, 0], tintH: [-0.012, 0.006],
+  vig: [0.36, 0.22], nd: [0.08, 0.2],
 };
 export const GRADES: Record<"day" | "golden", GradeParams> = { day: GRADE_DAY2, golden: GRADE_GOLDEN2 };
 /** One strength (0..1, the effect's `amount`) per preset, set against the NEW world (bridge_world, 2026-10-31): full-strength

@@ -8,24 +8,29 @@ import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { staticFile } from "remotion";
 import { Batch, V, lam, Kit, Ray, kitClone, buildStreet, fencePost, SNOW_GLOW, buildBrig, BrigParts, buildPond, buildHarbor, buildBeach, buildPort, buildCell,
-  CellParts, buildHold, HoldParts, buildMill, buildCalcutta, iceMat, palm, crate, barrel, vegOrigin } from "./build";
-import { ctex, snowHD, snowCobbleHD, beamHD, rep, cloudHD, waterNear, waterFar, sandHD, grassHD, stoneHD, towelTex, newspaperTex, calendarTex } from "./paint";
+  CellParts, buildHold, HoldParts, buildMill, buildCalcutta, iceMat, palm, crate, barrel, vegOrigin, dressPlaces, setDressRays, iceStack, ropeCoil, bucket } from "./build";
+import { ctex, planksHD, snowHD, snowCobbleHD, beamHD, rep, cloudHD, waterNear, waterFar, sandHD, grassHD, stoneHD, towelTex, newspaperTex, calendarTex } from "./paint";
 import { LIGHTS, LOOK, LightPreset } from "./lights";
 import { TONE, CHAR, LFB, twoTone, untone } from "./shade";
 import { NOINK } from "./ink";
 import { Pool, Actor, Fx, stage } from "./cast";
-import { FPS, D0, SHOTS, camAt, V3, FOREGROUND, ShotDef, HATCH, LANE_X1, OFF, at, brigAt, WATER_Y, PORT, meltAt, WALLET_OPEN, COIN_F, smooth, clamp01,
+import { FPS, D0, SHOTS, camAt, camRig, wipeAt, Wipe, V3, FOREGROUND, ShotDef, HATCH, LANE_X1, OFF, at, brigAt, WATER_Y, PORT, meltAt, WALLET_OPEN, COIN_F, smooth, clamp01,
   BOTTLE, towelAt, sawdustAt, FLIPS, HATCH_OPEN, ICE_PATCH } from "./story";
 
 // ---------------- assets ----------------
-// Kenney CC0 kit (optional): public/bridge/kenney/<name>.glb; missing models are skipped (vegetation is drawn by build.ts)
-const KENNEY: string[] = []; // not shipped in this repo: all vegetation and props are drawn by build.ts
+// Kenney CC0 kits in public/bridge/kenney/<name>.glb (Fantasy Town Kit + Nature Kit; the town models share
+// Textures/colormap.png). Tree names are still drawn as cartoon vegetation by build.ts (VEG); the rest dress the sets.
+const KENNEY = ["lantern", "stall-red", "stall-green", "stall-bench", "banner-red", "cart", "windmill", "canoe", "tree_cone", "tree_default", "tree_fat", "tree_oak"];
 let kitP: Promise<Kit> | null = null;
 export const loadKit = () => {
   if (!kitP) {
     const loader = new GLTFLoader();
     kitP = Promise.all(KENNEY.map((n) => loader.loadAsync(staticFile(`bridge/kenney/${n}.glb`)).then((g) => [n, g.scene] as const).catch(() => [n, null] as const)))
-      .then((list) => Object.fromEntries(list.filter((e) => e[1]).map(([n, s]) => [n, s!])) as Kit);
+      .then((list) => {
+        const miss = list.filter((e) => !e[1]).map((e) => e[0]);
+        console.log(`ice kit: loaded ${list.length - miss.length}/${list.length}` + (miss.length ? ` missing ${miss.join(",")}` : ""));
+        return Object.fromEntries(list.filter((e) => e[1]).map(([n, s]) => [n, s!])) as Kit;
+      });
   }
   return kitP;
 };
@@ -44,11 +49,12 @@ const haloTex = () => ctex("sunHalo", 256, 256, (g) => {
   }
   g.putImageData(im, 0, 0);
 });
-/** every lens position of the street shots looking at its subject (fence posts / props there are left out) */
-const sightLines = (): Ray[] => {
+/** every lens position of the shots' own moves looking at their subjects (props there are left out); street only
+ *  for the street builder, every place for the set dressing */
+const sightLines = (all = false): Ray[] => {
   const out: Ray[] = [];
-  for (const s of SHOTS) if (s.place === "street") for (let f = s.a - 8; f < s.b + 8; f += 2) {
-    const c = camAt(s.id, Math.max(0, f)), o = V(...c.pos), look = V(...c.look);
+  for (const s of SHOTS) if (all || s.place === "street") for (let f = s.a; f < s.b; f += 2) {
+    const c = camRig(s.id, f), o = V(...c.pos), look = V(...c.look);
     const fw = look.clone().sub(o), len = fw.length();
     fw.normalize();
     const rt = fw.clone().cross(V(0, 1, 0)).normalize(), up = rt.clone().cross(fw);
@@ -79,6 +85,7 @@ export class World {
   private wallet: { flap: THREE.Group; coin: THREE.Mesh };
   private cell: CellParts; private towel: THREE.Mesh;
   private hold: HoldParts; private calKey = "";
+  private wipers: Partial<Record<Wipe, THREE.Mesh>> = {};
   private frustum = new THREE.Frustum();
   private m4 = new THREE.Matrix4(); private v = new THREE.Vector3(); private sph = new THREE.Sphere();
 
@@ -164,6 +171,7 @@ export class World {
 
     // ---- places ----
     vegOrigin(0, 0);
+    setDressRays(sightLines(true));
     buildStreet(R, kit, sightLines());
     this.streetDoor(R);
     this.cell = buildCell(R);
@@ -171,6 +179,7 @@ export class World {
     this.hold = buildHold(R);
     this.hold.pageMat.map = calendarTex(0); this.hold.underMat.map = calendarTex(1); this.hold.pageMat.needsUpdate = this.hold.underMat.needsUpdate = true;
     this.brig = buildBrig(); R.add(this.brig.group);
+    dressPlaces(R, kit);
 
     // ---- held things: ice blocks (beach, loading) and the newspaper ----
     const ice = () => { const m = new THREE.Mesh(new THREE.BoxGeometry(0.36, 0.3, 0.3), iceMat()); m.castShadow = true; m.visible = false; R.add(m); return m; };
@@ -215,11 +224,23 @@ export class World {
       else if (fg.kit === "crate") crate(fb, 0, 0, fg.s ?? 1);
       else if (fg.kit === "barrel") barrel(fb, 0, 0, fg.s ?? 1);
       else if (fg.kit === "palm") palm(fb, 0, 0, 0, fg.s ?? 7, 77);
+      else if (fg.kit === "ice") iceStack(fb, 0, 0, 0, 2, 1, 2, 0.5 * (fg.s ?? 1));
+      else if (fg.kit === "rope") ropeCoil(fb, 0, 0, 0, fg.s ?? 1);
+      else if (fg.kit === "bucket") bucket(fb, 0, 0, 0, fg.s ?? 1);
       else { const o = kitClone(kit, fg.kit, fg.s ?? 1); if (o) grp.add(o); }
       fb.build(grp, true);
       grp.traverse((x) => { x.matrixAutoUpdate = true; });
       grp.position.set(...fg.pos); grp.rotation.y = fg.yaw ?? 0; grp.visible = false;
       this.fgs.push({ o: grp, a: fg.a, b: fg.b }); R.add(grp);
+    }
+    // ---- the wipe transitions' foreground objects: a crate side, a tarred hull, a sail (posed in front of the lens) ----
+    const wipeMat: Record<Wipe, THREE.Material> = {
+      crate: lam("wipeCrate", () => ({ map: rep(planksHD(), 1, 2), color: "#a87c52" })),
+      hull: lam("wipeHull", () => ({ map: rep(planksHD(), 1, 3), color: "#4a3426" })),
+      sail: lam("wipeSail", () => ({ color: "#efe6d2" })),
+    };
+    for (const k of ["crate", "hull", "sail"] as Wipe[]) {
+      const m = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 0.04), wipeMat[k]); m.visible = false; m.frustumCulled = false; R.add(m); this.wipers[k] = m;
     }
   }
 
@@ -241,7 +262,7 @@ export class World {
     if (v) return v;
     let fx = 0, fz = 0;
     for (let f = s.a; f < s.b; f += 3) {
-      const c = camAt(id, f), x = c.look[0] - c.pos[0], z = c.look[2] - c.pos[2], n = Math.hypot(x, z) || 1;
+      const c = camRig(id, f), x = c.look[0] - c.pos[0], z = c.look[2] - c.pos[2], n = Math.hypot(x, z) || 1;
       fx += x / n; fz += z / n;
     }
     const n = Math.hypot(fx, fz) || 1; fx /= n; fz /= n;
@@ -276,6 +297,8 @@ export class World {
     this.sun.shadow.bias = L.bias; this.sun.shadow.normalBias = L.normalBias * (Rr / 12);
     this.fill.intensity = 0;
     TONE.uLitCol.value.set(...L.lit); TONE.uShadeCol.value.set(...L.shade); TONE.uShadeLift.value.set(...L.lift);
+    // interiors (cell, hold): a deep but readable blue ambient in the shade, the warm window / hatch key unchanged
+    if (s.place === "cell" || s.place === "hold") { TONE.uShadeCol.value.set(0.24, 0.27, 0.55); TONE.uShadeLift.value.set(0.06, 0.08, 0.22); }
     TONE.uLambert.value = L.lambert; TONE.uSideK.value = L.sideK; TONE.uTerm.value = L.term; TONE.uBounce.value.set(...LOOK[s.light].bounce); TONE.uSat.value = LOOK[s.light].sat;
     CHAR.uCharTint.value.set(...L.charTint); CHAR.uCharShade.value = L.charShade; CHAR.uGrad.value = L.charGrad;
     CHAR.uBodyGrad.value = L.bodyGrad; CHAR.uSideTint.value.set(...L.sideTint);
@@ -309,6 +332,14 @@ export class World {
     WU.wShade.value.set(...wc.shade); WU.wTime.value = t;
     // ---- foreground framing objects: inside their frames AND their own shot ----
     for (const g of this.fgs) g.o.visible = f >= g.a && f < g.b && g.a < s.b && g.b > s.a;
+    // ---- wipe: the object sweeps across the lens, 0.35 m in front of it, covering the frame at x = 0 ----
+    const w = wipeAt(id, f);
+    for (const k of Object.keys(this.wipers) as Wipe[]) this.wipers[k]!.visible = !!w && w.kind === k;
+    if (w) {
+      const m = this.wipers[w.kind]!, dz = 0.35, hy = dz * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)), hx = hy * (9 / 16);
+      m.quaternion.copy(cam.quaternion); m.scale.set(2.4 * hx, 2.6 * hy, 1);
+      m.position.set(w.x * hx, 0, -dz).applyQuaternion(cam.quaternion).add(cam.position);
+    }
     // ---- the brig ----
     const bp = brigAt(id, f), bg = this.brig.group;
     bg.visible = bp.show; bg.position.set(...bp.pos); bg.rotation.set(bp.roll, bp.yaw, 0, "YXZ");

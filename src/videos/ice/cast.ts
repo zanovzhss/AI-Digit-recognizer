@@ -298,7 +298,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
     case "harbor": {
       if (id === 4 || id === 5) {
         const tp: V3 = id === 4 ? HARBOR.tudor : at("harbor", 1.25, 0, 6.2);
-        fig(out, cam, TUD, tp, f, { mode: "stand", expr: "smile", look: id === 4 ? 0 : 1, facing: 0, headTilt: id === 4 ? -5 : 0 });
+        fig(out, cam, TUD, tp, f, { mode: "stand", expr: id === 4 ? "grin" : "smile", look: id === 4 ? 0 : 1, facing: 0, headTilt: id === 4 ? -5 : 2 * Math.sin(f * 0.15), prop: "point" });
         if (id === 4) {
           fig(out, cam, mk(21, worker(1), "w1"), at("harbor", -4.6, 0, 2.6), f, { mode: "stand", expr: "neutral", prop: "hold" });
           heldAt(out, cam, mk(21, worker(1), "w1"), at("harbor", -4.6, 0, 2.6), { mode: "stand", prop: "hold" }, "ice");
@@ -309,12 +309,13 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
         const fo = fig(out, cam, who, c.p, f, { mode: c.walking ? "march" : "stand", phase: c.walking ? q(c.phase, 60) : 0, lift: 30, expr: "neutral", prop: "hold" });
         heldAt(out, cam, who, c.p, fo, "ice");
       }
-      if (id === 6) for (let i = 0; i < 7; i++) fig(out, cam, mk(40 + i, townsfolk(i), "tf" + i), at("harbor", -9 + i * 1.3, 0, 3 + (i % 3) * 0.8), f, { mode: "stand", expr: "laugh" });
+      if (id === 6) ([[-10.2, 2.4], [-9.1, 4.6], [-8.4, 3.1], [-4.8, 6.2], [-3.9, 3.4], [-2.6, 5.1], [-6.6, 8.4]] as const).forEach(([x, z], i) =>
+        fig(out, cam, mk(40 + i, townsfolk(i), "tf" + i), at("harbor", x, 0, z), f, { mode: "stand", expr: "laugh", prop: i % 2 ? "point" : null, wave: i % 2 ? undefined : q(0.5 + 0.5 * Math.sin(f * 0.4 + i), 6) }, { flip: i % 3 === 0 }));
       if (id === 8) {
-        const P: [number, number, number, boolean][] = [[-7.6, 3.1, 0, false], [-6.95, 2.3, 1, true], [-6.25, 3.4, 2, false], [-5.6, 2.5, 3, true], [-5.0, 3.7, 4, false], [-7.3, 4.6, 5, false]];
+        const P: [number, number, number, boolean][] = [[-8.1, 2.0, 0, false], [-7.2, 3.3, 1, true], [-5.4, 1.6, 2, false], [-4.8, 4.4, 3, true], [-6.3, 5.9, 4, false], [-8.6, 6.6, 5, true]];
         P.forEach(([x, z, v, pt], i) => {
           const bob = Math.abs(Math.sin(f * 0.45 + i * 1.3));
-          fig(out, cam, mk(40 + v, townsfolk(v), "tf" + v), at("harbor", x, 0, z), f, { mode: "stand", expr: f < cue(W.joke) && i % 2 ? "grin" : "laugh", prop: pt ? "point" : null,
+          fig(out, cam, mk(40 + v, townsfolk(v), "tf" + v), at("harbor", x, 0, z), f, { mode: "stand", expr: f < cue(W.joke) && i % 2 ? "grin" : "laugh", prop: pt ? "point" : null, wave: pt ? undefined : q(bob, 6),
             tilt: -4 + 6 * q(bob, 6), headTilt: 5 * Math.sin(f * 0.45 + i), crouch: 0.15 * q(bob, 6) });
         });
       }
@@ -333,17 +334,17 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
           { roll: falling ? -0.95 * smooth(sl.fall * 1.3) : 0, shadow: true });
         if (falling && f < SLIP + 30) { const k = q((f - SLIP) / 30, 30); out.fx.push({ key: `stars${k}`, cw: 420, ch: 220, draw: (p) => fxStars(p, k), x: sl.p[0] + cam.right.x * 1.2, y: 1.15, z: sl.p[2] + cam.right.z * 1.2, w: 0.9, h: 0.47 }); }
         fig(out, cam, mk(30, NEWSBOY, "newsboy"), [-4.2, 0, 2.4], f, { mode: "stand", expr: falling ? "laugh" : "grin", prop: falling ? "point" : null }, { flip: true });
-        fig(out, cam, mk(43, townsfolk(3), "tf3"), [-3.6, 0, 0.8], f, { mode: "stand", expr: falling ? "laugh" : "neutral" });
+        fig(out, cam, mk(43, townsfolk(3), "tf3"), [-3.6, 0, 0.8], f, { mode: "stand", expr: falling ? "laugh" : "whistle", prop: falling ? "point" : "hold", headTilt: 4 * Math.sin(f * 0.2) });
       }
       break;
     }
     case "port": {
       if (id !== 12) {
         const m = meltAt(id, f);
-        fig(out, cam, TUD, PORT.tudor, f, { mode: "stand", expr: id === 15 ? "dazed" : "nervous", look: 1, facing: 1 });
+        fig(out, cam, TUD, PORT.tudor, f, { mode: "stand", expr: id === 15 ? "dazed" : "nervous", look: 1, facing: 1, wave: q(0.55 + 0.45 * Math.sin(f * 0.9), 6), tilt: 2 * Math.sin(f * 0.3) });
         sweat(out, cam, PORT.tudor, f, 3, 1.62, 11);
         if (id === 10) {
-          fig(out, cam, mk(50, { ...worker(0), skin: "#8a5636", hat: null, jacket: "#f2ead6" }, "pw0"), at("port", 1.6, 0, 3.2), f, { mode: "stand", expr: "laugh" });
+          fig(out, cam, mk(50, { ...worker(0), skin: "#8a5636", hat: null, jacket: "#f2ead6" }, "pw0"), at("port", 1.6, 0, 3.2), f, { mode: "stand", expr: "laugh", prop: "point", tilt: -4 + 3 * Math.sin(f * 0.5) });
         }
         const [sx, , sz] = PORT.stack;
         drips(out, sx, 0.9 * (1 - m) + 0.1, sz + 0.35, f, 4, 0.9 * (1 - m) + 0.1, 1.4, 3);
@@ -354,7 +355,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
     case "cell": {
       if (id === 16 || id === 17) {
         const bulb = f >= BULB && id === 17;
-        fig(out, cam, TUD, TUDOR_CELL, f, { mode: "sit", expr: bulb ? "grin" : "neutral", look: bulb ? 0 : -1, facing: 0, headTilt: bulb ? -6 : 4 }, { shadow: false });
+        fig(out, cam, TUD, TUDOR_CELL, f, { mode: "sit", expr: bulb ? "grin" : "stern", look: bulb ? 0 : -1, facing: 0, headTilt: bulb ? -6 : 4, nod: bulb ? 0 : q(0.5 + 0.5 * Math.sin(f * 0.12), 6), wave: bulb ? 1 : undefined }, { shadow: false });
         if (bulb) { const k = q(Math.min(1, (f - BULB) / 14), 30); out.fx.push({ key: `bulb${k}`, cw: 500, ch: 500, draw: (p) => fxBulb(p, k), x: TUDOR_CELL[0], y: TUDOR_CELL[1] + 1.45, z: TUDOR_CELL[2] + 0.05, w: 0.44, h: 0.44, glow: 1.6, soft: true }); }
       }
       if (id === 16) {
@@ -419,8 +420,8 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
         const crowd: [number, number, number, Expr][] = [[-7.6, 1.6, 3, "smile"], [-5.4, 2.4, 4, "grin"], [-6.3, 0.9, 5, "smile_closed"], [5.4, 1.4, 6, "grin"], [6.6, 2.6, 7, "smile"],
           [-3.0, 4.0, 8, "smile_closed"], [4.4, 7.4, 9, "grin"], [1.6, 9.0, 10, "smile"], [-1.8, 7.6, 11, "grin"], [8.8, 5.0, 12, "smile_closed"]];
         crowd.forEach(([dx, dz, v, e], i) => fig(out, cam, mk(85 + i, bengali(v), "b" + v), [mx + dx, 0, mz + dz], f,
-          { mode: i % 4 === 3 ? "stroll" : "stand", phase: q(((f / FPS) * 0.8 + i * 0.27) % 1, 60), expr: e, prop: i % 3 === 0 ? "drink" : i % 3 === 1 ? "iceblock" : null }, { flip: i % 2 === 1 }));
-        fig(out, cam, TUD, MARKET.tudor, f, { mode: "stand", expr: id === 29 && f >= cue(W.man) + 4 ? "smile_closed" : "smile", look: id === 29 ? 0 : -1, facing: id === 29 ? 0 : -1, headTilt: id === 29 ? -4 : 0 });
+          { mode: i % 4 === 3 ? "stroll" : "stand", phase: q(((f / FPS) * 0.8 + i * 0.27) % 1, 60), expr: e, prop: i % 3 === 0 ? "drink" : i % 3 === 1 ? "iceblock" : null, wave: i % 3 === 2 ? q(0.5 + 0.5 * Math.sin(f * 0.3 + i), 6) : undefined }, { flip: i % 2 === 1 }));
+        fig(out, cam, TUD, MARKET.tudor, f, { mode: "stand", expr: id === 29 && f >= cue(W.man) + 4 ? "smile_closed" : "smile", look: id === 29 ? 0 : -1, facing: id === 29 ? 0 : -1, headTilt: id === 29 ? -4 : 2 * Math.sin(f * 0.12), prop: "drink" });
       }
       break;
     }

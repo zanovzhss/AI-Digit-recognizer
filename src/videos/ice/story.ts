@@ -1,8 +1,8 @@
 // Timeline of "The Man Who Sold Ice to the Tropics" (~55 s): 29 shots timed to the narration words
 // (ice-short/voice/words.json), the places they happen in, the story actions (sawing, loading, the brig leaving, the
 // laugh, the slip, the melt, the coin, the yawn, the bulb, the icicle, the towel, the sawdust, the calendar, the hatch,
-// the market) and the camera grammar of the bridge template: smootherstep glides 18-40 f, every hold creeps (no static
-// hold), impacts are 7-frame kicks that flip sign every frame, no hand-held float, hard cuts between places.
+// the market) and the camera: one eased move per shot (never a hold), fly-throughs inside a place, whips and
+// foreground wipes between places (cut frames unchanged), impacts are 7-frame kicks that flip sign every frame.
 export const FPS = 30;
 export const VOICE_S = 55.170612; // ice-short/voice/voice.wav
 export const TOTAL = Math.round(VOICE_S * FPS); // 1655 frames
@@ -153,96 +153,141 @@ export const layersAt = (f: number): { id: number; alpha: number }[] => {
 };
 
 // ---------------- camera ----------------
+// Cinematic pass: the camera never holds. Every shot is one eased move (orbit / push / crane, with a slow float on
+// top) around its subject, and every shot boundary is a transition that straddles the unchanged cut frame:
+//   fly  - same place: one continuous flight from shot k's framing into shot k+1's (both rigs keep moving under it)
+//   whip - place change: shot k whips away with accelerating yaw, shot k+1 arrives mid-whip and settles; the switch
+//          happens at peak angular speed, inside the motion blur (motionblur.ts)
+//   wipe - place change: a foreground object (crate, ship hull, sail) sweeps across the lens and the switch happens
+//          while it covers the frame (world.ts poses the wiper from wipeAt)
 export type Cam = { pos: V3; look: V3; fov: number; roll: number };
-type Shot = Partial<Cam> & { pos: V3; look: V3 };
-type Key = { f: number; dur?: number; cut?: boolean; s: (f: number) => Shot };
-const mix = (a: Cam, b: Cam, k: number): Cam => ({
-  pos: lerp3(a.pos, b.pos, k), look: lerp3(a.look, b.look, k), fov: a.fov + (b.fov - a.fov) * k, roll: a.roll + (b.roll - a.roll) * k,
-});
-const full = (c: Shot): Cam => ({ fov: 40, roll: 0, ...c });
-const run = (keys: Key[], f: number) => {
-  let cur = full(keys[0].s(f));
-  for (let i = 1; i < keys.length; i++) {
-    const k = keys[i];
-    if (f < k.f) break;
-    cur = k.cut ? full(k.s(f)) : mix(cur, full(k.s(f)), glide((f - k.f) / (k.dur ?? 24)));
-  }
-  return cur;
-};
+/** a framing around a subject: distance (m), azimuth (deg from +z toward +x), elevation (deg; negative = lens below
+ *  the look point, looking up), fov (deg), roll (deg) */
+type Sph = { d: number; az: number; el: number; fov: number; roll: number };
+type Rig = { look: (f: number) => V3; A: Sph; B: Sph };
 const T = (f: number) => f / FPS;
-/** push-in factor since f0: the subject grows ~rate per frame */
-const pushK = (f: number, f0: number, rate: number) => Math.exp(-rate * Math.max(0, f - f0));
-const dolly = (pos: V3, look: V3, k: number, rest: Partial<Cam> = {}): Shot =>
-  ({ pos: [look[0] + (pos[0] - look[0]) * k, look[1] + (pos[1] - look[1]) * k, look[2] + (pos[2] - look[2]) * k], look, ...rest });
-/** a held framing that creeps in from the shot start (0.15-0.35 %/f; 0.6 on punch words) */
-const hold = (pl: PlaceId, pos: [number, number, number], look: [number, number, number], f0: number, rate = 0.0025, rest: Partial<Cam> = {}) =>
-  (f: number) => dolly(at(pl, ...pos), at(pl, ...look), pushK(f, f0, rate), rest);
-const brigFollow = (id: number, rel: V3, lookUp = 4, rest: Partial<Cam> = {}) => (f: number): Shot => {
-  const b = brigAt(id, f), c = Math.cos(b.yaw), s = Math.sin(b.yaw);
-  return { pos: [b.pos[0] + rel[0], b.pos[1] + rel[1], b.pos[2] + rel[2]], look: [b.pos[0] + 1.5 * c, b.pos[1] + lookUp, b.pos[2] - 1.5 * s], ...rest };
+const D2R = Math.PI / 180;
+const S = (d: number, az: number, el: number, fov = 40, roll = 0): Sph => ({ d, az, el, fov, roll });
+const mixS = (a: Sph, b: Sph, k: number): Sph => ({ d: a.d + (b.d - a.d) * k, az: a.az + (b.az - a.az) * k, el: a.el + (b.el - a.el) * k, fov: a.fov + (b.fov - a.fov) * k, roll: a.roll + (b.roll - a.roll) * k });
+const sph = (look: V3, s: Sph): Cam => {
+  const el = s.el * D2R, az = s.az * D2R;
+  return { pos: [look[0] + s.d * Math.cos(el) * Math.sin(az), look[1] + s.d * Math.sin(el), look[2] + s.d * Math.cos(el) * Math.cos(az)], look, fov: s.fov, roll: s.roll * D2R };
 };
-
-const CAMS: Record<number, Key[]> = {
-  // 1 beach: fast glide in from a wide over the sand to the two-shot (template glide, 30 f) then creep
-  1: [{ f: 0, s: hold("beach", [0.4, 3.4, 13.5], [0, 1.1, -3], 0, 0.001, { fov: 42 }) }, { f: 2, dur: 30, s: hold("beach", [-0.05, 1.3, 6.0], [0, 1.0, 0], 32, 0.0015, { fov: 38, roll: 0.02 }) }],
-  // 2 close-up on the local, Tudor's shoulder and the ice in the right of the frame
-  2: [{ f: 57, s: hold("beach", [0.95, 1.5, 1.75], [-0.5, 1.5, 0.12], 57, 0.004, { fov: 30, roll: -0.04 }) }],
-  // 3 pond: eye-level medium-wide on the cutters, slow lateral glide
-  3: [{ f: 107, s: hold("pond", [2.2, 1.75, 4.0], [0.2, 1.0, -4.2], 107, 0.0015, { fov: 38 }) }, { f: 112, dur: 40, s: hold("pond", [0.6, 1.6, 3.3], [0.1, 1.0, -4.2], 140, 0.002, { fov: 38, roll: 0.03 }) }],
-  // 4 harbor: Tudor, proud, the ice stack and the brig behind him
-  4: [{ f: 162, s: hold("harbor", [0.7, 1.45, 6.9], [-1.0, 1.35, 2.8], 162, 0.002, { fov: 35, roll: -0.03 }) }],
-  // 5 harbor: on deck looking back at the plank, the cutters carry blocks aboard
-  5: [{ f: 208, s: hold("harbor", [4.6, 2.1, -4.2], [2.3, 0.9, 1.6], 208, 0.0012, { fov: 40, roll: 0.02 }) }],
-  // 6 aerial: the brig leaves the snowy harbour
-  6: [{ f: 293, s: (f) => { const b = brigAt(6, f); return dolly([b.pos[0] + 22, 34, b.pos[2] + 34], [b.pos[0] - 2, 0, b.pos[2] - 6], pushK(f, 293, 0.002), { fov: 40 }); } }],
-  // 7 street: the newspaper close-up, the newsboy's face over it
-  7: [{ f: 331, s: hold("street", [-2.9, 0.9, 6.35], [-3.12, 0.9, 4.1], 331, 0.0018, { fov: 36, roll: 0.03 }) }],
-  // 8 harbor quay: the crowd laughs and points at the brig out on the water
-  8: [{ f: 366, s: hold("harbor", [-3.6, 1.6, 12.4], [-6.5, 1.15, 3.1], 366, 0.0015, { fov: 40, roll: -0.02 }) }],
-  // 9 street: the slip on the ice patch
-  9: [{ f: 407, s: hold("street", [-1.6, 1.6, 12.5], [-2.9, 0.8, 5.0], 407, 0.0012, { fov: 40 }) }],
-  // 10 Caribbean port wide: the brig in, the sun on the stack
-  10: [{ f: 471, s: hold("port", [8.0, 4.6, 14.5], [-0.6, 0.9, 0.4], 471, 0.002, { fov: 40 }) }],
-  // 11 close on the melting stack, Tudor sweating behind it
-  11: [{ f: 522, s: hold("port", [0.9, 0.95, 6.4], [-1.7, 0.75, 1.5], 522, 0.002, { fov: 36, roll: 0.03 }) }],
-  // 12 the empty wallet; the coin rolls away
-  12: [{ f: 578, s: hold("port", [1.95, 0.55, 4.5], [2.42, 0.04, 3.2], 578, 0.002, { fov: 34 }) },
-    { f: 630, dur: 30, s: hold("port", [2.2, 0.4, 4.4], [3.1, 0.05, 3.25], 630, 0.002, { fov: 34 }) }],
-  // 13-14 two quick departures from Boston: red sails, then green sails from the other side
-  13: [{ f: 660, s: brigFollow(13, [14, 7.5, 38], 10.2, { fov: 40, roll: 0.02 }) }],
-  14: [{ f: 709, s: brigFollow(14, [6, 7.5, 38], 10.2, { fov: 40, roll: -0.02 }) }],
-  // 15 port: the puddles are bigger now
-  15: [{ f: 736, s: hold("port", [1.6, 2.6, 6.8], [-1.4, 0.2, 2.0], 736, 0.006, { fov: 38 }) }],
-  // 16 cell: from the corridor (the guard yawning in the foreground) toward Tudor on the bench, through the bars
-  16: [{ f: 754, s: hold("cell", [2.15, 1.0, 5.45], [-0.45, 0.85, -2.8], 754, 0.0008, { fov: 40 }) }],
-  // 17 inside: Tudor's light-bulb moment
-  17: [{ f: 836, s: hold("cell", [0.45, 1.3, -0.45], [-0.45, 1.42, -2.95], 836, 0.0015, { fov: 38 }) }, { f: 857, dur: 18, s: hold("cell", [0.38, 1.3, -0.6], [-0.45, 1.45, -2.95], 875, 0.0015, { fov: 38, roll: -0.03 }) }],
-  // 18 the icicle in the window, dripping
-  18: [{ f: 894, s: hold("cell", [0.8, 1.72, -2.25], [0.95, 1.98, -3.55], 894, 0.003, { fov: 32, roll: 0.03 }) }],
-  // 19 Tudor at the window, warm air drifting in
-  19: [{ f: 950, s: hold("cell", [-0.75, 1.45, 0.35], [0.35, 1.45, -3.05], 950, 0.0015, { fov: 38, roll: -0.02 }) }],
-  // 20-21 the bottle on the bench gets wrapped in the towel; warm air bounces off
-  20: [{ f: 1023, s: hold("cell", [-1.5, 0.92, -2.1], [-1.75, 0.66, -3.0], 1023, 0.003, { fov: 30 }) }],
-  21: [{ f: 1082, s: hold("cell", [-1.3, 0.95, -1.75], [-1.75, 0.66, -3.0], 1082, 0.0025, { fov: 34, roll: 0.03 }) }],
+const mixC = (a: Cam, b: Cam, k: number): Cam => ({ pos: lerp3(a.pos, b.pos, k), look: lerp3(a.look, b.look, k), fov: a.fov + (b.fov - a.fov) * k, roll: a.roll + (b.roll - a.roll) * k });
+/** ease-in / ease-out over the whole shot */
+const ease = (u: number) => 0.5 - 0.5 * Math.cos(Math.PI * clamp01(u));
+const fixed = (pl: PlaceId, x: number, y: number, z: number) => () => at(pl, x, y, z);
+const brigLook = (id: number, up: number, ahead = 1.5) => (f: number): V3 => {
+  const b = brigAt(id, f); return [b.pos[0] + ahead * Math.cos(b.yaw), b.pos[1] + up, b.pos[2] - ahead * Math.sin(b.yaw)];
+};
+const RIGS: Record<number, Rig> = {
+  // 1 beach: low glide in over the sand to the two-shot, ending below eye level
+  1: { look: fixed("beach", 0, 1.0, 0), A: S(9.5, -30, 9, 42), B: S(4.0, 18, -7, 36, 1.5) },
+  // 2 close-up on the local past Tudor's shoulder and the ice
+  2: { look: fixed("beach", -0.5, 1.5, 0.12), A: S(2.5, 72, -8, 30, -2), B: S(1.7, 22, -1, 30, -3) },
+  // 3 pond: low along the channel, the cutters in a diagonal receding from the lens
+  3: { look: fixed("pond", 0.1, 1.0, -4.3), A: S(7.6, 64, 3, 38), B: S(5.4, 36, -4, 36, 2) },
+  // 4 harbor: Tudor from below, proud, the brig behind
+  4: { look: fixed("harbor", -1.0, 1.35, 2.8), A: S(4.8, 42, -9, 35, -2), B: S(3.4, 14, -11, 34, -3) },
+  // 5 on deck: crane down toward the plank as the blocks come aboard
+  5: { look: fixed("harbor", 2.3, 0.9, 1.6), A: S(6.6, 162, 13, 40, 2), B: S(5.0, 140, 6, 40, 1) },
+  // 6 aerial: orbit the brig as it leaves the snowy harbour
+  6: { look: (f) => { const b = brigAt(6, f); return [b.pos[0] - 2, 0, b.pos[2] - 6]; }, A: S(64, 60, 40), B: S(42, 10, 30) },
+  // 7 street: the newspaper from below, sliding round the newsboy
+  7: { look: fixed("street", -3.12, 0.9, 4.1), A: S(2.6, -14, -7, 36, 2), B: S(1.9, 14, -3, 36, 3) },
+  // 8 harbor quay: low through the laughing crowd
+  8: { look: fixed("harbor", -6.5, 1.15, 3.6), A: S(8.4, 32, -1, 40, -1), B: S(6.2, 6, -5, 38, -2) },
+  // 9 street: ground-level push down the lane to the slip
+  9: { look: fixed("street", -2.9, 0.8, 5.0), A: S(7.8, 26, 3, 40), B: S(5.4, 0, -1, 40, 1.5) },
+  // 10 Caribbean port wide (scale): crane down onto the quay
+  10: { look: fixed("port", -0.6, 0.9, 0.4), A: S(22, 52, 22, 40), B: S(12, 12, 7, 40) },
+  // 11 the melting stack, Tudor sweating behind it, from below
+  11: { look: fixed("port", -1.7, 0.75, 1.5), A: S(6.0, 46, 1, 36, 2), B: S(4.2, 16, -5, 34, 3) },
+  // 12 the empty wallet on the dock boards; the look follows the coin as it rolls away
+  12: { look: (f) => lerp3(at("port", 2.42, 0.04, 3.2), at("port", 3.1, 0.05, 3.25), glide((f - 630) / 30)), A: S(1.7, -55, 30, 34), B: S(1.0, 10, 12, 34) },
+  // 13-14 two departures from Boston, sweeping under the sails
+  13: { look: brigLook(13, 10.2), A: S(48, 45, -2, 40, 1), B: S(34, 0, -6, 40, 2) },
+  14: { look: brigLook(14, 10.2), A: S(44, -20, -2, 40, -1), B: S(34, 28, -6, 40, -2.5) },
+  // 15 port: the puddles, fast push
+  15: { look: fixed("port", -1.4, 0.2, 2.0), A: S(6.6, 40, 25, 38), B: S(4.6, 22, 15, 38) },
+  // 16 cell: from the corridor past the yawning guard's shoulder, trucking along the bars
+  16: { look: fixed("cell", -0.45, 0.85, -2.8), A: S(8.8, 19, -1, 40), B: S(6.6, 2, 5, 40) },
+  // 17 the light-bulb moment, from below
+  17: { look: fixed("cell", -0.45, 1.43, -2.95), A: S(3.0, 48, -10, 38), B: S(1.9, 0, -5, 38, -2) },
+  // 18 the icicle in the window, looking up
+  18: { look: fixed("cell", 0.95, 1.98, -3.55), A: S(1.5, -35, -18, 32, 2), B: S(1.0, 15, -6, 32, 3) },
+  // 19 Tudor at the window
+  19: { look: fixed("cell", 0.35, 1.45, -3.05), A: S(3.8, -45, -8, 38, -1), B: S(2.6, 0, -2, 38, -2) },
+  // 20-21 the bottle and the towel: one orbit carried across the cut
+  20: { look: fixed("cell", -1.75, 0.66, -3.0), A: S(1.1, 50, 25, 30), B: S(0.75, -10, 8, 30) },
+  21: { look: fixed("cell", -1.75, 0.66, -3.0), A: S(1.4, -30, 6, 34, 1), B: S(1.0, 35, 16, 34, 3) },
   // 22 the hold: sawdust shovelled over the ice
-  22: [{ f: 1163, s: hold("hold", [0.3, 1.8, 6.8], [0.0, 0.8, 0.5], 1163, 0.0004, { fov: 40 }) }],
-  // 23 the lumber mill yard and its sawdust mountains
-  23: [{ f: 1220, s: hold("mill", [6.0, 2.3, 10.0], [-1.5, 1.6, -2.5], 1220, 0.0015, { fov: 40 }) }, { f: 1224, dur: 40, s: hold("mill", [4.2, 2.0, 8.2], [-1.8, 1.5, -2.5], 1264, 0.002, { fov: 40, roll: 0.02 }) }],
-  // 24 the brig alone on a hot ocean, aerial
-  24: [{ f: 1291, s: brigFollow(24, [-26, 18, 41], 6, { fov: 40 }) }],
-  // 25 the calendar on the hold's post flips four months
-  25: [{ f: 1331, s: (f) => { const s = hold("hold", [-0.82, 1.45, 4.85], [-1.0, 1.42, 3.06], 1331, 0.0012, { fov: 34 })(f); return { ...s, roll: 0.02 * Math.sin(f * 0.06) }; } }],
-  // 26 Calcutta: on deck above the hatch as its cover comes off
-  26: [{ f: 1418, s: hold("calcutta", [0.4, DECK_Y + WATER_Y + 4.4, -2.8], [0.4, DECK_Y + WATER_Y + 0.15, -6.6], 1418, 0.0012, { fov: 40, roll: -0.02 }) }],
-  // 27 the market, wide
-  27: [{ f: 1471, s: hold("calcutta", [77, 3.8, 31], [71.5, 1.3, 11.5], 1471, 0.0025, { fov: 40 }) }],
-  // 28 the stall: ice and cold drinks change hands
-  28: [{ f: 1510, s: hold("calcutta", [69.6, 1.55, 18.6], [70.0, 1.25, 12.4], 1510, 0.0012, { fov: 40, roll: 0.02 }) }],
-  // 29 Tudor's smile
-  29: [{ f: 1602, s: hold("calcutta", [72.75, 1.62, 17.7], [73.3, 1.6, 15.0], 1602, 0.003, { fov: 32, roll: -0.03 }) }],
+  22: { look: fixed("hold", 0, 0.8, 0.5), A: S(7.0, 24, 15, 40), B: S(4.8, -16, 2, 40, -1) },
+  // 23 the mill yard, low past the logs
+  23: { look: fixed("mill", -1.78, 1.51, -2.5), A: S(12.5, 50, 6, 40), B: S(8.2, 10, -1, 40, 1.5) },
+  // 24 the brig alone on the hot ocean, aerial orbit (scale)
+  24: { look: brigLook(24, 6), A: S(60, -62, 16), B: S(40, -12, 11) },
+  // 25 the calendar on the post
+  25: { look: fixed("hold", -1.0, 1.42, 3.06), A: S(2.0, -28, -6, 34), B: S(1.4, 24, 3, 34, 1) },
+  // 26 Calcutta: over the hatch as its cover comes off
+  26: { look: fixed("calcutta", 0.4, 0.35, -6.6), A: S(6.6, -30, 62, 40, -2), B: S(4.4, 22, 38, 40, -1) },
+  // 27 the market, wide (scale)
+  27: { look: fixed("calcutta", 71.5, 1.3, 11.5), A: S(24, 38, 12, 40), B: S(14, 2, 4, 40) },
+  // 28 the stall, low, orbiting the counter
+  28: { look: fixed("calcutta", 70.0, 1.25, 12.4), A: S(6.6, -32, -4, 40), B: S(4.4, 22, -6, 40, 1.5) },
+  // 29 Tudor's smile, from below
+  29: { look: fixed("calcutta", 73.3, 1.6, 15.0), A: S(3.1, -40, -9, 32, -2), B: S(2.0, 8, -4, 32, -3) },
+};
+/** the shot's own move (no transitions, no kicks): what the sight lines, the sun and the foreground props are built for */
+export const camRig = (id: number, f: number): Cam => {
+  const s = SHOTS[id - 1], r = RIGS[id], k = mixS(r.A, r.B, ease((f - s.a) / (s.b - s.a)));
+  const c = sph(r.look(f), k), a = 0.008 * k.d; // float: a slow drift of ~1 % of the distance
+  return { ...c, pos: [c.pos[0] + a * Math.sin(f * 0.071 + id), c.pos[1] + 0.6 * a * Math.sin(f * 0.093 + 2 * id), c.pos[2] + a * Math.cos(f * 0.063 + id)] };
 };
 
-// impact kicks (flip sign every frame, decay over 7 f): the slip, the coin drop, the bulb, the hatch
+// ---------------- transitions (key k = the boundary between shot k and shot k+1) ----------------
+export type Wipe = "crate" | "hull" | "sail";
+type Tr = { kind: "fly" | "whip" | "wipe"; pre: number; post: number; dir?: 1 | -1; deg?: number; lift?: number; wipe?: Wipe };
+const fly = (pre: number, post: number, lift = 0): Tr => ({ kind: "fly", pre, post, lift });
+const whip = (dir: 1 | -1, pre = 6, post = 7, deg = 110): Tr => ({ kind: "whip", pre, post, dir, deg });
+const wipe = (w: Wipe, dir: 1 | -1, pre = 7, post = 7): Tr => ({ kind: "wipe", pre, post, dir, wipe: w });
+export const TRANS: Record<number, Tr> = {
+  1: fly(5, 6), 2: whip(1), 3: whip(-1), 4: fly(6, 6, 0.6), 5: fly(6, 7, 6), 6: whip(1), 7: wipe("crate", 1), 8: whip(-1),
+  9: wipe("hull", -1), 10: fly(6, 6, 2), 11: fly(6, 6), 12: whip(1), 13: fly(6, 6, 3), 14: wipe("sail", 1), 15: whip(-1, 5, 7),
+  16: fly(7, 7), 17: fly(6, 6), 18: fly(6, 6), 19: fly(6, 6), 20: fly(6, 6), 21: whip(1), 22: wipe("crate", -1), 23: whip(-1),
+  24: wipe("hull", 1), 25: whip(1), 26: fly(7, 7, 8), 27: fly(6, 6, 1), 28: fly(6, 6),
+};
+/** yaw the view about the lens (whips), with a little roll into the turn */
+const yawAbout = (c: Cam, ang: number): Cam => {
+  const dx = c.look[0] - c.pos[0], dz = c.look[2] - c.pos[2], cs = Math.cos(ang), sn = Math.sin(ang);
+  return { ...c, look: [c.pos[0] + dx * cs + dz * sn, c.look[1], c.pos[2] - dx * sn + dz * cs], roll: c.roll + 0.12 * ang };
+};
+/** camera of shot id at frame f before kicks: its rig, taken over near its boundaries by the transitions */
+const camT = (id: number, f: number): Cam => {
+  const s = SHOTS[id - 1], out = TRANS[id], inn = TRANS[id - 1];
+  if (out && f >= s.b - out.pre) {
+    const u = (f - (s.b - out.pre)) / (out.pre + out.post);
+    if (out.kind === "fly") { const c = mixC(camRig(id, f), camRig(id + 1, f), glide(u)); c.pos[1] += (out.lift ?? 0) * Math.sin(Math.PI * clamp01(u)); return c; }
+    if (out.kind === "whip") return yawAbout(camRig(id, f), out.dir! * out.deg! * D2R * ((f - (s.b - out.pre)) / out.pre) ** 2);
+    return camRig(id, f);
+  }
+  if (inn && f < s.a + inn.post) {
+    const u = (f - (s.a - inn.pre)) / (inn.pre + inn.post);
+    if (inn.kind === "fly") { const c = mixC(camRig(id - 1, f), camRig(id, f), glide(u)); c.pos[1] += (inn.lift ?? 0) * Math.sin(Math.PI * clamp01(u)); return c; }
+    if (inn.kind === "whip") return yawAbout(camRig(id, f), -inn.dir! * inn.deg! * D2R * (1 - (f - s.a) / inn.post) ** 2);
+    return camRig(id, f);
+  }
+  return camRig(id, f);
+};
+/** the foreground wiper of a wipe transition at frame f of shot id: x = its centre in half-frame widths (0 = covers) */
+export const wipeAt = (id: number, f: number): { kind: Wipe; x: number } | null => {
+  const s = SHOTS[id - 1], out = TRANS[id], inn = TRANS[id - 1];
+  if (out?.kind === "wipe" && f >= s.b - out.pre - 1) return { kind: out.wipe!, x: out.dir! * 2.3 * (1 - smooth((f - (s.b - out.pre - 1)) / out.pre)) };
+  if (inn?.kind === "wipe" && f < s.a + inn.post + 1) return { kind: inn.wipe!, x: -inn.dir! * 2.3 * smooth((f - s.a) / inn.post) };
+  return null;
+};
+
+// impact kicks (flip sign every frame, decay over 7 f): the slip, the bulb, the hatch
 const KICKS: [number, number][] = [[(SLIP + 4) / FPS, 1], [BULB / FPS, 0.6], [(HATCH_OPEN[0] + 1) / FPS, 0.5]];
 export const kickAt = (t: number) => {
   let a = 0;
@@ -253,7 +298,7 @@ export const kickAt = (t: number) => {
   return a;
 };
 export const camAt = (id: number, f: number): Cam => {
-  const c = run(CAMS[id], f), a = kickAt(T(f));
+  const c = camT(id, f), a = kickAt(T(f));
   if (!a) return c;
   const d: V3 = [c.look[0] - c.pos[0], c.look[1] - c.pos[1], c.look[2] - c.pos[2]];
   const L = Math.hypot(...d), h = Math.hypot(d[0], d[2]) || 1;
@@ -304,10 +349,22 @@ export const dofAt = (f: number) => {
 };
 export const focusAt = (id: number, f: number): V3 => { const d = dofAt(f); return d.focus ? d.focus(f) : camAt(id, f).look; };
 
-/** near framing objects (built outside the sight-line test): fence post in the slip shot, a crate in the crowd shot,
- *  a palm in the port wide, a barrel in the market wide */
+/** near framing objects (built outside the sight-line test), placed from each shot's own camera move so they stay
+ *  close to the lens at the frame edge and slide past with the camera (parallax): barrels, crates, ice, posts, rope */
 export type Fg = { a: number; b: number; kit: string; pos: V3; s?: number; yaw?: number };
+/** a point on the floor (height y) `dist` m ahead of shot id's lens at fraction u of the shot, sx half-frame widths
+ *  to the side (sx = +-0.8: near the frame edge) */
+const nearLens = (id: number, u: number, dist: number, sx: number, y = 0): V3 => {
+  const s = SHOTS[id - 1], c = camRig(id, s.a + u * (s.b - s.a));
+  const fx = c.look[0] - c.pos[0], fz = c.look[2] - c.pos[2], n = Math.hypot(fx, fz) || 1, tx = Math.tan((c.fov * D2R) / 2) * (9 / 16) * dist * sx;
+  return [c.pos[0] + (fx / n) * dist - (fz / n) * tx, y, c.pos[2] + (fz / n) * dist + (fx / n) * tx];
+};
+const fgOf = (id: number, kit: string, u: number, dist: number, sx: number, sc = 1, yaw = 0.4, y = 0): Fg =>
+  ({ a: SHOTS[id - 1].a, b: SHOTS[id - 1].b, kit, pos: nearLens(id, u, dist, sx, y), s: sc, yaw });
 export const FOREGROUND: Fg[] = [
-  { a: 366, b: 407, kit: "crate", pos: at("harbor", -2.45, 0, 7.6), s: 0.8, yaw: 0.4 },
-  { a: 1471, b: 1510, kit: "barrel", pos: at("calcutta", 74.6, 0, 27.4), s: 0.95, yaw: 0.2 },
+  fgOf(1, "barrel", 0.8, 1.6, -1.25, 0.9), fgOf(3, "ice", 0.7, 2.2, 1.25, 0.8), fgOf(4, "lantern", 0.6, 1.4, -1.2, 2.8),
+  fgOf(8, "crate", 0.6, 2.0, 1.15, 0.9), fgOf(9, "fencepost", 0.7, 1.4, -1.1, 1.1), fgOf(10, "palm", 0.6, 5.5, -0.95, 7),
+  fgOf(11, "barrel", 0.6, 1.4, 1.25, 0.8), fgOf(12, "rope", 0.6, 0.55, -0.85, 0.45), fgOf(15, "crate", 0.5, 1.9, -1.15, 0.8),
+  fgOf(22, "barrel", 0.6, 1.9, -1.2, 0.8), fgOf(23, "cart", 0.6, 4.0, 1.3, 1.5, 2.2), fgOf(26, "rope", 0.6, 2.0, -0.7, 1, 0, DECK_Y + WATER_Y),
+  fgOf(27, "barrel", 0.6, 3.0, 0.9), fgOf(28, "crate", 0.6, 1.9, -1.25, 0.8), fgOf(29, "barrel", 0.6, 1.5, 1.15),
 ];

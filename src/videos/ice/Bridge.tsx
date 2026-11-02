@@ -18,13 +18,16 @@ import { InkPass, noInkFallback } from "./ink";
 import { LensBlur, GrainEffect } from "./lensblur";
 import { GradeEffect, GRADES, GRADE_STRENGTH, gradeFor } from "./grade";
 import { Kit } from "./build";
-import { TOTAL, FLASH_AT, SHOTS, layersAt, dofAt } from "./story";
+import { TOTAL, FLASH_AT, SHOTS, layersAt, dofAt, camAt } from "./story";
+import { MotionBlurEffect } from "./motionblur";
 
 export const ICE_FRAMES = TOTAL;
 
 /** A/B switches for test stills only (Remotion inputProps `{ post: { ink: false, ... } }`); everything is on by default. */
-type PostToggles = { ink: boolean; lens: boolean; pre: boolean; bloom: boolean; grade: boolean; grain: boolean };
-const toggles = (): PostToggles => ({ ink: true, lens: true, pre: true, bloom: true, grade: true, grain: false, ...((getInputProps() as { post?: Partial<PostToggles> }).post ?? {}) });
+type PostToggles = { ink: boolean; lens: boolean; pre: boolean; bloom: boolean; grade: boolean; grain: boolean; mblur: boolean };
+/** camera shutter as a fraction of a frame (180 degrees): the motion blur gathers along the path of the last half frame */
+const SHUTTER = 0.5;
+const toggles = (): PostToggles => ({ ink: true, lens: true, pre: true, bloom: true, grade: true, grain: false, mblur: true, ...((getInputProps() as { post?: Partial<PostToggles> }).post ?? {}) });
 
 /** Bloom for emissive sources only (depth.md 6.4). Its MIP chain always starts at 540x960 (half of 1080x1920),
  *  whatever the output size, so the glow keeps the same size relative to the frame (e-fold ~30 px at 1080p,
@@ -38,6 +41,7 @@ const makeBloom = () => {
 };
 
 const fwd = new THREE.Vector3(), fpt = new THREE.Vector3();
+const prevCam = new THREE.PerspectiveCamera();
 
 const useKit = () => {
   const [kit, setKit] = useState<Kit | null>(null);
@@ -58,6 +62,7 @@ const Inner: React.FC<{ id: number; kit: Kit }> = ({ id, kit }) => {
     bloom: makeBloom(),
     tone: new ToneMappingEffect({ mode: ToneMappingMode.NEUTRAL }),
     grade: new GradeEffect(GRADES.day, GRADE_STRENGTH.day),
+    mblur: new MotionBlurEffect(220),
     grain: new GrainEffect({ amount: 0.025, cellPx: 1.5 }), // film grain, OFF by default (inputProps post.grain): the reference measures no grain and it quadruples the file size
   }), [camera, scene]);
   useEffect(() => () => fx.ink.dispose(), [fx]);
@@ -67,6 +72,7 @@ const Inner: React.FC<{ id: number; kit: Kit }> = ({ id, kit }) => {
         on.ink ? <primitive key="ink" object={fx.ink} dispose={null} /> : null,
         on.lens && on.pre ? <primitive key="pre" object={fx.lens.pre} dispose={null} /> : null,
         on.lens ? <primitive key="lens" object={fx.lens.main} dispose={null} /> : null,
+        on.mblur ? <primitive key="mblur" object={fx.mblur} dispose={null} /> : null,
         on.bloom ? <primitive key="bloom" object={fx.bloom} dispose={null} /> : null,
         <primitive key="tone" object={fx.tone} dispose={null} />,
         on.grade ? <primitive key="grade" object={fx.grade} dispose={null} /> : null,
@@ -83,6 +89,12 @@ const Inner: React.FC<{ id: number; kit: Kit }> = ({ id, kit }) => {
   if (d.focus) fpt.set(...d.focus(f)); else fpt.copy(target);
   fx.lens.focus = Math.max(0.3, fpt.sub(cam.position).dot(fwd));
   fx.lens.cInf = d.cInf;
+  // motion blur: the same shot's camera half a frame earlier (pure function of id + f, also across hidden switches)
+  const pc = camAt(id, f - SHUTTER);
+  prevCam.position.set(...pc.pos); prevCam.up.set(0, 1, 0); prevCam.lookAt(...pc.look); prevCam.rotateZ(pc.roll);
+  prevCam.fov = pc.fov; prevCam.aspect = cam.aspect; prevCam.near = cam.near; prevCam.far = cam.far;
+  prevCam.updateProjectionMatrix(); prevCam.updateMatrixWorld();
+  fx.mblur.setCameras(cam.matrixWorld, cam.projectionMatrix, prevCam.projectionMatrix, prevCam.matrixWorldInverse);
   gradeFor(fx.grade, SHOTS[id - 1].light);
   fx.grain.seed = f; // deterministic per frame
   return (

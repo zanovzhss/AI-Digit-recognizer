@@ -525,7 +525,8 @@ const snowRoofMat = () => lam("snowRoof", () => ({ map: snowRoofHD(), side: THRE
 /** snow keeps a cool self-lit share (like the template's unlit sign face) so it stays the brightest, near-white thing
  *  under the orange golden key: lit side peach-white, shade side pale lavender (verifier round 1, fix 1) */
 export const SNOW_GLOW = new THREE.Color(0.3, 0.32, 0.4);
-export const snowMat = () => lam("snowCap", () => ({ color: "#f3f0ec", emissive: SNOW_GLOW }));
+/** snow caps and drifts: a soft broad sheen (Phong) on top of the two-tone light */
+export const snowMat = () => { let m = mats.get("snowCapP"); if (!m) { m = twoTone(new THREE.MeshPhongMaterial({ color: "#f3f0ec", emissive: SNOW_GLOW, specular: "#9aa6c8", shininess: 18 })); mats.set("snowCapP", m); } return m; };
 
 // round 4: real 3D relief on every house (was a flat window-textured box): stone plinth, cornice under the eaves,
 // window sills + lintel hoods matching facadeHD's window layout, front door step + door hood, chimney cap and pot
@@ -915,7 +916,8 @@ export const buildCellar = (root: THREE.Object3D, win: { x: number; y: number; w
 const ironM = () => { let m = mats.get("iron"); if (!m) { m = twoTone(new THREE.MeshPhongMaterial({ color: "#3d414c", specular: "#8a8a8a", shininess: 60 }), 0.15); mats.set("iron", m); } return m; };
 /** block ice: pale blue with a cool self-lit share (like the snow) so it stays icy under the warm golden key */
 export const ICE_GLOW = new THREE.Color(0.26, 0.34, 0.44);
-export const iceMat = () => lam("iceBlock", () => ({ color: "#bfe4f4", emissive: ICE_GLOW }));
+/** ice: glossy (Phong) so blocks, icicles and the pond catch a white specular glint from the sun */
+export const iceMat = () => { let m = mats.get("iceBlockP"); if (!m) { m = twoTone(new THREE.MeshPhongMaterial({ color: "#bfe4f4", emissive: ICE_GLOW, specular: "#ffffff", shininess: 70 })); mats.set("iceBlockP", m); } return m; };
 const woodM = (key: string, col: string) => lam(key, () => ({ map: rep(beamHD(), 1, 1), color: col }));
 const sawM = () => lam("sawdust", () => ({ map: rep(sawdustHD(), 1, 1) }));
 const tr = (x: number, y: number, z: number, yaw = 0) => new THREE.Matrix4().makeRotationY(yaw).setPosition(x, y, z);
@@ -1016,7 +1018,7 @@ export const buildBrig = (): BrigParts => {
 };
 
 /** ice blocks stacked as a pyramid at (x, y, z) in rows along x (block size s) */
-const iceStack = (b: Batch, x: number, y: number, z: number, nx: number, nz: number, layers: number, s = 0.5) => {
+export const iceStack = (b: Batch, x: number, y: number, z: number, nx: number, nz: number, layers: number, s = 0.5) => {
   for (let l = 0; l < layers; l++) for (let i = 0; i < nx - l; i++) for (let k = 0; k < nz; k++) {
     const x0 = x + (i - (nx - l - 1) / 2) * (s + 0.03) - s / 2, z0 = z + (k - (nz - 1) / 2) * (s + 0.03) - s / 2, y0 = y + l * s;
     b.add(boxGeo(V(x0, y0, z0), V(x0 + s, y0 + s * 0.92, z0 + s)), iceMat());
@@ -1048,7 +1050,7 @@ export const buildPond = (root: THREE.Object3D, kit: Kit) => {
   b.add(new THREE.CircleGeometry(15, 64).rotateX(-Math.PI / 2), lam("pondIceHD", () => ({ map: rep(pondIceHD(), 1, 1), emissive: ICE_GLOW, emissiveMap: pondIceHD() })), tr(O, 0.025, -15));
   b.add(boxGeo(V(O - 3.4, 0.026, -3.85), V(O + 3.6, 0.03, -3.3)), lam("openWater", () => ({ color: "#1e3d5c" })));
   for (const x of [-2.8, -1.2, 1.6, 2.9]) b.add(boxGeo(V(O + x - 0.25, 0.0, -3.82), V(O + x + 0.25, 0.12, -3.33)), iceMat());
-  iceStack(b, O + 4.9, 0, 0.4, 4, 2, 3); iceStack(b, O - 4.8, 0, 0.0, 3, 2, 2);
+  stackAt(b, O + 4.9, 0.4, 4, 2, 3); stackAt(b, O - 4.8, 0.0, 3, 2, 2); // off the new lenses (dressing sight lines)
   for (let i = 0; i < 46; i++) {
     const a = r() * Math.PI * 2, d = 17 + r() * 22, x = O + Math.cos(a) * d, z = -15 + Math.sin(a) * d;
     if (z > -1 && Math.abs(x - O) < 9) continue;
@@ -1289,4 +1291,189 @@ export const buildCalcutta = (root: THREE.Object3D) => {
     barrel(b, X - 1.6, z + 0.3, 0.8);
   }
   b.build(root);
+};
+
+// ---------------- dressing (cinematic pass): clutter on every set, kept off every lens ----------------
+// Each place gets props, footprints, drifts and practical lights. Everything goes through the sight lines of every
+// shot (world.ts: the shots' own camera moves), so nothing lands between a lens and its subject.
+let dressRays: Ray[] = [];
+export const setDressRays = (r: Ray[]) => { dressRays = r; };
+const clearAt = (x: number, z: number, r: number, h: number, y = 0) => {
+  const keep = sight; sight = dressRays;
+  const hit = inTheWay(x - r, x + r, y, y + h, z - r, z + r);
+  sight = keep;
+  return !hit;
+};
+const ropeM = () => lam("rope", () => ({ color: "#c4a272" }));
+export const ropeCoil = (b: Batch, x: number, y: number, z: number, s = 1) => {
+  for (let i = 0; i < 3; i++) b.add(new THREE.TorusGeometry((0.2 - i * 0.025) * s, 0.035 * s, 8, 28).rotateX(Math.PI / 2), ropeM(), tr(x, y + (0.035 + i * 0.06) * s, z));
+};
+export const bucket = (b: Batch, x: number, y: number, z: number, s = 1) => {
+  b.add(cyl(0.13 * s, 0.16 * s, 0.28 * s, 16), woodM("bucket", "#9a7048"), tr(x, y, z));
+  for (const h of [0.05, 0.22]) b.add(new THREE.TorusGeometry(0.15 * s, 0.012, 6, 20).rotateX(Math.PI / 2), ironM(), tr(x, y + h * s, z));
+  b.add(new THREE.TorusGeometry(0.16 * s, 0.01, 6, 16, Math.PI), ironM(), tr(x, y + 0.28 * s, z, 0.6));
+};
+/** a chain hanging from a wall ring at (x, y, z) (wall normal nx, nz) down to the floor, the last links in a heap */
+export const chain = (b: Batch, x: number, y: number, z: number, nx: number, nz: number) => {
+  b.add(new THREE.TorusGeometry(0.06, 0.014, 8, 16).rotateY(Math.atan2(nx, nz)), ironM(), tr(x, y, z));
+  let i = 0;
+  for (let yy = y - 0.07; yy > 0.05; yy -= 0.068, i++) b.add(new THREE.TorusGeometry(0.028, 0.009, 6, 12).scale(1, 1.6, 1).rotateY(i % 2 ? Math.PI / 2 : 0), ironM(), tr(x + nx * 0.03, yy, z + nz * 0.03));
+  for (let k = 0; k < 7; k++) b.add(new THREE.TorusGeometry(0.028, 0.009, 6, 12).scale(1.6, 1, 1).rotateX(Math.PI / 2).rotateY(k * 0.9), ironM(), tr(x + nx * (0.1 + 0.05 * k) + Math.sin(k) * 0.06, 0.012, z + nz * (0.1 + 0.05 * k) + Math.cos(k) * 0.06));
+  b.add(new THREE.TorusGeometry(0.07, 0.016, 8, 18).rotateX(Math.PI / 2), ironM(), tr(x + nx * 0.5, 0.016, z + nz * 0.5)); // shackle
+};
+const strawM = () => lam("straw", () => ({ color: "#e0bf5a" }));
+/** a straw bed: a flat mat plus loose stalks */
+export const straw = (b: Batch, x: number, z: number, rad: number, n: number, seed: number, y = 0) => {
+  const r = rng(seed);
+  b.add(new THREE.CircleGeometry(1, 20).rotateX(-Math.PI / 2).scale(rad, 1, rad * 0.7), lam("strawMat", () => ({ color: "#c9a548" })), tr(x, y + 0.006, z, r() * 3));
+  for (let i = 0; i < n; i++) {
+    const a = r() * Math.PI * 2, d = Math.sqrt(r()) * rad * 1.15;
+    b.add(new THREE.CylinderGeometry(0.007, 0.007, 0.18 + 0.14 * r(), 4).rotateZ(Math.PI / 2).rotateY(r() * Math.PI), strawM(), tr(x + Math.cos(a) * d, y + 0.014 + 0.03 * r(), z + Math.sin(a) * d * 0.7));
+  }
+};
+/** a walker's trail of alternating prints through the points (snow: blue-violet hollows; sand: darker sand) */
+export const footprints = (b: Batch, pts: [number, number][], col = "#a6b0d6", y = 0.016) => {
+  const m = lam("print" + col, () => ({ color: col }));
+  let side = 1;
+  for (let k = 0; k < pts.length - 1; k++) {
+    const [x0, z0] = pts[k], [x1, z1] = pts[k + 1], L = Math.hypot(x1 - x0, z1 - z0), n = Math.max(1, Math.floor(L / 0.36));
+    const dx = (x1 - x0) / L, dz = (z1 - z0) / L, yaw = Math.atan2(dx, dz);
+    for (let i = 0; i < n; i++) {
+      const t = (i * L) / n; side = -side;
+      b.add(new THREE.CircleGeometry(1, 10).rotateX(-Math.PI / 2).scale(0.055, 1, 0.12), m, tr(x0 + dx * t - dz * 0.11 * side, y, z0 + dz * t + dx * 0.11 * side, yaw));
+    }
+  }
+};
+export const drift = (b: Batch, x: number, z: number, sx: number, sy: number, sz: number, yaw = 0) =>
+  b.add(new THREE.SphereGeometry(1, 18, 8, 0, Math.PI * 2, 0, Math.PI / 2).scale(sx, sy, sz), snowMat(), tr(x, 0, z, yaw));
+export const sack = (b: Batch, x: number, y: number, z: number, s = 1, yaw = 0) =>
+  b.add(new THREE.SphereGeometry(1, 14, 10).scale(0.26 * s, 0.22 * s, 0.2 * s).translate(0, 0.2 * s, 0), lam("sack", () => ({ color: "#b59a6e" })), tr(x, y, z, yaw));
+/** iron lamp post with a glowing lantern (a warm practical: the HDR glass blooms) */
+export const lampPost = (b: Batch, x: number, z: number, h = 3.0, snow = false) => {
+  const iron = ironM();
+  b.add(new THREE.CylinderGeometry(0.05, 0.08, h, 10).translate(x, h / 2, z), iron);
+  b.add(new THREE.CylinderGeometry(0.16, 0.16, 0.08, 6).translate(x, h, z), iron);
+  b.add(new THREE.ConeGeometry(0.24, 0.22, 6).translate(x, h + 0.5, z), iron);
+  b.add(new THREE.CylinderGeometry(0.17, 0.13, 0.36, 6).translate(x, h + 0.22, z), lanternGlass());
+  if (snow) b.add(new THREE.SphereGeometry(0.2, 12, 6, 0, Math.PI * 2, 0, Math.PI / 2).scale(1, 0.5, 1).translate(x, h + 0.6, z), snowMat());
+};
+/** a cluster of crates and barrels around (x, z), each one only where no lens looks through it */
+const cluster = (b: Batch, x: number, z: number, seed: number, n = 4) => {
+  const r = rng(seed);
+  for (let i = 0; i < n; i++) {
+    const px = x + (r() - 0.5) * 1.8, pz = z + (r() - 0.5) * 1.4;
+    if (i % 3 === 2) { if (clearAt(px, pz, 0.35, 0.9)) barrel(b, px, pz, 0.85 + 0.2 * r()); }
+    else { const s = 0.5 + 0.35 * r(); if (clearAt(px, pz, s * 0.7, s * 2)) { crate(b, px, pz, s, r() * 2); if (r() < 0.45) crate(b, px + 0.05, pz - 0.04, s * 0.7, r() * 2); } }
+  }
+};
+const kitAt = (b: Batch, kit: Kit, name: string, x: number, z: number, h: number, yaw = 0, y = 0) => {
+  const keep = sight; sight = dressRays; prop(b, kit, name, x, y, z, h, yaw); sight = keep;
+};
+const stackAt = (b: Batch, x: number, z: number, nx: number, nz: number, layers: number, s = 0.5) => {
+  if (clearAt(x, z, (Math.max(nx, nz) * s) / 2 + 0.1, layers * s)) iceStack(b, x, 0, z, nx, nz, layers, s);
+};
+const OFF_X = (pl: PlaceId) => at(pl, 0, 0, 0)[0];
+/** snow texture variation over a w x d field centred on (x, z): low wind drifts and cool shaded hollows */
+const snowField = (b: Batch, x: number, z: number, w: number, d: number, seed: number) => {
+  const r = rng(seed), hollow = lam("snowHollow", () => ({ color: "#d3d9ef" }));
+  for (let i = 0; i < 26; i++) {
+    const px = x + (r() - 0.5) * w, pz = z + (r() - 0.5) * d, s = 0.6 + 1.4 * r();
+    if (i % 2) { if (clearAt(px, pz, s, 0.3)) drift(b, px, pz, s, 0.12 + 0.12 * r(), 0.45 * s, r() * 3); }
+    else b.add(new THREE.CircleGeometry(1, 18).rotateX(-Math.PI / 2).scale(s * 1.4, 1, s * 0.6), hollow, tr(px, 0.011, pz, r() * 3));
+  }
+};
+const xz = (p: [number, number, number]): [number, number] => [p[0], p[2]];
+const quadFloor = (x0: number, x1: number, z0: number, z1: number, y: number) => quad(V(x0, y, z1), V(x1, y, z1), V(x1, y, z0), V(x0, y, z0), (x1 - x0) / 2, (z1 - z0) / 2);
+
+export const dressPlaces = (root: THREE.Object3D, kit: Kit) => {
+  const b = new Batch();
+  // the snowy street: crates by the doors, a cart, lamp posts, trails through the snow, drifts along the fence
+  for (const [x, z, sd] of [[-5.3, -3.2, 1], [-5.4, -11.5, 2], [-5.2, 9.6, 3], [-5.4, -19, 4]] as const) cluster(b, x, z, 40 + sd, 3);
+  kitAt(b, kit, "cart", -4.6, -7.6, 1.5, 0.4);
+  for (const [x, z, snow] of [[-1.2, -4.5, true], [-1.2, -15.5, true], [-5.6, 9.0, true], [-1.2, 13.5, true]] as const) if (clearAt(x, z, 0.3, 3.6)) lampPost(b, x, z, 3.0, snow);
+  footprints(b, [[-3.6, -30], [-3.2, -14], [-3.7, -2], [-3.3, 3.6], [-3.5, 5.0]]);
+  footprints(b, [[-2.1, 14], [-2.4, 6], [-2.0, -6], [-2.5, -26]]);
+  footprints(b, [[-4.9, 3.4], [-4.1, 1.0], [-4.6, -3.0]]);
+  snowField(b, 4, -10, 20, 40, 63);
+  for (let z = -30; z < 20; z += 1.1) if (clearAt(-1.15, z, 0.4, 0.4)) drift(b, -1.15, z, 0.38, 0.2 + 0.1 * Math.sin(z * 1.7), 0.6);
+  for (const [x, z] of [[-5.5, 7.4], [-5.6, 7.9], [-5.3, -6.2]] as const) if (clearAt(x, z, 0.3, 0.5)) sack(b, x, 0, z, 1, z);
+
+  // the pond: ice stacks and tools on the ice, barrels, marker posts along the channel, trails across the banks
+  const P = OFF_X("pond");
+  for (const [x, z, nx, nz, l] of [[-6.5, -1.8, 3, 2, 2], [-3.4, -8.2, 2, 2, 2], [2.2, -9.6, 3, 2, 3], [-8.8, -6.0, 2, 1, 1]] as const) stackAt(b, P + x, z, nx, nz, l);
+  for (const [x, z, sd] of [[-9.5, -2.6, 5], [5.8, -8.0, 6], [-1.2, -12.5, 7]] as const) cluster(b, P + x, z, 50 + sd, 3);
+  for (let x = -6; x <= 6; x += 2.4) if (clearAt(P + x, -5.3, 0.15, 1.1)) fencePost(b, P + x, -5.3, 1.0, 0, false);
+  kitAt(b, kit, "cart", P - 4.6, -11.0, 1.4, 1.1);
+  footprints(b, [[P - 12, 2], [P - 6, -1.2], [P - 2.5, -3.0], [P + 1.6, -3.1], [P + 6, -2.0]]);
+  footprints(b, [[P + 9, 3], [P + 4.5, -0.8], [P + 1.2, -4.0]]);
+  footprints(b, [[P - 3, -4.8], [P - 3.4, -8], [P - 1.5, -12]]);
+  for (const [x, z, s] of [[-11, 1.5, 1.2], [8.5, 2.0, 1.0], [-13.5, -4, 1.4], [12, -3.5, 1.1], [3.5, 3.2, 0.9]] as const) if (clearAt(P + x, z, s, 0.5)) drift(b, P + x, z, s, 0.35 * s, 0.7 * s, x);
+
+  for (const [x, z] of [[-7.8, 1.6], [9.5, -6.0], [-10.5, -9.5]] as const) if (clearAt(P + x, z, 0.3, 3.6)) lampPost(b, P + x, z, 3.0, true);
+  snowField(b, P, -6, 30, 18, 61);
+
+  // Boston harbour: lamp posts along the quay, market stalls by the houses, rope coils at the bollards, trails
+  const H = OFF_X("harbor");
+  for (const x of [-15.5, -10, 4.8, 11.5, 18]) kitAt(b, kit, "lantern", H + x, 1.5, 2.8, Math.PI);
+  kitAt(b, kit, "stall-red", H - 12.5, 12, 3.2, Math.PI); kitAt(b, kit, "stall-green", H + 9.5, 12.5, 3.2, Math.PI);
+  kitAt(b, kit, "cart", H - 15.5, 7.5, 1.5, 0.8);
+  for (const [x, z, sd] of [[-11.5, 5.5, 1], [12.5, 4.5, 2], [-3.2, 15.5, 3], [5.8, 16, 4], [-17, 3.2, 5]] as const) cluster(b, H + x, z, 60 + sd, 4);
+  for (const x of [-12.85, -6.35, 6.65, 13.15]) if (clearAt(H + x + 0.5, 1.0, 0.3, 0.3)) ropeCoil(b, H + x + 0.5, 0, 1.0);
+  footprints(b, [[H - 20, 9], [H - 9, 6.5], [H - 2.5, 4.2], [H + 1.8, 1.4]]);
+  footprints(b, [[H - 6, 20], [H - 7.5, 12], [H - 6.6, 5]]);
+  footprints(b, [[H + 14, 19], [H + 6, 9], [H + 2.6, 2.2]]);
+  for (const [x, z] of [[-13, 2.6], [-4.5, 9.8], [8.6, 3.4]] as const) if (clearAt(H + x, z, 0.3, 0.5)) sack(b, H + x, 0, z, 1, x);
+  snowField(b, H, 10, 40, 16, 62);
+
+  // the Caribbean port: a full dock floor of boards on the quay, coils, crates, sacks, a stall and a cart
+  const Q = OFF_X("port");
+  b.add(quadFloor(Q - 14, Q + 12, 0.46, 12, 0.006), lam("dockBoards", () => ({ map: rep(planksHD(), 7, 4), color: "#c9a072" })));
+  for (const [x, z, sd] of [[6.6, 6.2, 1], [-4.4, 7.5, 2], [9.8, 2.0, 3], [-9.5, 3.0, 4], [1.2, 9.5, 5]] as const) cluster(b, Q + x, z, 70 + sd, 4);
+  for (const [x, z] of [[3.5, 2.2], [-0.6, 6.8], [7.6, 1.0], [5.4, 4.6]] as const) if (clearAt(Q + x, z, 0.25, 0.25)) ropeCoil(b, Q + x, 0.006, z);
+  kitAt(b, kit, "stall-green", Q - 8.5, 11.5, 3.2, Math.PI); kitAt(b, kit, "cart", Q + 8.2, 10.5, 1.5, 2.6);
+  for (const [x, z] of [[1.0, 1.6], [-7.5, 1.2], [8.2, 7.8]] as const) if (clearAt(Q + x, z, 0.3, 0.5)) sack(b, Q + x, 0, z, 1, x);
+  footprints(b, [[Q - 6, 9], [Q - 2.5, 4.2], [Q + 1.8, 2.0], [Q + 6.5, 1.0]], "#9c7a52", 0.012);
+
+  // the beach: crates and barrels landed from the brig, a beached canoe, a coil, prints in the sand
+  const BX = OFF_X("beach");
+  for (const [x, z, sd] of [[3.6, -1.6, 1], [-3.4, -2.6, 2], [5.0, 2.8, 3], [-5.6, 1.4, 4]] as const) cluster(b, BX + x, z, 80 + sd, 3);
+  kitAt(b, kit, "canoe", BX - 2.8, -3.8, 0.7, 1.2);
+  if (clearAt(BX + 1.9, -2.2, 0.25, 0.25)) ropeCoil(b, BX + 1.9, 0, -2.2);
+  footprints(b, [[BX - 1.0, 9], [BX - 0.8, 4], [BX - 0.6, 0.6]], "#c99a5c", 0.01);
+  footprints(b, [[BX + 2.5, -4.5], [BX + 1.6, -1.2], [BX + 0.7, -0.3]], "#c99a5c", 0.01);
+
+  // the lumber mill: a cart, crates and sacks of sawdust
+  const M = OFF_X("mill");
+  kitAt(b, kit, "cart", M - 7.5, -1.5, 1.5, 0.6);
+  for (const [x, z, sd] of [[-6.5, 2.2, 1], [7.5, 2.4, 2], [11, -6, 3]] as const) cluster(b, M + x, z, 90 + sd, 3);
+  for (const [x, z] of [[-4.2, 1.2], [-4.7, 1.6], [6.2, 0.6]] as const) if (clearAt(M + x, z, 0.3, 0.5)) sack(b, M + x, 0, z, 1, x);
+  footprints(b, [[M + 6, 8], [M + 2, 3], [M - 2.0, -0.5]], "#8f6a44", 0.014);
+
+  // Calcutta market: more stalls and banners, crates, sacks, lamp posts with warm lanterns
+  const K = OFF_X("calcutta");
+  kitAt(b, kit, "stall-red", K + 59.5, 14.5, 3.2, 0.3); kitAt(b, kit, "stall-green", K + 82, 14, 3.2, -0.3);
+  kitAt(b, kit, "banner-red", K + 67.2, 16.5, 3.6); kitAt(b, kit, "banner-red", K + 78.6, 16.0, 3.6, Math.PI);
+  for (const [x, z, sd] of [[62, 17.5, 1], [80.5, 18, 2], [66, 9.5, 3], [86, 12, 4]] as const) cluster(b, K + x, z, 100 + sd, 4);
+  for (const [x, z] of [[61, 11.5], [84.5, 16.5], [75.5, 21.5], [64.5, 21]] as const) if (clearAt(K + x, z, 0.3, 3.6)) lampPost(b, K + x, z, 3.0);
+  for (const [x, z] of [[68.2, 14.2], [77.6, 13.9], [74.6, 19.6]] as const) if (clearAt(K + x, z, 0.3, 0.5)) sack(b, K + x, 0, z, 1, x);
+  b.build(root);
+
+  // indoor sets: their own batch
+  const c = new Batch();
+  // the cell: straw beds, a bucket, chains on the walls, loose bricks, a shelf with a candle (warm practical)
+  straw(c, ...xz(C(-1.55, 0, -1.9)), 0.62, 70, 11); straw(c, ...xz(C(1.75, 0, -2.6)), 0.45, 40, 12); straw(c, ...xz(C(-0.2, 0, 0.6)), 0.35, 25, 13);
+  bucket(c, ...C(2.15, 0, -0.9)); chain(c, ...C(-2.58, 1.35, -1.4), 1, 0); chain(c, ...C(2.58, 1.25, -0.2), -1, 0); chain(c, ...C(-1.1, 1.6, -3.38), 0, 1);
+  for (let i = 0; i < 9; i++) c.add(boxGeo(V(-0.11, 0, -0.055), V(0.11, 0.07, 0.055)), lam("looseBrick", () => ({ color: "#a8584a" })),
+    new THREE.Matrix4().makeRotationY(i * 1.3).setPosition(...C(-2.3 + (i % 3) * 0.24, i > 5 ? 0.07 : 0, 0.4 + Math.floor(i / 3) * 0.2)));
+  c.add(boxGeo(V(...C(-2.35, 1.5, -3.38)), V(...C(-1.35, 1.54, -3.12))), woodM("shelf", "#8a6040"));
+  c.add(cyl(0.035, 0.035, 0.12, 10), lam("candle", () => ({ color: "#f2e6c8" })), tr(...C(-1.6, 1.54, -3.25)));
+  c.add(new THREE.SphereGeometry(0.022, 8, 6).scale(1, 1.7, 1), lanternCore(), tr(...C(-1.6, 1.69, -3.25)));
+  c.add(cyl(0.09, 0.08, 0.04, 14), lam("plate", () => ({ color: "#9aa4ae" })), tr(...C(-2.05, 1.54, -3.25)));
+  // the hold: barrels, crates, coils and sacks along the walls
+  const HO = OFF_X("hold");
+  for (const [x, z] of [[2.45, 4.0], [2.45, 4.75], [-2.45, 3.6]] as const) barrel(c, HO + x, z, 0.9);
+  for (const [x, z, s] of [[-2.35, 4.6, 0.6], [-2.4, 5.4, 0.7], [2.3, 6.3, 0.6]] as const) crate(c, HO + x, z, s, x);
+  ropeCoil(c, HO + 1.4, 0, 6.3); ropeCoil(c, HO - 1.6, 0, 6.4, 0.8);
+  for (const [x, z] of [[2.2, 5.5], [-1.9, 2.4]] as const) sack(c, HO + x, 0, z, 1, z);
+  c.build(root, true);
 };
