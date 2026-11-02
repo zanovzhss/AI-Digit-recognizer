@@ -76,7 +76,7 @@ export const BEACH = { tudor: at("beach", 0.55, 0, 0) as V3, local: at("beach", 
 export const POND = { workers: [at("pond", -1.05, 0, -4.3), at("pond", 0.1, 0, -4.05), at("pond", 1.2, 0, -4.35)] as V3[] };
 // harbor: the quay (top y 0) runs along x, water for z < 0, houses at z = 24; the gangplank meets the brig's side
 export const PLANK = { x: 2.2, z0: 0.5, z1: -1.75 }; // quay end -> deck end (deck end at DECK_Y + WATER_Y)
-export const HARBOR = { tudor: at("harbor", -1.1, 0, 3.0) as V3, stack: at("harbor", -1.25, 0, 1.5) as V3 };
+export const HARBOR = { tudor: at("harbor", -1.1, 0, 3.0) as V3, stack: at("harbor", -1.6, 0, 1.5) as V3 };
 /** loading (shot 5): two cutters carry blocks from the stack up the plank onto the deck */
 export const carrierAt = (i: number, f: number): { p: V3; walking: boolean; phase: number } => {
   const f0 = 208 + i * 26, u = clamp01((f - f0) / 62);
@@ -190,7 +190,7 @@ const CAMS: Record<number, Key[]> = {
   // 3 pond: eye-level medium-wide on the cutters, slow lateral glide
   3: [{ f: 107, s: hold("pond", [2.2, 1.75, 4.0], [0.2, 1.0, -4.2], 107, 0.0015, { fov: 38 }) }, { f: 112, dur: 40, s: hold("pond", [0.6, 1.6, 3.3], [0.1, 1.0, -4.2], 140, 0.002, { fov: 38, roll: 0.03 }) }],
   // 4 harbor: Tudor, proud, the ice stack and the brig behind him
-  4: [{ f: 162, s: hold("harbor", [0.7, 1.45, 6.9], [-1.0, 1.35, 2.8], 162, 0.0032, { fov: 35, roll: -0.03 }) }],
+  4: [{ f: 162, s: hold("harbor", [0.7, 1.45, 6.9], [-1.0, 1.35, 2.8], 162, 0.002, { fov: 35, roll: -0.03 }) }],
   // 5 harbor: on deck looking back at the plank, the cutters carry blocks aboard
   5: [{ f: 208, s: hold("harbor", [4.6, 2.1, -4.2], [2.3, 0.9, 1.6], 208, 0.0012, { fov: 40, roll: 0.02 }) }],
   // 6 aerial: the brig leaves the snowy harbour
