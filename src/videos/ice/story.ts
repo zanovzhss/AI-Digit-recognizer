@@ -241,8 +241,8 @@ const RIGS: Record<number, Rig> = {
 /** the shot's own move (no transitions, no kicks): what the sight lines, the sun and the foreground props are built for */
 export const camRig = (id: number, f: number): Cam => {
   const s = SHOTS[id - 1], r = RIGS[id], k = mixS(r.A, r.B, ease((f - s.a) / (s.b - s.a)));
-  const c = sph(r.look(f), k), a = 0.008 * k.d; // float: a slow drift of ~1 % of the distance
-  return { ...c, pos: [c.pos[0] + a * Math.sin(f * 0.071 + id), c.pos[1] + 0.6 * a * Math.sin(f * 0.093 + 2 * id), c.pos[2] + a * Math.cos(f * 0.063 + id)] };
+  const c = sph(r.look(f), k), a = 0.013 * k.d; // float: a slow drift of ~1.3 % of the distance
+  return { ...c, pos: [c.pos[0] + a * Math.sin(f * 0.085 + id), c.pos[1] + 0.6 * a * Math.sin(f * 0.11 + 2 * id), c.pos[2] + a * Math.cos(f * 0.075 + id)] };
 };
 
 // ---------------- transitions (key k = the boundary between shot k and shot k+1) ----------------
