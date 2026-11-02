@@ -219,8 +219,8 @@ const RIGS: Record<number, Rig> = {
   // 19 Tudor at the window
   19: { look: fixed("cell", 0.35, 1.45, -3.05), A: S(3.8, -45, -8, 38, -1), B: S(2.6, 0, -2, 38, -2) },
   // 20-21 the bottle and the towel: one orbit carried across the cut
-  20: { look: fixed("cell", -1.75, 0.66, -3.0), A: S(1.1, 50, 25, 30), B: S(0.75, -10, 8, 30) },
-  21: { look: fixed("cell", -1.75, 0.66, -3.0), A: S(1.4, -30, 6, 34, 1), B: S(1.0, 35, 16, 34, 3) },
+  20: { look: fixed("cell", -1.75, 0.66, -3.0), A: S(1.2, 70, 28, 30), B: S(0.8, -20, 8, 30) },
+  21: { look: fixed("cell", -1.75, 0.66, -3.0), A: S(1.4, -40, 6, 34, 1), B: S(1.0, 50, 18, 34, 3) },
   // 22 the hold: sawdust shovelled over the ice
   22: { look: fixed("hold", 0, 0.8, 0.5), A: S(7.0, 24, 15, 40), B: S(4.8, -16, 2, 40, -1) },
   // 23 the mill yard, low past the logs
@@ -228,7 +228,7 @@ const RIGS: Record<number, Rig> = {
   // 24 the brig alone on the hot ocean, aerial orbit (scale)
   24: { look: brigLook(24, 6), A: S(60, -62, 16), B: S(40, -12, 11) },
   // 25 the calendar on the post
-  25: { look: fixed("hold", -1.0, 1.42, 3.06), A: S(2.0, -28, -6, 34), B: S(1.4, 24, 3, 34, 1) },
+  25: { look: fixed("hold", -1.0, 1.42, 3.06), A: S(2.6, -30, -6, 34), B: S(2.0, 26, 3, 34, 1) },
   // 26 Calcutta: over the hatch as its cover comes off
   26: { look: fixed("calcutta", 0.4, 0.35, -6.6), A: S(6.6, -30, 62, 40, -2), B: S(4.4, 22, 38, 40, -1) },
   // 27 the market, wide (scale)
@@ -249,13 +249,14 @@ export const camRig = (id: number, f: number): Cam => {
 export type Wipe = "crate" | "hull" | "sail";
 type Tr = { kind: "fly" | "whip" | "wipe"; pre: number; post: number; dir?: 1 | -1; deg?: number; lift?: number; wipe?: Wipe };
 const fly = (pre: number, post: number, lift = 0): Tr => ({ kind: "fly", pre, post, lift });
-const whip = (dir: 1 | -1, pre = 6, post = 7, deg = 110): Tr => ({ kind: "whip", pre, post, dir, deg });
-const wipe = (w: Wipe, dir: 1 | -1, pre = 7, post = 7): Tr => ({ kind: "wipe", pre, post, dir, wipe: w });
+// whip: peak turn ~17 deg/frame (about 3/4 of the frame width): faster than that the blurred frames all look alike
+const whip = (dir: 1 | -1, pre = 7, post = 8, deg = 63): Tr => ({ kind: "whip", pre, post, dir, deg });
+const wipe = (w: Wipe, dir: 1 | -1, pre = 6, post = 6): Tr => ({ kind: "wipe", pre, post, dir, wipe: w });
 export const TRANS: Record<number, Tr> = {
-  1: fly(5, 6), 2: whip(1), 3: whip(-1), 4: fly(6, 6, 0.6), 5: fly(6, 7, 6), 6: whip(1), 7: wipe("crate", 1), 8: whip(-1),
-  9: wipe("hull", -1), 10: fly(6, 6, 2), 11: fly(6, 6), 12: whip(1), 13: fly(6, 6, 3), 14: wipe("sail", 1), 15: whip(-1, 5, 7),
-  16: fly(7, 7), 17: fly(6, 6), 18: fly(6, 6), 19: fly(6, 6), 20: fly(6, 6), 21: whip(1), 22: wipe("crate", -1), 23: whip(-1),
-  24: wipe("hull", 1), 25: whip(1), 26: fly(7, 7, 8), 27: fly(6, 6, 1), 28: fly(6, 6),
+  1: fly(5, 6), 2: wipe("hull", 1), 3: wipe("crate", -1), 4: fly(5, 5, 0.6), 5: fly(5, 5, 6), 6: wipe("sail", 1), 7: wipe("crate", 1),
+  8: wipe("hull", -1), 9: wipe("hull", -1), 10: fly(5, 5, 2), 11: fly(5, 5), 12: wipe("crate", 1), 13: wipe("sail", -1), 14: wipe("sail", 1),
+  15: wipe("crate", -1), 16: fly(7, 7), 17: fly(6, 6), 18: fly(6, 6), 19: fly(6, 6), 20: fly(6, 6), 21: wipe("sail", 1), 22: wipe("sail", -1),
+  23: whip(-1), 24: wipe("hull", 1), 25: wipe("sail", 1), 26: fly(5, 5, 8), 27: fly(5, 5, 1), 28: fly(5, 5),
 };
 /** yaw the view about the lens (whips), with a little roll into the turn */
 const yawAbout = (c: Cam, ang: number): Cam => {
@@ -279,12 +280,16 @@ const camT = (id: number, f: number): Cam => {
   }
   return camRig(id, f);
 };
-/** the foreground wiper of a wipe transition at frame f of shot id: x = its centre in half-frame widths (0 = covers) */
+/** the foreground wiper of a wipe transition at frame f of shot id: x = its centre in half-frame widths. It is 4
+ *  half-widths wide and never stops: it enters, covers the frame for ~4 frames around the switch and leaves on the other
+ *  side, its planks / seams streaming past the lens the whole time (mild ease at both ends) */
+export const WIPE_W = 4, WIPE_X0 = 3.3;
 export const wipeAt = (id: number, f: number): { kind: Wipe; x: number } | null => {
   const s = SHOTS[id - 1], out = TRANS[id], inn = TRANS[id - 1];
-  if (out?.kind === "wipe" && f >= s.b - out.pre - 1) return { kind: out.wipe!, x: out.dir! * 2.3 * (1 - smooth((f - (s.b - out.pre - 1)) / out.pre)) };
-  if (inn?.kind === "wipe" && f < s.a + inn.post + 1) return { kind: inn.wipe!, x: -inn.dir! * 2.3 * smooth((f - s.a) / inn.post) };
-  return null;
+  const tr = out?.kind === "wipe" && f >= s.b - out.pre - 1 ? { t: out, b: s.b } : inn?.kind === "wipe" && f < s.a + inn.post + 1 ? { t: inn, b: s.a } : null;
+  if (!tr) return null;
+  const u = clamp01((f - (tr.b - tr.t.pre - 1)) / (tr.t.pre + tr.t.post + 2)), v = 0.6 * u + 0.4 * smooth(u);
+  return { kind: tr.t.wipe!, x: tr.t.dir! * WIPE_X0 * (1 - 2 * v) };
 };
 
 // impact kicks (flip sign every frame, decay over 7 f): the slip, the bulb, the hatch
@@ -359,12 +364,36 @@ const nearLens = (id: number, u: number, dist: number, sx: number, y = 0): V3 =>
   const fx = c.look[0] - c.pos[0], fz = c.look[2] - c.pos[2], n = Math.hypot(fx, fz) || 1, tx = Math.tan((c.fov * D2R) / 2) * (9 / 16) * dist * sx;
   return [c.pos[0] + (fx / n) * dist - (fz / n) * tx, y, c.pos[2] + (fz / n) * dist + (fx / n) * tx];
 };
-const fgOf = (id: number, kit: string, u: number, dist: number, sx: number, sc = 1, yaw = 0.4, y = 0): Fg =>
-  ({ a: SHOTS[id - 1].a, b: SHOTS[id - 1].b, kit, pos: nearLens(id, u, dist, sx, y), s: sc, yaw });
-export const FOREGROUND: Fg[] = [
+/** horizontal screen position of p in shot id at frame f (half-frame widths; NaN behind the lens) */
+const screenX = (id: number, f: number, p: V3) => {
+  const c = camRig(id, f), fx = c.look[0] - c.pos[0], fz = c.look[2] - c.pos[2], n = Math.hypot(fx, fz) || 1;
+  const dx = p[0] - c.pos[0], dz = p[2] - c.pos[2], depth = (dx * fx + dz * fz) / n, side = (-dx * fz + dz * fx) / n;
+  return depth > 0.3 ? side / (depth * Math.tan((c.fov * D2R) / 2) * (9 / 16)) : NaN;
+};
+/** a framing prop near the lens. A close prop sweeps across the frame as the camera orbits, so the placement is
+ *  searched (anchor moment, side distance, depth): in view (|x| < 1.1) for at least a quarter of the shot, over the
+ *  middle of the frame (|x| < 0.6, where the subject is) for at most 15 % of it, as much screen time as possible */
+const fgOf = (id: number, kit: string, u: number, dist: number, sx: number, sc = 1, yaw = 0.4, y = 0): Fg | null => {
+  const s = SHOTS[id - 1];
+  let best: { pos: V3; score: number } | null = null;
+  for (const dk of [1, 1.4, 1.9]) for (const ak of [1, 1.2, 1.45]) for (const uu of [u, 0.1, 0.3, 0.5, 0.7, 0.9]) {
+    const pos = nearLens(id, uu, dist * dk, sx * ak, y);
+    let seen = 0, over = 0, n = 0;
+    for (let f = s.a; f < s.b; f += 2, n++) {
+      const x = screenX(id, f, pos);
+      if (Number.isNaN(x)) continue;
+      if (Math.abs(x) < 0.6) over++;
+      if (Math.abs(x) < 1.1) seen++;
+    }
+    const score = seen - 4 * over - 3 * (dk - 1) * n * 0.1;
+    if (seen >= n / 4 && over <= n * 0.15 && (!best || score > best.score)) best = { pos, score };
+  }
+  return best ? { a: s.a, b: s.b, kit, pos: best.pos, s: sc, yaw } : null;
+};
+export const FOREGROUND: Fg[] = ([
   fgOf(1, "barrel", 0.8, 1.6, -1.25, 0.9), fgOf(3, "ice", 0.7, 2.2, 1.25, 0.8), fgOf(4, "lantern", 0.6, 1.4, -1.2, 2.8),
   fgOf(8, "crate", 0.6, 2.0, 1.15, 0.9), fgOf(9, "fencepost", 0.7, 1.4, -1.1, 1.1), fgOf(10, "palm", 0.6, 5.5, -0.95, 7),
   fgOf(11, "barrel", 0.6, 1.4, 1.25, 0.8), fgOf(12, "rope", 0.6, 0.55, -0.85, 0.45), fgOf(15, "crate", 0.5, 1.9, -1.15, 0.8),
   fgOf(22, "barrel", 0.6, 1.9, -1.2, 0.8), fgOf(23, "cart", 0.6, 4.0, 1.3, 1.5, 2.2), fgOf(26, "rope", 0.6, 2.0, -0.7, 1, 0, DECK_Y + WATER_Y),
   fgOf(27, "barrel", 0.6, 3.0, 0.9), fgOf(28, "crate", 0.6, 1.9, -1.25, 0.8), fgOf(29, "barrel", 0.6, 1.5, 1.15),
-];
+]).filter((g): g is Fg => g !== null);

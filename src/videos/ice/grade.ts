@@ -163,16 +163,16 @@ export class GradeEffect extends Effect {
 export const GRADE_DAY2: GradeParams = {
   // cinematic pass: firmer S (deeper darks, hotter highlights), a real vignette and a graduated filter (sky lifted,
   // ground pressed) so the frame reads top-bright / centre-bright like the reference
-  ky: [0, 0.075, 0.25, 0.62, 0.9, 0.985, 1],
+  ky: [0, 0.06, 0.22, 0.64, 0.93, 0.995, 1],
   sat: [1.0, 1.08, 1.0],
   tintS: [0.016, 0.004], tintM: [0, 0], tintH: [0.006, 0],
-  vig: [0.32, 0.25], nd: [0.06, 0.16],
+  vig: [0.22, 0.25], nd: [0.07, 0.16],
 };
 export const GRADE_GOLDEN2: GradeParams = {
-  ky: [0, 0.065, 0.23, 0.6, 0.9, 0.985, 1],
+  ky: [0, 0.055, 0.21, 0.63, 0.93, 0.995, 1],
   sat: [1.0, 1.12, 1.15],
   tintS: [0.024, 0.002], tintM: [0, 0], tintH: [-0.012, 0.006],
-  vig: [0.36, 0.22], nd: [0.08, 0.2],
+  vig: [0.26, 0.22], nd: [0.09, 0.2],
 };
 export const GRADES: Record<"day" | "golden", GradeParams> = { day: GRADE_DAY2, golden: GRADE_GOLDEN2 };
 /** One strength (0..1, the effect's `amount`) per preset, set against the NEW world (bridge_world, 2026-10-31): full-strength

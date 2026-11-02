@@ -14,7 +14,7 @@ import { LIGHTS, LOOK, LightPreset } from "./lights";
 import { TONE, CHAR, LFB, twoTone, untone } from "./shade";
 import { NOINK } from "./ink";
 import { Pool, Actor, Fx, stage } from "./cast";
-import { FPS, D0, SHOTS, camAt, camRig, wipeAt, Wipe, V3, FOREGROUND, ShotDef, HATCH, LANE_X1, OFF, at, brigAt, WATER_Y, PORT, meltAt, WALLET_OPEN, COIN_F, smooth, clamp01,
+import { FPS, D0, SHOTS, camAt, camRig, wipeAt, Wipe, WIPE_W, V3, FOREGROUND, ShotDef, HATCH, LANE_X1, OFF, at, brigAt, WATER_Y, PORT, meltAt, WALLET_OPEN, COIN_F, smooth, clamp01,
   BOTTLE, towelAt, sawdustAt, FLIPS, HATCH_OPEN, ICE_PATCH } from "./story";
 
 // ---------------- assets ----------------
@@ -233,14 +233,22 @@ export class World {
       grp.position.set(...fg.pos); grp.rotation.y = fg.yaw ?? 0; grp.visible = false;
       this.fgs.push({ o: grp, a: fg.a, b: fg.b }); R.add(grp);
     }
-    // ---- the wipe transitions' foreground objects: a crate side, a tarred hull, a sail (posed in front of the lens) ----
-    const wipeMat: Record<Wipe, THREE.Material> = {
-      crate: lam("wipeCrate", () => ({ map: rep(planksHD(), 1, 2), color: "#a87c52" })),
-      hull: lam("wipeHull", () => ({ map: rep(planksHD(), 1, 3), color: "#4a3426" })),
-      sail: lam("wipeSail", () => ({ color: "#efe6d2" })),
-    };
+    // ---- the wipe transitions' foreground objects (a tarred hull, a crate side, a sail) streaming past the lens:
+    //      unlit painted boards / cloth with irregular dark seams, so they read in any scene and keep moving even
+    //      while they cover the frame ----
+    const wipeTex = (k: Wipe) => ctex("wipe" + k, 512, 256, (g, r) => {
+      const [base, alt, seam] = k === "hull" ? ["#4a3020", "#5c3c28", "#120a06"] : k === "crate" ? ["#b78656", "#9a6c42", "#3a2414"] : ["#f2ead8", "#e4d8bf", "#8a7a62"];
+      for (let x = 0; x < 512;) {
+        const w = 26 + r() * 70; g.fillStyle = r() < 0.5 ? base : alt; g.fillRect(x, 0, w, 256);
+        g.fillStyle = seam; g.fillRect(x + w - (k === "sail" ? 4 : 7), 0, k === "sail" ? 4 : 7, 256); x += w;
+      }
+      if (k === "crate") { g.fillStyle = seam; g.fillRect(0, 40, 512, 22); g.fillRect(0, 196, 512, 22); }
+      if (k === "hull") { g.fillStyle = "#2a1a10"; for (let y = 30; y < 256; y += 64) g.fillRect(0, y, 512, 5); }
+      if (k === "sail") { g.strokeStyle = "#6a5a44"; g.lineWidth = 6; g.beginPath(); g.moveTo(0, 60); g.bezierCurveTo(170, 120, 340, 20, 512, 90); g.stroke(); }
+    });
     for (const k of ["crate", "hull", "sail"] as Wipe[]) {
-      const m = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 0.04), wipeMat[k]); m.visible = false; m.frustumCulled = false; R.add(m); this.wipers[k] = m;
+      const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: wipeTex(k), fog: false, color: new THREE.Color(k === "sail" ? 1.15 : 1, k === "sail" ? 1.15 : 1, k === "sail" ? 1.15 : 1) }));
+      m.visible = false; m.frustumCulled = false; m.renderOrder = 10; R.add(m); this.wipers[k] = m;
     }
   }
 
@@ -298,7 +306,7 @@ export class World {
     this.fill.intensity = 0;
     TONE.uLitCol.value.set(...L.lit); TONE.uShadeCol.value.set(...L.shade); TONE.uShadeLift.value.set(...L.lift);
     // interiors (cell, hold): a deep but readable blue ambient in the shade, the warm window / hatch key unchanged
-    if (s.place === "cell" || s.place === "hold") { TONE.uShadeCol.value.set(0.24, 0.27, 0.55); TONE.uShadeLift.value.set(0.06, 0.08, 0.22); }
+    if (s.place === "cell" || s.place === "hold") { TONE.uShadeCol.value.set(0.3, 0.34, 0.66); TONE.uShadeLift.value.set(0.08, 0.1, 0.28); }
     TONE.uLambert.value = L.lambert; TONE.uSideK.value = L.sideK; TONE.uTerm.value = L.term; TONE.uBounce.value.set(...LOOK[s.light].bounce); TONE.uSat.value = LOOK[s.light].sat;
     CHAR.uCharTint.value.set(...L.charTint); CHAR.uCharShade.value = L.charShade; CHAR.uGrad.value = L.charGrad;
     CHAR.uBodyGrad.value = L.bodyGrad; CHAR.uSideTint.value.set(...L.sideTint);
@@ -337,7 +345,7 @@ export class World {
     for (const k of Object.keys(this.wipers) as Wipe[]) this.wipers[k]!.visible = !!w && w.kind === k;
     if (w) {
       const m = this.wipers[w.kind]!, dz = 0.35, hy = dz * Math.tan(THREE.MathUtils.degToRad(cam.fov / 2)), hx = hy * (9 / 16);
-      m.quaternion.copy(cam.quaternion); m.scale.set(2.4 * hx, 2.6 * hy, 1);
+      m.quaternion.copy(cam.quaternion); m.scale.set(WIPE_W * hx, 2.6 * hy, 1);
       m.position.set(w.x * hx, 0, -dz).applyQuaternion(cam.quaternion).add(cam.position);
     }
     // ---- the brig ----
