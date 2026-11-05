@@ -161,7 +161,7 @@ export const MandelShort: React.FC = () => {
     <AbsoluteFill style={{ background: "#120e16" }}>
       {layersAt(f).map((l, i, all) => <ShotView key={SHOTS[l.id - 1].place + (i && SHOTS[all[0].id - 1].place === SHOTS[l.id - 1].place ? "#2" : "")} id={l.id} kit={kit} alpha={l.alpha} />)}
       {flash > 0 && <AbsoluteFill style={{ background: "#ffffff", opacity: flash }} />}
-      <Caption f={f} />
+      {(getInputProps() as { captions?: boolean }).captions !== false && <Caption f={f} />}
     </AbsoluteFill>
   );
 };
