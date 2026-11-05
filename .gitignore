@@ -3,3 +3,6 @@ out/
 *.onnx
 _cache/
 __pycache__/
+research/ricks/raw/
+research/ricks/frames/
+research/ricks/_*
