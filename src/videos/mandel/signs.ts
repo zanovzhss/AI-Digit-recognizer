@@ -2,6 +2,7 @@
 // jackpot board, the hall's neon and banner, the confetti carpet, and the Bucharest flat's wallpaper, calendar, poster
 // and the snowy night outside its window. All Canvas2D (ctex cache), system fonts only (Ink Free for handwriting,
 // Showcard Gothic for the marquee board, Britannic Bold / Bahnschrift for signs). Text is our own, in English.
+import * as THREE from "three";
 import { ctex } from "./paint";
 
 const HAND = "'Ink Free', 'Segoe Print', cursive";
@@ -143,3 +144,145 @@ export const nightWindowTex = () => ctex("nightWindow", 768, 640, (g, r) => {
   }
   for (let i = 0; i < 260; i++) { g.fillStyle = `rgba(255,255,255,${0.5 + 0.5 * r()})`; g.beginPath(); g.arc(r() * 768, r() * 640, 1.5 + 2.5 * r(), 0, Math.PI * 2); g.fill(); }
 });
+
+// ======================================================================== the rest of the video's signs
+
+/** a canvas texture redrawn only when its key changes (counters, the plaque, the map's route, the rolling board) */
+export class DynTex {
+  tex: THREE.CanvasTexture; private g: CanvasRenderingContext2D; private key = "";
+  constructor(public w: number, public h: number) {
+    const cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+    this.g = cv.getContext("2d")!; this.tex = new THREE.CanvasTexture(cv); this.tex.colorSpace = THREE.SRGBColorSpace; this.tex.anisotropy = 8;
+  }
+  set(key: string, draw: (g: CanvasRenderingContext2D, w: number, h: number) => void) {
+    if (key === this.key) return;
+    this.key = key; this.g.clearRect(0, 0, this.w, this.h); draw(this.g, this.w, this.h); this.tex.needsUpdate = true;
+  }
+}
+
+/** plain painted sign: background, border, one or two lines of text */
+export const signTex = (key: string, w: number, h: number, bg: string, fg: string, l1: string, l2 = "", font = SIGN, border = fg) => ctex("sign" + key, w, h, (g) => {
+  g.fillStyle = bg; g.fillRect(0, 0, w, h);
+  const lw = Math.max(6, h * 0.04);
+  g.strokeStyle = border; g.lineWidth = lw; g.strokeRect(lw, lw, w - 2 * lw, h - 2 * lw);
+  g.fillStyle = fg; g.textAlign = "center"; g.textBaseline = "middle";
+  const s1 = Math.min(h * (l2 ? 0.42 : 0.62), (w * 1.6) / Math.max(4, l1.length));
+  g.font = `bold ${s1}px ${font}`; g.fillText(l1, w / 2, l2 ? h * 0.36 : h * 0.53);
+  if (l2) { g.font = `bold ${Math.min(h * 0.26, (w * 1.6) / Math.max(4, l2.length))}px ${font}`; g.fillText(l2, w / 2, h * 0.74); }
+});
+
+/** "WINS: n" brass plaque */
+export const drawPlaque = (n: number) => (g: CanvasRenderingContext2D, w: number, h: number) => {
+  const gr = g.createLinearGradient(0, 0, 0, h); gr.addColorStop(0, "#e8c46a"); gr.addColorStop(1, "#b88a3a");
+  g.fillStyle = gr; g.fillRect(0, 0, w, h); g.strokeStyle = "#6a4a1a"; g.lineWidth = 12; g.strokeRect(10, 10, w - 20, h - 20);
+  for (const [x, y] of [[30, 30], [w - 30, 30], [30, h - 30], [w - 30, h - 30]]) { g.fillStyle = "#6a4a1a"; g.beginPath(); g.arc(x, y, 8, 0, Math.PI * 2); g.fill(); }
+  g.fillStyle = "#3a2a10"; g.textAlign = "center"; g.textBaseline = "middle"; g.font = `bold ${h * 0.5}px ${SIGN}`; g.fillText(`WINS: ${n}`, w / 2, h * 0.54);
+};
+
+/** the explanation wall's counter: "n / 7,059,052" in amber digits on black */
+export const drawCounter = (n: number, label = "ALL COMBINATIONS") => (g: CanvasRenderingContext2D, w: number, h: number) => {
+  g.fillStyle = "#0c0e18"; g.fillRect(0, 0, w, h); g.strokeStyle = "#ffcf6a"; g.lineWidth = 8; g.strokeRect(6, 6, w - 12, h - 12);
+  g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillStyle = "#ffe8b0"; g.font = `bold ${h * 0.22}px ${SIGN}`; g.fillText(label, w / 2, h * 0.24);
+  g.fillStyle = "#ffcf6a"; g.font = `bold ${h * 0.36}px 'Bahnschrift', ${SIGN}`; g.fillText(`${n.toLocaleString("en-US")} / 7,059,052`, w / 2, h * 0.66);
+};
+
+/** the window board at the Virginia store: "JACKPOT $27,036,142", the digits roll up to the final value */
+export const drawJackpotRoll = (v: number) => (g: CanvasRenderingContext2D, w: number, h: number) => {
+  g.fillStyle = "#101418"; g.fillRect(0, 0, w, h); g.strokeStyle = "#f2c94a"; g.lineWidth = 10; g.strokeRect(8, 8, w - 16, h - 16);
+  g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillStyle = "#ffffff"; g.font = `bold ${h * 0.2}px ${SIGN}`; g.fillText("VIRGINIA LOTTERY  JACKPOT", w / 2, h * 0.25);
+  g.fillStyle = "#ff5a3a"; g.shadowColor = "#ff5a3a"; g.shadowBlur = 18; g.font = `bold ${h * 0.42}px 'Bahnschrift', ${SIGN}`;
+  g.fillText("$" + Math.round(v).toLocaleString("en-US"), w / 2, h * 0.66); g.shadowBlur = 0;
+};
+
+/** the world map with a red route line drawn from Melbourne to Virginia up to progress p (0..1), and a cargo ship on it */
+const MEL: [number, number] = [0.875, 0.74], VIR: [number, number] = [0.255, 0.36];
+const route = (t: number): [number, number] => { // east across the Pacific (wrapping the map edge), then to Virginia
+  const a = MEL, c: [number, number] = [1.06, 0.52], b: [number, number] = [VIR[0] + 1.0, VIR[1]];
+  const s = 1 - t, x = s * s * a[0] + 2 * s * t * c[0] + t * t * b[0], y = s * s * a[1] + 2 * s * t * c[1] + t * t * b[1];
+  return [x > 1 ? x - 1 : x, y];
+};
+export const drawMap = (p: number) => (g: CanvasRenderingContext2D, w: number, h: number) => {
+  g.fillStyle = "#5a8ab8"; g.fillRect(0, 0, w, h);
+  g.strokeStyle = "rgba(255,255,255,0.18)"; g.lineWidth = 2;
+  for (let x = 0; x <= w; x += w / 12) { g.beginPath(); g.moveTo(x, 0); g.lineTo(x, h); g.stroke(); }
+  for (let y = 0; y <= h; y += h / 6) { g.beginPath(); g.moveTo(0, y); g.lineTo(w, y); g.stroke(); }
+  const land = (pts: [number, number][], col = "#e8d8a8") => { g.fillStyle = col; g.strokeStyle = "#6a5a3a"; g.lineWidth = 5; g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x * w, y * h) : g.moveTo(x * w, y * h))); g.closePath(); g.fill(); g.stroke(); };
+  land([[0.06, 0.18], [0.2, 0.12], [0.3, 0.2], [0.29, 0.34], [0.25, 0.42], [0.2, 0.45], [0.16, 0.38], [0.1, 0.32], [0.05, 0.26]]);
+  land([[0.22, 0.5], [0.28, 0.52], [0.3, 0.62], [0.27, 0.8], [0.24, 0.84], [0.22, 0.7], [0.2, 0.58]]);
+  land([[0.44, 0.16], [0.56, 0.12], [0.62, 0.2], [0.58, 0.3], [0.5, 0.32], [0.45, 0.26]]);
+  land([[0.46, 0.36], [0.56, 0.36], [0.6, 0.5], [0.56, 0.7], [0.5, 0.72], [0.46, 0.55]]);
+  land([[0.6, 0.12], [0.86, 0.1], [0.92, 0.22], [0.86, 0.36], [0.76, 0.42], [0.66, 0.36], [0.6, 0.26]]);
+  land([[0.8, 0.62], [0.9, 0.6], [0.94, 0.7], [0.9, 0.8], [0.82, 0.78], [0.79, 0.7]]);
+  g.textAlign = "center"; g.fillStyle = "#2a2a3a"; g.font = `bold ${h * 0.045}px ${SIGN}`;
+  g.fillText("MELBOURNE", MEL[0] * w, MEL[1] * h + h * 0.07); g.fillText("VIRGINIA", VIR[0] * w, VIR[1] * h - h * 0.05);
+  g.strokeStyle = "#d8282a"; g.lineWidth = 10; g.setLineDash([26, 16]); g.lineCap = "round";
+  let prev = route(0);
+  for (let i = 1; i <= Math.round(120 * p); i++) {
+    const q = route(i / 120);
+    if (Math.abs(q[0] - prev[0]) < 0.5) { g.beginPath(); g.moveTo(prev[0] * w, prev[1] * h); g.lineTo(q[0] * w, q[1] * h); g.stroke(); }
+    prev = q;
+  }
+  g.setLineDash([]);
+  for (const [x, y] of [MEL, VIR]) { g.fillStyle = "#d8282a"; g.beginPath(); g.arc(x * w, y * h, 16, 0, Math.PI * 2); g.fill(); g.strokeStyle = "#ffffff"; g.lineWidth = 4; g.stroke(); }
+  if (p > 0.02 && p < 1) { // the cargo ship at the head of the line, sagging under a tonne of paper
+    const [sx, sy] = route(p); g.save(); g.translate(sx * w, sy * h);
+    g.fillStyle = "#3a3a44"; g.beginPath(); g.moveTo(-50, 4); g.quadraticCurveTo(0, 18, 50, 4); g.lineTo(36, 26); g.lineTo(-36, 26); g.closePath(); g.fill();
+    g.fillStyle = "#fff8e6"; g.fillRect(-36, -40, 72, 44); g.fillStyle = "#1f3f7a"; g.fillRect(-36, -40, 72, 9); g.restore();
+  }
+};
+
+/** the Virginia lottery ticket (insert): our own design */
+export const ticketTex = () => ctex("vaTicket", 768, 384, (g, r) => {
+  g.fillStyle = "#fff8e6"; g.fillRect(0, 0, 768, 384);
+  g.fillStyle = "#1f3f7a"; g.fillRect(0, 0, 768, 90);
+  g.fillStyle = "#ffffff"; g.textAlign = "center"; g.font = `bold 54px ${SIGN}`; g.fillText("VIRGINIA LOTTERY", 384, 64);
+  g.fillStyle = "#c23a2a"; g.font = `bold 34px ${SIGN}`; g.fillText("LOTTO  ·  6 of 44  ·  $1", 384, 140);
+  for (let i = 0; i < 6; i++) { g.strokeStyle = "#1f3f7a"; g.lineWidth = 5; g.beginPath(); g.arc(94 + i * 116, 230, 44, 0, Math.PI * 2); g.stroke();
+    g.fillStyle = "#2a2a3a"; g.font = `bold 44px ${SIGN}`; g.fillText(String([4, 11, 17, 23, 36, 42][i]), 94 + i * 116, 246); }
+  g.fillStyle = "#2a2a3a"; for (let i = 0; i < 60; i++) g.fillRect(40 + i * 11.5, 300, 4 + 5 * r(), 50);
+  g.strokeStyle = "#1f3f7a"; g.lineWidth = 8; g.strokeRect(4, 4, 760, 376);
+});
+
+/** printed lottery tickets in a heap (warehouse pile, ticket mountain) */
+export const ticketHeapTex = () => ctex("ticketHeap", 1024, 1024, (g, r) => {
+  g.fillStyle = "#efe6cc"; g.fillRect(0, 0, 1024, 1024);
+  for (let i = 0; i < 520; i++) {
+    g.save(); g.translate(r() * 1024, r() * 1024); g.rotate(r() * Math.PI);
+    g.fillStyle = "#fff8e6"; g.fillRect(-46, -22, 92, 44); g.fillStyle = "#1f3f7a"; g.fillRect(-46, -22, 92, 11);
+    g.fillStyle = "#c23a2a"; g.fillRect(-36, 2, 40, 6); g.strokeStyle = "rgba(60,50,40,0.5)"; g.lineWidth = 2; g.strokeRect(-46, -22, 92, 44); g.restore();
+  }
+});
+
+/** "DAYS LEFT" flip calendar */
+export const drawDays = (n: number) => (g: CanvasRenderingContext2D, w: number, h: number) => {
+  g.fillStyle = "#f4ecd8"; g.fillRect(0, 0, w, h); g.fillStyle = "#c23a2a"; g.fillRect(0, 0, w, h * 0.28);
+  g.textAlign = "center"; g.textBaseline = "middle"; g.fillStyle = "#ffffff"; g.font = `bold ${h * 0.17}px ${SIGN}`; g.fillText("DAYS LEFT", w / 2, h * 0.15);
+  g.fillStyle = "#2a2a3a"; g.font = `bold ${h * 0.58}px ${SIGN}`; g.fillText(String(n), w / 2, h * 0.66);
+};
+
+/** the office notice, before and after the stamp */
+export const noticeTex = (stamped: boolean) => ctex("notice" + stamped, 512, 704, (g) => {
+  g.fillStyle = "#f6f2e6"; g.fillRect(0, 0, 512, 704);
+  g.fillStyle = "#1f3f7a"; g.fillRect(0, 0, 512, 110); g.fillStyle = "#ffffff"; g.textAlign = "center"; g.font = `bold 64px ${SIGN}`; g.fillText("NEW RULES", 256, 78);
+  g.fillStyle = "#2a2a3a"; g.font = `bold 30px ${SIGN}`;
+  ["No bulk ticket orders", "One terminal, one buyer", "No printing your own slips", "Limits on every outlet"].forEach((t, i) => g.fillText(t, 256, 190 + i * 64));
+  for (let i = 0; i < 4; i++) { g.fillStyle = "#c9c0a8"; g.fillRect(70, 440 + i * 34, 372, 8); }
+  if (stamped) { g.save(); g.translate(256, 590); g.rotate(-0.14); g.strokeStyle = "#c23a2a"; g.lineWidth = 12; g.strokeRect(-210, -62, 420, 124);
+    g.fillStyle = "#c23a2a"; g.font = `bold 78px ${SIGN}`; g.fillText("NEVER AGAIN", 0, 28); g.restore(); }
+});
+
+/** newspaper with the jackpot headline (Bucharest, 1962) */
+export const newspaperTex = () => ctex("lottoPaper", 768, 1024, (g, r) => {
+  g.fillStyle = "#ece4cc"; g.fillRect(0, 0, 768, 1024);
+  g.fillStyle = "#2a2a2a"; g.textAlign = "center"; g.font = `bold 70px 'Georgia', serif`; g.fillText("THE DAILY", 384, 90);
+  g.fillRect(40, 112, 688, 6);
+  g.font = `bold 96px ${SIGN}`; g.fillText("LOTTO", 384, 230); g.fillText("JACKPOT", 384, 330);
+  g.font = `bold 60px ${SIGN}`; g.fillStyle = "#c23a2a"; g.fillText("BIGGER THAN EVER", 384, 420);
+  g.fillStyle = "#8a8a80"; g.fillRect(60, 460, 300, 220);
+  for (let i = 0; i < 26; i++) { g.fillStyle = "#6a6a62"; g.fillRect(i % 2 ? 400 : 60, 700 + Math.floor(i / 2) * 24, i % 2 ? 308 : 300, 8 + 3 * r()); }
+  for (let i = 0; i < 9; i++) { g.fillStyle = "#6a6a62"; g.fillRect(400, 470 + i * 24, 308, 8); }
+});
+
+/** a world map / chart texture for the explanation room's back wall decoration (constellation of cells) is drawn live */

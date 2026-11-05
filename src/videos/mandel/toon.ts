@@ -99,14 +99,14 @@ export const clerk = (v = 0): Outfit => ({ jacket: ["#c8d4e2", "#e8d8b8"][v % 2]
   skin: SKINS[(v + 1) % 4], belt: "#2f6a43", build: v % 2 ? "stout" : "adult" });
 /** the cheering crowd: mixed coats, dresses, caps and hair */
 export const crowd = (v = 0): Outfit => {
-  const coats = ["#3f6fb5", "#8c3b4a", "#5d7a3a", "#b5653f", "#2f5f6a", "#7b5ac9", "#c9a441", "#6b4a3a"];
+  const coats = ["#5a7398", "#7e5058", "#6a7a52", "#9a6e56", "#4a6268", "#76688e", "#a89464", "#6b5444"]; // muted (rule 5)
   const o: Outfit = { jacket: coats[v % 8], pants: ["#3b3f52", "#4a4238", "#2f3a4a"][v % 3], boots: "#3a2a20", skin: SKINS[(v * 3) % 4] };
   const k = v % 5;
   if (k === 0) return { ...o, hat: "flatcap", cap: ["#6f6658", "#4a4f5e", "#8a6a4a"][v % 3] };
-  if (k === 1) return { ...o, hat: "hair", hair: ["#5a3b2a", "#2a1d18", "#c9a46a", "#8a4a2a"][v % 4], dress: ["#d9a441", "#c25a7a", "#5a8fc2", "#e07a4a"][v % 4] };
+  if (k === 1) return { ...o, hat: "hair", hair: ["#5a3b2a", "#2a1d18", "#c9a46a", "#8a4a2a"][v % 4], dress: ["#b89a5a", "#a87080", "#6a8aa8", "#b88466"][v % 4] };
   if (k === 2) return { ...o, hat: "hair", hair: ["#2a1d18", "#5a3b2a", "#3a2a24"][v % 3], tie: ["#c0353a", "#2f4a8a"][v % 2] };
-  if (k === 3) return { ...o, hat: "cap", cap: ["#e2453c", "#2f6ab5", "#f2a23a"][v % 3] };
-  return { ...o, hat: "hair", hair: ["#8a4a2a", "#c9a46a", "#2a1d18"][v % 3], dress: ["#7b5ac9", "#3a9a8a", "#d95a4a"][v % 3], glasses: v % 3 ? undefined : INK };
+  if (k === 3) return { ...o, hat: "cap", cap: ["#b85a50", "#4a6a98", "#c09450"][v % 3] };
+  return { ...o, hat: "hair", hair: ["#8a4a2a", "#c9a46a", "#2a1d18"][v % 3], dress: ["#7a6a98", "#5a8a82", "#a86a5e"][v % 3], glasses: v % 3 ? undefined : INK };
 };
 
 export const townsfolk = (v = 0): Outfit => {
@@ -484,7 +484,9 @@ export type Arms = [P2[], P2[]];
 export type Prop = null | "icecream" | "shako" | ["hammer", number] | ["bucket", number]
   /** ice short: both hands forward at the chest (a 3D ice block / newspaper is placed there), the ice saw and the
    *  sawdust shovel (number = stroke 0..1), pointing arm, a cold drink or a small ice block in one hand */
-  | "hold" | ["saw", number] | ["shovel", number] | "point" | "drink" | "iceblock";
+  | "hold" | ["saw", number] | ["shovel", number] | "point" | "drink" | "iceblock"
+  /** mandel short: both arms out in a shrug with the trouser pockets turned inside out */
+  | "pockets";
 
 const BUILD: Record<Build, { a: number; torso: number; legs: number; tw: number }> = {
   adult: { a: 118, torso: 1.1, legs: 1.4, tw: 0.8 },
@@ -499,6 +501,8 @@ export type FrontOpts = {
   crouch?: number; reach?: number; nod?: number;
   /** mandel short: both arms up in a V (0..1, also the shake), face tint (green envy, red heat) */
   cheer?: number; tint?: string;
+  /** mandel short: the pencil behind the ear springs upright like an antenna (0..1) */
+  pencilUp?: number;
   /** canvas angle the key light comes FROM (painted crescent + thick outline side) */
   light?: number; facing?: -1 | 0 | 1; seed?: number;
 };
@@ -620,6 +624,10 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
   const arms: Arm[] = [];
   if (mode === "sit") for (const side of [-1, 1]) arms.push({ pts: [sh(side), [tcx + side * (1.1 * T.a + 6 * u), sh(side)[1] + 0.4 * HH], [tcx + side * (1.2 * T.a + 10 * u), torsoBot + 0.04 * HH]], front: false });
   else if (mode === "fall") for (const side of [-1, 1]) arms.push({ pts: [sh(side), [tcx + side * (1.15 * T.a + 12 * u), sh(side)[1] - 0.25 * HH], [tcx + side * (1.3 * T.a + 24 * u), sh(side)[1] - 0.68 * HH]], front: false });
+  else if (prop === "pockets") for (const side of [-1, 1]) { // shrug: elbows out, open hands at hip height
+    const S = sh(side);
+    arms.push({ pts: [S, [tcx + side * (1.25 * T.a + 14 * u), S[1] + 0.32 * HH], [tcx + side * (1.4 * T.a + 30 * u), S[1] + 0.48 * HH]], front: false });
+  }
   else if (opts.cheer !== undefined) for (const side of [-1, 1]) { // mandel: both arms up in a V, shaking with the cheer
     const k = opts.cheer, S = sh(side);
     arms.push({ pts: [S, [tcx + side * (1.1 * T.a + 8 * u + 4 * u * k), S[1] - 0.3 * HH], [tcx + side * (1.15 * T.a + 18 * u + 10 * u * k), S[1] - (0.72 + 0.08 * k) * HH]], front: false });
@@ -706,6 +714,10 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
     if (o.sash) { const s = facing || 1; p.poly([[tcx + s * 0.55 * T.a, torsoBot - 0.3 * HH], [tcx + s * 0.75 * T.a, torsoBot + 0.05 * HH], [tcx + s * 0.45 * T.a, torsoBot + 0.02 * HH]], o.sash, 1.6 * u); }
     p.inkRing(tp, ow, thick);
   }
+  if (prop === "pockets") for (const side of [-1, 1]) { // the linings hang out of the trouser pockets
+    const x = tcx + side * 0.62 * T.a, y = torsoBot - 0.02 * HH;
+    p.poly([[x - 9 * u, y], [x + 9 * u, y], [x + 7 * u, y + 20 * u], [x, y + 24 * u], [x - 7 * u, y + 20 * u]], "#f4f0e6", 2.2 * u);
+  }
   // in front of the body: hands holding props
   for (const a of arms) if (a.front) {
     drawArm(a);
@@ -760,7 +772,8 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
   p.rot = Ah || dip ? [rad(Ah), 300, chin, cpx - 300, cpy - chin + dip] : null;
   hatBehind(p, o, H, 300, hc, light, thick, ow, false);
   if (o.pencil) { // a yellow pencil tucked behind the (hidden) right ear, sticking up past the hair
-    const a0: P2 = [300 + 0.72 * H.a, hc + 0.05 * H.b], a1: P2 = [300 + 1.12 * H.a, hc - 0.92 * H.b];
+    const up = clamp(opts.pencilUp ?? 0, 0, 1), a0: P2 = [300 + 0.72 * H.a, hc + 0.05 * H.b];
+    const a1: P2 = lerp2([300 + 1.12 * H.a, hc - 0.92 * H.b], [300 + 0.78 * H.a, hc - 1.42 * H.b], up);
     p.band([a0, a1], "#f2c230", 7 * u, 1.6 * u);
     const dx = a1[0] - a0[0], dy = a1[1] - a0[1], L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
     p.band([a1, [a1[0] + ux * 7 * u, a1[1] + uy * 7 * u]], "#e88a9a", 7 * u, 1.6 * u);

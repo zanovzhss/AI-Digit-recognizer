@@ -99,6 +99,7 @@ const Inner: React.FC<{ id: number; kit: Kit }> = ({ id, kit }) => {
   const d = dofAt(f);
   cam.getWorldDirection(fwd);
   if (d.focus) fpt.set(...d.focus(f)); else fpt.copy(target);
+  if (fpt.distanceTo(cam.position) > 60) fpt.copy(target); // a focus point in another place (crossfade frames): focus on this layer's own subject
   fx.lens.focus = Math.max(0.3, fpt.sub(cam.position).dot(fwd));
   fx.lens.cInf = d.cInf;
   // motion blur: the same shot's camera half a frame earlier (pure function of id + f, also across hidden switches)
@@ -158,7 +159,7 @@ export const MandelShort: React.FC = () => {
   const flash = FLASH_AT !== null && f >= FLASH_AT && f < FLASH_AT + 4 ? [1, 0.75, 0.45, 0.2][f - FLASH_AT] : 0;
   return (
     <AbsoluteFill style={{ background: "#120e16" }}>
-      {layersAt(f).map((l, i) => <ShotView key={SHOTS[l.id - 1].place} id={l.id} kit={kit} alpha={l.alpha} />)}
+      {layersAt(f).map((l, i, all) => <ShotView key={SHOTS[l.id - 1].place + (i && SHOTS[all[0].id - 1].place === SHOTS[l.id - 1].place ? "#2" : "")} id={l.id} kit={kit} alpha={l.alpha} />)}
       {flash > 0 && <AbsoluteFill style={{ background: "#ffffff", opacity: flash }} />}
       <Caption f={f} />
     </AbsoluteFill>

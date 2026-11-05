@@ -30,8 +30,8 @@ export const LIGHTS: Record<LightName, LightPreset> = {
   // the lottery hall: a warm golden interior (stage spots from the front-left, marquee bulbs and chandeliers), plum shade
   golden: {
     az: 35, el: 32,
-    lit: [1.62, 1.18, 0.72], shade: [0.24, 0.16, 0.22], lift: [0.06, 0.035, 0.05], lambert: 0.35, sideK: 0.84, term: 0.12,
-    charTint: [1.0, 0.86, 0.7], charShade: 0.88, charGrad: 0.1, bodyGrad: 0.25, sideTint: [0.88, 0.8, 0.86],
+    lit: [1.55, 1.32, 1.0], shade: [0.25, 0.21, 0.25], lift: [0.05, 0.04, 0.05], lambert: 0.35, sideK: 0.84, term: 0.12,
+    charTint: [1.0, 0.92, 0.82], charShade: 0.88, charGrad: 0.1, bodyGrad: 0.25, sideTint: [0.9, 0.86, 0.9],
     blob: [0.75, 0.7, 0.8], actorShadow: true,
     top: "#97746c", hor: "#ffd08a", skyCurve: [0.05, 0.6, 1.0], fog: "#6a4a4a", fogNear: 40, fogFar: 260, sunDisc: "#ffcf9e",
     sunCol: "#ffb36b", sunI: 4.5, sky: "#d8b0b8", ground: "#8a6a60", hemiI: 0.5,
@@ -77,7 +77,7 @@ export const LOOK: Record<LightName, WorldLook> = {
   },
   golden: {
     sky: { c: ["#ffc47c", "#f7ae78", "#e8967c", "#c4848e", "#97746c"], e: [0, 4, 10, 20, 40] },
-    water: WATER_DAY, cloud: { lit: "#ffd2a8", mid: "#f2a08f", shade: "#a98fc4" }, bounce: [0.05, 0.025, 0.0], sat: 0.78, // the red-and-gold hall: albedo saturation down so the frame lands near the reference mean
+    water: WATER_DAY, cloud: { lit: "#ffd2a8", mid: "#f2a08f", shade: "#a98fc4" }, bounce: [0.05, 0.025, 0.0], sat: 0.85, // the red-and-gold hall: albedo saturation down so the frame lands near the reference mean
   },
   night: {
     sky: { c: ["#4a4f7a", "#3e4370", "#363a62", "#312e4c", "#24223a"], e: [0, 4, 10, 20, 40] },

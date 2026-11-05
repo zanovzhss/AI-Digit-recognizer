@@ -11,25 +11,25 @@ import { Batch, V, lam, quad, boxGeo, crate, lanternCore } from "./build";
 import { ctex, rep, planksHD, beamHD, plasterTex } from "./paint";
 import { twoTone } from "./shade";
 import { NOINK } from "./ink";
-import { at, OFF, HALL, PAGE, DESK, PAGE_DESK, FLAT_STEFAN, V3 } from "./story";
-import { mathPageTex, chequeTex, jackpotTex, neonTex, bannerTex, confettiTex, wallpaperTex, calendar62Tex, lottoPosterTex, nightWindowTex } from "./signs";
+import { OFF, HALL, PAGE, DESK, PAGE_DESK, FLAT_STEFAN, FLAT, V3, PlaceId } from "./story";
+import { mathPageTex, chequeTex, jackpotTex, neonTex, bannerTex, confettiTex, wallpaperTex, calendar62Tex, lottoPosterTex, nightWindowTex, newspaperTex, ticketHeapTex, DynTex, drawPlaque } from "./signs";
 
-export type Practical = { place: "hall" | "flat"; pos: V3; color: string; intensity: number; distance: number };
+export type Practical = { place: PlaceId; pos: V3; color: string; intensity: number; distance: number; shots?: number[] };
 export type HallParts = { page: THREE.Mesh; cheque: THREE.Mesh; bulbs: THREE.Mesh[]; bulbOn: THREE.MeshBasicMaterial; bulbOff: THREE.MeshBasicMaterial };
-export type FlatParts = { page: THREE.Mesh };
+export type FlatParts = { page: THREE.Mesh; paper: THREE.Mesh; coins: THREE.Mesh; slips: THREE.Mesh; plaque: THREE.Mesh };
 
-const tr = (x: number, y: number, z: number, yaw = 0) => new THREE.Matrix4().makeRotationY(yaw).setPosition(x, y, z);
-const cyl = (r0: number, r1: number, h: number, n = 14) => new THREE.CylinderGeometry(r1, r0, h, n).translate(0, h / 2, 0);
-const col = (key: string, c: string) => lam(key, () => ({ color: c }));
+export const tr = (x: number, y: number, z: number, yaw = 0) => new THREE.Matrix4().makeRotationY(yaw).setPosition(x, y, z);
+export const cyl = (r0: number, r1: number, h: number, n = 14) => new THREE.CylinderGeometry(r1, r0, h, n).translate(0, h / 2, 0);
+export const col = (key: string, c: string) => lam(key, () => ({ color: c }));
 /** self-lit HDR material (blooms above 1.0) */
-const glow = (key: string, r: number, g: number, b: number, map?: THREE.Texture) => {
+export const glow = (key: string, r: number, g: number, b: number, map?: THREE.Texture) => {
   const m = new THREE.MeshBasicMaterial({ color: new THREE.Color(r, g, b), map: map ?? null, fog: false });
   m.name = key; return m;
 };
 /** a textured plane facing +z (sign, poster, page) */
-const plane = (w: number, h: number, mat: THREE.Material) => new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
+export const plane = (w: number, h: number, mat: THREE.Material) => new THREE.Mesh(new THREE.PlaneGeometry(w, h), mat);
 /** additive light pool / patch card (NOINK, no depth write) */
-const pool = (w: number, h: number, r: number, g: number, b: number, key: string) => {
+export const pool = (w: number, h: number, r: number, g: number, b: number, key: string) => {
   const t = ctex("pool" + key, 256, 256, (c) => {
     const gr = c.createRadialGradient(128, 128, 6, 128, 128, 126); gr.addColorStop(0, "rgba(255,255,255,0.95)"); gr.addColorStop(0.45, "rgba(255,255,255,0.45)"); gr.addColorStop(1, "rgba(255,255,255,0)");
     c.fillStyle = gr; c.fillRect(0, 0, 256, 256);
@@ -44,8 +44,8 @@ export const buildHall = (root: THREE.Object3D): { parts: HallParts; lights: Pra
   const b = new Batch(), O = OFF.hall, Z = HALL.backZ, P = (x: number, y: number, z: number) => V(O + x, y, z);
   // ---- room shell ----
   const floor = lam("hallFloor", () => ({ map: rep(planksHD(), 6, 6), color: "#b07a50" }));
-  const wall = lam("hallWall", () => ({ map: rep(plasterTex("#8a3038"), 4, 3), color: "#c27a7a", side: THREE.DoubleSide }));
-  const ceil = col("hallCeil", "#4a2a2e"), gold = lam("gold", () => ({ color: "#d9a84a" })), carpet = col("hallCarpet", "#9a2430");
+  const wall = lam("hallWall", () => ({ map: rep(plasterTex("#7a5a52"), 4, 3), color: "#b89a90", side: THREE.DoubleSide }));
+  const ceil = col("hallCeil", "#4a3a3a"), gold = lam("gold", () => ({ color: "#c9a45a" })), carpet = col("hallCarpet", "#7a3e40");
   b.add(quad(P(-11, 0, 12), P(11, 0, 12), P(11, 0, Z), P(-11, 0, Z), 1, 1), floor);
   b.add(quad(P(-11, 8.5, Z), P(11, 8.5, Z), P(11, 8.5, 12), P(-11, 8.5, 12)), ceil);
   b.add(quad(P(-11, 0, Z), P(11, 0, Z), P(11, 8.5, Z), P(-11, 8.5, Z), 1, 1), wall);
@@ -61,7 +61,7 @@ export const buildHall = (root: THREE.Object3D): { parts: HallParts; lights: Pra
   b.add(quad(P(-1.4, 0.004, 12), P(1.4, 0.004, 12), P(1.4, 0.004, -1.5), P(-1.4, 0.004, -1.5), 1, 1), carpet);
   for (const s of [-1, 1]) b.add(boxGeo(P(s * 1.4 - 0.04, 0, -1.5), P(s * 1.4 + 0.04, 0.012, 12)), gold);
   // ---- risers for the crowd: row i stands i * riserH up; carpeted fronts with gold nosing ----
-  const riserTop = col("riserTop", "#6a2830"), riserFront = lam("riserFront", () => ({ map: rep(plasterTex("#7a1e2a"), 4, 1), color: "#b0545a" }));
+  const riserTop = col("riserTop", "#5a4444"), riserFront = lam("riserFront", () => ({ map: rep(plasterTex("#6a4a48"), 4, 1), color: "#a08078" }));
   HALL.rows.forEach((z, i) => {
     if (i === 0) return;
     const h = i * HALL.riserH, z0 = z - 0.38;
@@ -84,7 +84,7 @@ export const buildHall = (root: THREE.Object3D): { parts: HallParts; lights: Pra
   const ban = new THREE.Mesh(new THREE.PlaneGeometry(4.8, 1.03), twoTone(new THREE.MeshLambertMaterial({ map: bannerTex("GRAND DRAW"), transparent: true, alphaTest: 0.5, side: THREE.DoubleSide })));
   ban.position.set(O, 3.82, Z + 0.12); root.add(ban);
   // ---- curtains (red velvet folds) both sides of the board ----
-  const velvet = col("velvet", "#a52a36");
+  const velvet = col("velvet", "#8a4a4e");
   for (const s of [-1, 1]) for (let k = 0; k < 7; k++) {
     const x = s * (2.9 + k * 0.24);
     b.add(new THREE.CylinderGeometry(0.15, 0.17, 8.1, 10).translate(0, 4.05, 0), velvet, tr(O + x, 0, Z + 0.3 + 0.05 * (k % 2)));
@@ -262,5 +262,21 @@ export const buildFlat = (root: THREE.Object3D): { parts: FlatParts; lights: Pra
   b.add(new THREE.SphereGeometry(0.22, 12, 10).scale(1, 2.3, 0.7), col("coat", "#4a4a52"), tr(O - 1.88, 1.2, 1.6));
   b.add(new THREE.SphereGeometry(0.12, 12, 10).scale(1, 0.6, 1), col("hat", "#3a3a40"), tr(O - 1.9, 1.78, 1.6));
   b.build(root, true);
-  return { parts: { page }, lights };
+  // story props: the newspaper (shot 5), the coin jar that fills and the ticket slips (shots 9-10), the WINS plaque (10 on)
+  const news = plane(0.42, 0.56, twoTone(new THREE.MeshLambertMaterial({ map: newspaperTex(), side: THREE.DoubleSide })));
+  news.position.set(...FLAT.paper); news.rotation.x = -0.12; root.add(news);
+  const [jx, jy, jz] = FLAT.jar;
+  const jar = new THREE.Mesh(new THREE.CylinderGeometry(0.075, 0.07, 0.2, 18, 1, true), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.75, 0.85, 0.95), transparent: true, opacity: 0.35, depthWrite: false, side: THREE.DoubleSide }));
+  jar.position.set(jx, jy + 0.1, jz); jar.layers.set(NOINK); root.add(jar);
+  const coins = new THREE.Mesh(new THREE.CylinderGeometry(0.068, 0.068, 1, 18).translate(0, 0.5, 0), twoTone(new THREE.MeshPhongMaterial({ color: "#d9b44a", specular: "#fff0b0", shininess: 70 })));
+  coins.position.set(jx, jy + 0.004, jz); root.add(coins);
+  const slips = new THREE.Mesh(new THREE.BoxGeometry(0.5, 1, 0.3).translate(0, 0.5, 0), twoTone(new THREE.MeshLambertMaterial({ map: rep(ticketHeapTex(), 0.5, 0.3) })));
+  slips.position.set(-0.25 + OFF.flat, DESK.h, 0.08); root.add(slips);
+  const plaqueTex = new DynTex(768, 256); plaqueTex.set("1", drawPlaque(1));
+  const plaque = plane(0.5, 0.17, twoTone(new THREE.MeshLambertMaterial({ map: plaqueTex.tex }))); plaque.position.set(...FLAT.plaque); root.add(plaque);
+  // the friends' evening (shots 9-10): a bare bulb on its cord over the desk
+  const bulb2 = new THREE.Mesh(new THREE.SphereGeometry(0.05, 10, 8), lanternCore()); bulb2.position.set(OFF.flat, 2.2, -0.1); bulb2.layers.set(NOINK); root.add(bulb2);
+  const cord = new THREE.Mesh(cyl(0.006, 0.006, 0.5), col("cord", "#2a2a2a")); cord.position.set(OFF.flat, 2.2, -0.1); root.add(cord);
+  lights.push({ place: "flat", pos: [OFF.flat, 2.12, -0.1], color: "#ffd090", intensity: 5, distance: 6, shots: [9, 10] });
+  return { parts: { page, paper: news, coins, slips, plaque }, lights };
 };
