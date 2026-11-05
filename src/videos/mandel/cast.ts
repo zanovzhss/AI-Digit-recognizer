@@ -5,12 +5,8 @@
 // (sweat, drips, the bulb, sawdust, warm air) are unlit cards. Cards, effects and blobs live on the NOINK layer so the
 // world ink pass never outlines their quads. Infrastructure (pool, cards, tiers, blinks, blobs) is the template's.
 import * as THREE from "three";
-import { Pen, bodyFront, bodySide, holdPoint, TUDOR, worker, GUARD, NEWSBOY, LOCAL, SELLER, bengali, townsfolk, fxShadow, fxContact, fxWarm,
-  fxBulb, fxDrop, fxSawdust, fxStars, Outfit, Expr, FrontOpts, SideOpts } from "./toon";
-import {
-  FPS, SHOTS, V3, clamp01, smooth, W, cue, at, BEACH, POND, HARBOR, carrierAt, NEWSBOY_P, slipperAt, SLIP, PORT, meltAt, TUDOR_CELL, TUDOR_WIN,
-  GUARD_P, YAWN, BULB, HOLD, MARKET, brigAt, DECK_Y, HEAT_F, BOTTLE, CELL_WIN, CELLAR, C, HATCH_OPEN, sawdustAt,
-} from "./story";
+import { Pen, bodyFront, bodySide, STEFAN, crowd, fxShadow, fxContact, fxStars, fxPuff, Outfit, Expr, FrontOpts, SideOpts } from "./toon";
+import { FPS, SHOTS, V3, W, HALL, FLAT_STEFAN, OFF, FAINT, faintAt, clamp01 } from "./story";
 import { LIGHTS } from "./lights";
 import { NOINK } from "./ink";
 import { cardShade, blobMaterial, CARD_K } from "./cardshade";
@@ -111,7 +107,7 @@ export class Fx {
 // ---------------- placements ----------------
 export type Place = {
   key: string; draw: (p: Pen) => void; x: number; y: number; z: number;
-  scale?: number; mirror?: boolean; yaw?: number; geo?: "body" | "swing"; roll?: number; size?: [number, number, number];
+  scale?: number; mirror?: boolean; yaw?: number; geo?: "body" | "swing"; roll?: number; pitch?: number; size?: [number, number, number];
 };
 export type FxPlace = { key: string; cw: number; ch: number; draw: (p: Pen) => void; x: number; y: number; z: number; w: number; h: number; flat?: boolean; rot?: number; soft?: boolean; glow?: number };
 /** sun = world direction TOWARD the sun (optional: when absent the scene's shadow-casting light is used) */
@@ -128,7 +124,7 @@ const tier = (d: number): [number, number, number] =>
 // ---------------- light ----------------
 const SUN = new THREE.Vector3(0.5, 0.75, -0.4).normalize();
 const tmp = new THREE.Vector3();
-let LNAME: "day" | "golden" = "day";
+let LNAME: "day" | "golden" | "night" | "interior" = "day";
 const sunOf = (root: THREE.Object3D) => {
   let s: THREE.DirectionalLight | null = null;
   root.traverse((o) => { if (!s && o instanceof THREE.DirectionalLight && o.castShadow) s = o; });
@@ -167,7 +163,8 @@ const LEAD = 2 / FPS;
  *  every expression swap (the shut frames hide the swap) */
 const LID = [0.5, 1, 1, 0.5];
 /** expression swaps (seconds of the word they react to), hidden under a blink */
-const SWAPS: Record<number, number[]> = { 17: [W.figures], 29: [W.man] };
+const SWAPS: Record<number, number[]> = {};
+void W;
 const lidAt = (t: number, i: number, swaps: number[] = []) => {
   const f = Math.round(t * FPS);
   for (const ts of swaps) { const k = f - Math.round((ts - LEAD) * FPS) + 1; if (k >= 0 && k < 4) return LID[k]; }
@@ -199,7 +196,7 @@ const person = (cam: CamInfo, who: Who, x: number, y: number, z: number, view: {
 /** ground shadow under a standing / sitting card (review rounds 2-4), multiply, blue-violet: a TIGHT contact pool right under
  *  the feet (~.5 on screen at the core) so nobody floats, plus by day (cards cast no real shadow) a lighter soft tail
  *  stretched AWAY from the sun, length ~1.6 m / tan(sun elevation), capped. Golden: world.ts casts real card shadows. */
-const CONTACT: Record<"day" | "golden", [number, number, number]> = { day: [0.2, 0.21, 0.33], golden: [0.24, 0.2, 0.33] };
+const CONTACT: Record<"day" | "golden" | "night" | "interior", [number, number, number]> = { day: [0.22, 0.2, 0.22], golden: [0.24, 0.17, 0.24], night: [0.12, 0.11, 0.2], interior: [0.24, 0.21, 0.26] };
 const TAIL: [number, number, number] = [0.42, 0.44, 0.62];
 const toSrgb = (v: number) => { const c = clamp01(v); return c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055; };
 const hexOf = (c: [number, number, number], k: number) => "#" + c.map((v) => Math.round(255 * toSrgb(1 - (1 - v) * k)).toString(16).padStart(2, "0")).join("");
@@ -218,216 +215,104 @@ const blob = (out: Stage, x: number, y: number, z: number, sc = 1, k = 1) => {
 };
 
 
-// ---------------- the ice short cast ----------------
-export type Held = { kind: "ice" | "paper"; pos: V3; yaw: number; s?: number };
-export type Stage = { places: Place[]; fx: FxPlace[]; held: Held[] };
-const ME = 7; // Tudor's index (blink seed, head-shape seed): the same bean head in every shot
-const TUD: Who = { i: ME, o: TUDOR, okey: "tudor" };
+// ---------------- the mandel short cast ----------------
+export type Stage = { places: Place[]; fx: FxPlace[] };
+const ME = 7; // Stefan's index (blink seed, head-shape seed = story.ts STEFAN_SEED): the same bean head in every shot
+const STEF: Who = { i: ME, o: STEFAN, okey: "stefan" };
 const mk = (i: number, o: Outfit, okey: string): Who => ({ i, o, okey });
+/** the neighbour who faints: a stout presenter in a plum suit with a moustache */
+const NEIGH: Who = mk(11, { jacket: "#6a3a5a", pants: "#3a2e3a", boots: "#231c22", hat: "hair", hair: "#5a3b2a", moustache: "#3a2a20", build: "stout", tie: "#f2c94a", skin: "#f5c9a0" }, "neigh");
 
-/** card yaw toward the camera (same as world.ts) and the card's local +x axis in world space */
-const cardAxes = (x: number, z: number, cam: { pos: { x: number; z: number } }) => {
-  const yaw = Math.atan2(cam.pos.x - x, cam.pos.z - z);
-  return { yaw, rx: Math.cos(yaw), rz: -Math.sin(yaw) };
-};
-/** a front-facing figure standing (or walking / sitting) at p; returns its options for props placed at its hands */
-const fig = (out: Stage, cam: CamInfo, who: Who, p: V3, f: number, fo: FrontOpts, o: { flip?: boolean; shadow?: boolean; scale?: number; roll?: number } = {}) => {
+/** a front-facing figure standing (or sitting / falling) at p */
+const fig = (out: Stage, cam: CamInfo, who: Who, p: V3, f: number, fo: FrontOpts, o: { flip?: boolean; shadow?: boolean; scale?: number; roll?: number; pitch?: number } = {}) => {
   const t = f / FPS, fo2: FrontOpts = { blink: lidAt(t, who.i, SWAPS[SHOTS.findIndex((s) => f >= s.a && f < s.b) + 1]), ...fo };
   const pl = person(cam, who, p[0], p[1], p[2], { side: false, mirror: false, flip: o.flip }, fo2, {}, o.scale ?? 1);
   if (o.roll) pl.roll = o.roll;
+  if (o.pitch) pl.pitch = o.pitch;
   out.places.push(pl);
   if (o.shadow !== false) blob(out, p[0], p[1], p[2], o.scale ?? 1);
   return fo2;
 };
-/** the 3D thing held at the "hold" grip of a front card (ice block / newspaper), pushed `fwd` m toward the lens */
-const heldAt = (out: Stage, cam: CamInfo, who: Who, p: V3, fo: FrontOpts, kind: Held["kind"], fwd = 0.16, s = 1) => {
-  const [hx, hy] = holdPoint(who.o, { ...fo, seed: seedOf(who.i) }), { yaw, rx, rz } = cardAxes(p[0], p[2], cam);
-  const dx = (hx - 300) * SU;
-  out.held.push({ kind, yaw, s, pos: [p[0] + rx * dx + Math.sin(yaw) * fwd, p[1] + (975 - hy) * SU, p[2] + rz * dx + Math.cos(yaw) * fwd] });
-};
-/** sweat: drops slide down beside the head of someone at p (head top ~ y + 1.75) */
-const sweat = (out: Stage, cam: CamInfo, p: V3, f: number, n = 2, h = 1.62, seed = 1) => {
-  for (let i = 0; i < n; i++) {
-    const u = ((f / 16 + hh(i, seed)) % 1), side = i % 2 ? 1 : -1, r = cam.right;
-    const ox = side * (0.15 + 0.03 * hh(i, seed + 3));
-    out.fx.push({ key: "drop", cw: 64, ch: 96, draw: fxDrop, x: p[0] + r.x * ox, y: p[1] + h + 0.05 - 0.22 * u, z: p[2] + r.z * ox, w: 0.045, h: 0.068 });
-  }
-};
-/** drips falling from a point (melting ice), period ~0.6 s each */
-const drips = (out: Stage, x: number, y: number, z: number, f: number, n = 3, fall = 0.5, s = 1, seed = 5) => {
-  for (let i = 0; i < n; i++) {
-    const u = (f / 18 + hh(i, seed)) % 1, dx = (hh(i, seed + 1) - 0.5) * 0.3 * s, dz = (hh(i, seed + 2) - 0.5) * 0.3 * s;
-    out.fx.push({ key: "drop", cw: 64, ch: 96, draw: fxDrop, x: x + dx, y: y - fall * u * u, z: z + dz, w: 0.035 * s, h: 0.053 * s });
-  }
-};
-/** warm-air ribbons (additive glow) rising / drifting from a to b over their life */
-const warmAir = (out: Stage, f: number, f0: number, a: V3, b: V3, n: number, len: number, rot = 0, seed = 7, life = 1.4, glow = 1.15) => {
-  for (let i = 0; i < n; i++) {
-    const born = f0 + i * (life * FPS / n), u0 = (f - born) / (life * FPS);
-    if (u0 < 0) continue;
-    const u = u0 % 1, e = smooth(u), jx = (hh(i, seed) - 0.5) * 0.3, jy = (hh(i, seed + 1) - 0.5) * 0.25, jz = (hh(i, seed + 2) - 0.5) * 0.3;
-    const k = q(u, 30);
-    out.fx.push({ key: `warm${k}`, cw: 128, ch: 512, draw: (p) => fxWarm(p, k), x: a[0] + (b[0] - a[0]) * e + jx, y: a[1] + (b[1] - a[1]) * e + jy, z: a[2] + (b[2] - a[2]) * e + jz,
-      w: len * 0.2, h: len, rot, soft: true, glow });
-  }
-};
-const saw = (f: number, i: number) => 0.5 + 0.5 * Math.sin((f / FPS) * Math.PI * 2 * 1.5 + i * 2.1);
-const shovel = (f: number, i: number) => { const x = ((f / FPS) * 0.9 + i * 0.45) % 1; return x < 0.5 ? 0.15 * smooth(x / 0.5) : x < 0.8 ? 0.15 + 0.85 * smooth((x - 0.5) / 0.3) : 1 - smooth((x - 0.8) / 0.2); };
 
-/** everything with a face (and the held props) in shot `id` at frame f */
+// ---- falling paper: confetti and lottery tickets (unlit cut-out cards, spinning, fluttering) ----
+const CONF = ["#e2453c", "#f2c94a", "#3f8ad8", "#4fb36a", "#e86aa8", "#ffffff", "#f28a2c", "#8a5ad8"];
+const confDraw = (c: string) => (p: Pen) => { p.g.fillStyle = c; p.g.fillRect(2, 2, 28, 16); };
+const ticketDraw = (p: Pen) => {
+  const g = p.g; g.fillStyle = "#fff8e6"; g.fillRect(2, 2, 92, 44); g.fillStyle = "#2f7a54"; g.fillRect(2, 2, 92, 12);
+  g.fillStyle = "#c23a2a"; for (let i = 0; i < 6; i++) g.fillRect(10 + i * 13, 24, 8, 8); g.strokeStyle = "#2a2a3a"; g.lineWidth = 2; g.strokeRect(2, 2, 92, 44);
+};
+/** n pieces raining through a box (x0..x1, z0..z1, falling from yTop to the floor), deterministic in t */
+const rain = (out: Stage, t: number, n: number, seed: number, box: [number, number, number, number, number], ticket = false) => {
+  const [x0, x1, z0, z1, yTop] = box;
+  for (let i = 0; i < n; i++) {
+    const v = (ticket ? 0.45 : 0.6) + 0.45 * hh(i, seed + 3), H = yTop + 0.5, ph = hh(i, seed + 4) * H;
+    const y = yTop - ((t * v + ph) % H);
+    const x = x0 + (x1 - x0) * hh(i, seed + 1) + 0.18 * Math.sin(t * 2.6 + i * 1.7), z = z0 + (z1 - z0) * hh(i, seed + 2) + 0.1 * Math.cos(t * 2.1 + i);
+    const flip = Math.abs(Math.cos(t * (5 + 3 * hh(i, seed + 5)) + i)), rot = t * (hh(i, seed + 6) - 0.5) * 9 + i;
+    if (ticket) out.fx.push({ key: "ticket", cw: 96, ch: 48, draw: ticketDraw, x, y, z, w: 0.15, h: 0.075 * Math.max(0.2, flip), rot });
+    else { const c = CONF[i % CONF.length]; out.fx.push({ key: "conf" + c, cw: 32, ch: 20, draw: confDraw(c), x, y, z, w: 0.05, h: 0.031 * Math.max(0.15, flip), rot }); }
+  }
+};
+
+/** everything with a face (and the effects) in shot `id` at frame f */
 export const stage = (id: number, t: number, cam: CamInfo): Stage => {
-  const out: Stage = { places: [], fx: [], held: [] };
+  const out: Stage = { places: [], fx: [] };
   const s = SHOTS[id - 1], f = Math.round(t * FPS);
   LNAME = s.light;
   findSun(cam, SUN);
   switch (s.place) {
-    case "beach": {
-      const fo = fig(out, cam, TUD, BEACH.tudor, f, { mode: "stand", expr: "smile", look: -1, facing: -1, prop: "hold", headTilt: -3 });
-      heldAt(out, cam, TUD, BEACH.tudor, fo, "ice", 0.2);
-      const lw = mk(3, LOCAL, "local");
-      fig(out, cam, lw, BEACH.local, f, { mode: "stand", expr: id === 1 ? "nervous" : "shock", look: 1, facing: 1, tilt: id === 2 ? -3 : 0 });
-      sweat(out, cam, BEACH.local, f, id === 2 ? 3 : 2, 1.6, 3);
-      const h = out.held[0].pos;
-      drips(out, h[0], h[1] - 0.14, h[2], f, 2, 0.9, 1, 9);
-      break;
-    }
-    case "pond": {
-      POND.workers.forEach((p, i) => fig(out, cam, mk(20 + i, worker(i), "w" + i), p, f, { mode: "stand", expr: i === 1 ? "whistle" : "neutral", prop: ["saw", q(saw(f, i), 20)], facing: 0, tilt: 3 * Math.sin(f * 0.2 + i) }));
-      break;
-    }
-    case "harbor": {
-      if (id === 4 || id === 5) {
-        const tp: V3 = id === 4 ? HARBOR.tudor : at("harbor", 1.25, 0, 6.2);
-        fig(out, cam, TUD, tp, f, { mode: "stand", expr: id === 4 ? "grin" : "smile", look: id === 4 ? 0 : 1, facing: 0, headTilt: id === 4 ? -5 : 2 * Math.sin(f * 0.15), prop: "point" });
-        if (id === 4) {
-          fig(out, cam, mk(21, worker(1), "w1"), at("harbor", -4.6, 0, 2.6), f, { mode: "stand", expr: "neutral", prop: "hold" });
-          heldAt(out, cam, mk(21, worker(1), "w1"), at("harbor", -4.6, 0, 2.6), { mode: "stand", prop: "hold" }, "ice");
+    case "hall": {
+      // Stefan: calm, reading his page of maths (the hold grip), not smiling, the cheque under his arm (sets.ts)
+      fig(out, cam, STEF, HALL.stefan, f, { mode: "stand", expr: "neutral", prop: "hold", headTilt: -3 + 1.5 * Math.sin(f * 0.05), facing: 0 });
+      // the neighbour: cheers, goes rigid, topples backwards-right into the confetti heap (gag, on "never")
+      const k = faintAt(f), [nx, ny, nz] = HALL.neighbour;
+      if (k <= 0) fig(out, cam, NEIGH, HALL.neighbour, f, { mode: "stand", expr: "laugh", cheer: q(0.5 + 0.5 * Math.sin(f * 0.55), 4), facing: -1 });
+      else {
+        // stiff as a board he tips back and to the right (card pitch + roll about the feet) into the heap behind him
+        const fall = Math.min(1, k), settle = k >= 1 ? 0.04 * Math.sin((f - FAINT[1]) * 0.9) * Math.exp(-(f - FAINT[1]) / 6) : 0;
+        fig(out, cam, NEIGH, [nx + 0.08 * fall, ny, nz - 0.05 * fall], f, { mode: "stand", expr: fall > 0.3 ? "dazed" : "shock", facing: -1, cheer: fall < 0.3 ? 1 : undefined },
+          { roll: -0.62 * fall + settle, pitch: -1.0 * fall, shadow: fall < 0.4 });
+        const land: V3 = [nx + 0.75, 0.55, nz - 1.0];
+        if (k >= 1) { // circling stars over his head where it landed
+          const u = ((f - FAINT[1]) / 24) % 1;
+          out.fx.push({ key: `stars${q(u, 24)}`, cw: 420, ch: 210, draw: (p) => fxStars(p, q(u, 24)), x: land[0], y: land[1] + 0.45, z: land[2], w: 0.62, h: 0.31 });
+        }
+        const pu = (f - FAINT[1] + 2) / 14;
+        if (pu > 0 && pu < 1) out.fx.push({ key: `puff${q(pu, 14)}`, cw: 300, ch: 300, draw: (p) => fxPuff(p, q(pu, 14)), x: land[0], y: 0.35, z: land[2] + 0.3, w: 1.3, h: 1.3, soft: true });
+        if (pu > 0 && pu < 1.6) for (let i = 0; i < 30; i++) { // a burst of confetti thrown up by the landing
+          const a = 0.25 + hh(i, 41) * (Math.PI - 0.5), sp = 1.6 + 1.6 * hh(i, 42), tt = (f - FAINT[1] + 2) / FPS, c = CONF[i % CONF.length];
+          const y = 0.4 + sp * Math.sin(a) * tt - 2.4 * tt * tt;
+          if (y > 0.02) out.fx.push({ key: "conf" + c, cw: 32, ch: 20, draw: confDraw(c), x: land[0] + sp * Math.cos(a) * tt * 0.7, y, z: land[2] + 0.3 + (hh(i, 43) - 0.5) * 0.5, w: 0.05, h: 0.03, rot: tt * 12 + i });
         }
       }
-      if (id === 5) for (let i = 0; i < 2; i++) {
-        const c = carrierAt(i, f), who = mk(22 + i, worker(2 + i), "c" + i);
-        const fo = fig(out, cam, who, c.p, f, { mode: c.walking ? "march" : "stand", phase: c.walking ? q(c.phase, 60) : 0, lift: 30, expr: "neutral", prop: "hold" });
-        heldAt(out, cam, who, c.p, fo, "ice");
-      }
-      if (id === 6) ([[-10.2, 2.4], [-9.1, 4.6], [-8.4, 3.1], [-4.8, 6.2], [-3.9, 3.4], [-2.6, 5.1], [-6.6, 8.4]] as const).forEach(([x, z], i) =>
-        fig(out, cam, mk(40 + i, townsfolk(i), "tf" + i), at("harbor", x, 0, z), f, { mode: "stand", expr: "laugh", prop: i % 2 ? "point" : null, wave: i % 2 ? undefined : q(0.5 + 0.5 * Math.sin(f * 0.4 + i), 6) }, { flip: i % 3 === 0 }));
-      if (id === 8) {
-        const P: [number, number, number, boolean][] = [[-7.7, 2.0, 0, false], [-7.0, 3.4, 1, true], [-5.5, 1.8, 2, false], [-5.3, 4.5, 3, true], [-6.4, 6.0, 4, false], [-7.9, 6.4, 5, true]];
-        P.forEach(([x, z, v, pt], i) => {
-          const bob = Math.abs(Math.sin(f * 0.45 + i * 1.3));
-          fig(out, cam, mk(40 + v, townsfolk(v), "tf" + v), at("harbor", x, 0, z), f, { mode: "stand", expr: f < cue(W.joke) && i % 2 ? "grin" : "laugh", prop: pt ? "point" : null, wave: pt ? undefined : q(bob, 6),
-            tilt: -4 + 6 * q(bob, 6), headTilt: 5 * Math.sin(f * 0.45 + i), crouch: 0.15 * q(bob, 6) });
-        });
-      }
-      break;
-    }
-    case "street": {
-      if (id === 7) {
-        const who = mk(30, NEWSBOY, "newsboy"), wave = 0.012 * Math.sin(f * 0.5);
-        const p: V3 = [NEWSBOY_P[0], NEWSBOY_P[1], NEWSBOY_P[2]];
-        const fo = fig(out, cam, who, p, f, { mode: "stand", expr: "grin", prop: "hold", headTilt: 4 * Math.sin(f * 0.3) });
-        heldAt(out, cam, who, p, fo, "paper", 0.2 + wave, 1);
-      } else {
-        const sl = slipperAt(f), who = mk(42, townsfolk(2), "tf2");
-        const falling = f >= SLIP;
-        fig(out, cam, who, sl.p, f, { mode: falling ? "fall" : "march", phase: falling ? 0 : q(((f / FPS) * 1.8) % 1, 60), lift: 30, expr: falling ? "shock" : "smile_closed" },
-          { roll: falling ? -0.95 * smooth(sl.fall * 1.3) : 0, shadow: true });
-        if (falling && f < SLIP + 30) { const k = q((f - SLIP) / 30, 30); out.fx.push({ key: `stars${k}`, cw: 420, ch: 220, draw: (p) => fxStars(p, k), x: sl.p[0] + cam.right.x * 1.2, y: 1.15, z: sl.p[2] + cam.right.z * 1.2, w: 0.9, h: 0.47 }); }
-        fig(out, cam, mk(30, NEWSBOY, "newsboy"), [-4.2, 0, 2.4], f, { mode: "stand", expr: falling ? "laugh" : "grin", prop: falling ? "point" : null }, { flip: true });
-        fig(out, cam, mk(43, townsfolk(3), "tf3"), [-3.6, 0, 0.8], f, { mode: "stand", expr: falling ? "laugh" : "whistle", prop: falling ? "point" : "hold", headTilt: 4 * Math.sin(f * 0.2) });
-      }
-      break;
-    }
-    case "port": {
-      if (id !== 12) {
-        const m = meltAt(id, f);
-        fig(out, cam, TUD, PORT.tudor, f, { mode: "stand", expr: id === 15 ? "dazed" : "nervous", look: 1, facing: 1, wave: q(0.55 + 0.45 * Math.sin(f * 0.9), 6), tilt: 2 * Math.sin(f * 0.3) });
-        sweat(out, cam, PORT.tudor, f, 3, 1.62, 11);
-        if (id === 10) {
-          fig(out, cam, mk(50, { ...worker(0), skin: "#8a5636", hat: null, jacket: "#f2ead6" }, "pw0"), at("port", 1.6, 0, 3.2), f, { mode: "stand", expr: "laugh", prop: "point", tilt: -4 + 3 * Math.sin(f * 0.5) });
+      // the crowd: 7 rows on the risers (story HALL), ~20 per row, cheering with both arms, a few waving or pointing
+      HALL.rows.forEach((z, r) => {
+        const n = 21, y = r * HALL.riserH;
+        for (let j = 0; j < n; j++) {
+          const i = r * n + j, x = -4.6 + (9.2 * (j + 0.5 * (r % 2))) / n + (hh(i, 7) - 0.5) * 0.14, zz = z + (hh(i, 8) - 0.5) * 0.16;
+          if (r === 0 && Math.abs(x) < 1.6) continue; // keep the front row clear behind Stefan and the neighbour
+          const who = mk(100 + (i % 23), crowd(i % 23), "crowd" + (i % 23)), b = 0.5 + 0.5 * Math.sin(f * (0.42 + 0.12 * hh(i, 9)) + i * 1.7);
+          const expr: Expr = (["laugh", "grin", "relief_open", "laugh", "shock"] as Expr[])[i % 5];
+          const wave = i % 6 === 2;
+          fig(out, cam, who, [x, y, zz], f, { mode: "stand", expr, facing: (hh(i, 10) < 0.5 ? -1 : 1), ...(wave ? { wave: q(b, 4) } : i % 9 === 4 ? { prop: "point" as const } : { cheer: q(b, 4) }),
+            tilt: -3 + 6 * q(b, 4) * (hh(i, 11) - 0.5) }, { scale: 0.93 + 0.12 * hh(i, 12), shadow: r < 2 });
         }
-        const [sx, , sz] = PORT.stack;
-        drips(out, sx, 0.9 * (1 - m) + 0.1, sz + 0.35, f, 4, 0.9 * (1 - m) + 0.1, 1.4, 3);
-        warmAir(out, f, s.a - 40, [sx, 0.3, sz], [sx, 1.6, sz], 6, 0.7, 0, 13, 1.6, 0.6);
+      });
+      // confetti and tickets raining over everyone
+      rain(out, t, 240, 1, [-4.2, 4.2, -6.8, 2.6, 6.2]);
+      rain(out, t, 46, 2, [-3.8, 3.8, -6.0, 2.2, 6.0], true);
+      break;
+    }
+    case "flat": {
+      // Stefan at his desk in Bucharest, reading the same page under the lamp
+      fig(out, cam, STEF, [FLAT_STEFAN[0], 0.44, FLAT_STEFAN[2]], f, { mode: "sit", expr: "neutral", headTilt: -6, facing: 0 }, { shadow: false });
+      // snow falling past the window outside
+      for (let i = 0; i < 40; i++) {
+        const x = OFF.flat + 0.4 + 1.3 * hh(i, 51), z = -2.75 - 0.4 * hh(i, 52), y = 2.4 - ((t * (0.25 + 0.2 * hh(i, 53)) + hh(i, 54) * 1.8) % 1.8);
+        out.fx.push({ key: "snowflake", cw: 32, ch: 32, draw: (p) => { p.g.fillStyle = "#ffffff"; p.g.beginPath(); p.g.arc(16, 16, 12, 0, Math.PI * 2); p.g.fill(); }, x: x + 0.05 * Math.sin(t * 2 + i), y, z, w: 0.025, h: 0.025, soft: true });
       }
       break;
     }
-    case "cell": {
-      if (id === 16 || id === 17) {
-        const bulb = f >= BULB && id === 17;
-        fig(out, cam, TUD, TUDOR_CELL, f, { mode: "sit", expr: bulb ? "grin" : "stern", look: bulb ? 0 : -1, facing: 0, headTilt: bulb ? -6 : 4, nod: bulb ? 0 : q(0.5 + 0.5 * Math.sin(f * 0.12), 6), wave: bulb ? 1 : undefined }, { shadow: false });
-        if (bulb) { const k = q(Math.min(1, (f - BULB) / 14), 30); out.fx.push({ key: `bulb${k}`, cw: 500, ch: 500, draw: (p) => fxBulb(p, k), x: TUDOR_CELL[0], y: TUDOR_CELL[1] + 1.45, z: TUDOR_CELL[2] + 0.05, w: 0.44, h: 0.44, glow: 1.6, soft: true }); }
-      }
-      if (id === 16) {
-        const yk = clamp01((f - YAWN[0]) / (YAWN[1] - YAWN[0])), yawning = yk > 0 && yk < 1;
-        fig(out, cam, mk(60, GUARD, "guard"), GUARD_P, f, { mode: "stand", expr: yawning ? "yawn" : "neutral", wave: yawning ? Math.sin(Math.PI * yk) : undefined, tilt: yawning ? -5 * Math.sin(Math.PI * yk) : 0, headTilt: yawning ? -8 * Math.sin(Math.PI * yk) : 0 });
-      }
-      const wx = C(CELL_WIN.x, CELL_WIN.y, CELLAR.z0)[0];
-      if (id === 18) drips(out, wx, CELL_WIN.y + CELL_WIN.h / 2 - 0.28, CELLAR.z0 - 0.4, f, 3, 0.25, 0.8, 21);
-      if (id === 19) {
-        fig(out, cam, TUD, TUDOR_WIN, f, { mode: "stand", expr: "smile", look: 1, facing: 1, prop: "point" });
-        warmAir(out, f, s.a - 30, C(CELL_WIN.x, CELL_WIN.y, CELLAR.z0 - 0.3), C(CELL_WIN.x - 0.6, CELL_WIN.y - 0.1, CELLAR.z0 + 1.0), 6, 0.55, 1.3, 31, 1.5, 0.9);
-      }
-      if (id === 21) {
-        // warm air drifts in from both sides, meets the towel on "heat" and bounces back out
-        for (let i = 0; i < 6; i++) {
-          const side = i % 2 ? 1 : -1, ph = (i >> 1) * 7, u = clamp01((f - 1084 - ph) / (HEAT_F - 1084 - 6));
-          const back = smooth((f - HEAT_F - ph * 0.3) / 18), dist = 0.62 - 0.5 * smooth(u) + 0.55 * back, k = q(0.3 + 0.4 * u - 0.3 * back, 30);
-          if (k <= 0) continue;
-          out.fx.push({ key: `warm${k}`, cw: 128, ch: 512, draw: (p) => fxWarm(p, k), x: BOTTLE[0] + side * dist, y: BOTTLE[1] + 0.12 + 0.07 * (i >> 1), z: BOTTLE[2] + 0.06,
-            w: 0.07, h: 0.34, rot: side * (Math.PI / 2) + 0.15 * Math.sin(f * 0.2 + i), soft: true, glow: 1.1 });
-        }
-      }
-      break;
-    }
-    case "hold": {
-      if (id === 22) {
-        HOLD.workers.forEach((p, i) => {
-          const k = q(shovel(f, i), 20);
-          fig(out, cam, mk(70 + i, worker(i + 1), "hw" + i), p, f, { mode: "stand", expr: "neutral", prop: ["shovel", k], tilt: -8 * (1 - k) + 4, crouch: 0.3 * (1 - k) }, { flip: i === 1 });
-          // sawdust thrown in an arc from the blade toward the fill on the up-swing
-          const x = ((f / FPS) * 0.9 + i * 0.45) % 1;
-          if (x > 0.58 && x < 0.9) for (let j = 0; j < 7; j++) {
-            const u = (x - 0.58) / 0.32 + hh(j, i) * 0.15, side = i ? -1 : 1;
-            out.fx.push({ key: "dust", cw: 64, ch: 64, draw: fxSawdust, x: p[0] + side * (0.4 + 0.9 * u) + (hh(j, 3) - 0.5) * 0.3, y: 1.5 + 0.9 * u - 1.6 * u * u + (hh(j, 4) - 0.5) * 0.2, z: p[2] - 1.0 * u - 0.2 * hh(j, 5), w: 0.06, h: 0.06, rot: j });
-          }
-        });
-        void sawdustAt;
-      }
-      break;
-    }
-    case "mill": {
-      const k = q(shovel(f, 0), 20), wp = at("mill", -2.4, 0, -0.9);
-      fig(out, cam, mk(73, worker(3), "mw"), wp, f, { mode: "stand", expr: "neutral", prop: ["shovel", k], tilt: -8 * (1 - k) + 4, crouch: 0.3 * (1 - k) }, { flip: true });
-      const x = ((f / FPS) * 0.9) % 1;
-      if (x > 0.58 && x < 0.9) for (let j = 0; j < 8; j++) {
-        const u = (x - 0.58) / 0.32 + hh(j, 7) * 0.15;
-        out.fx.push({ key: "dust", cw: 64, ch: 64, draw: fxSawdust, x: wp[0] - 0.4 - 1.2 * u, y: 1.4 + 1.2 * u - 1.4 * u * u, z: wp[2] - 1.2 * u, w: 0.07, h: 0.07, rot: j });
-      }
-      fig(out, cam, TUD, at("mill", 1.0, 0, 2.2), f, { mode: "stand", expr: "grin", prop: "point" }, { flip: true });
-      break;
-    }
-    case "calcutta": {
-      if (id === 26) {
-        void brigAt; void DECK_Y; void HATCH_OPEN;
-      } else {
-        const [mx, , mz] = MARKET.stall;
-        if (id === 27 || id === 28) {
-          fig(out, cam, mk(82, SELLER, "seller"), [mx - 0.15, 0, mz - 0.45], f, { mode: "stand", expr: "grin", prop: "iceblock" });
-          fig(out, cam, mk(83, bengali(1), "b1"), [mx - 0.35, 0, mz + 1.35], f, { mode: "stand", expr: "smile_closed", prop: "drink" });
-          fig(out, cam, mk(84, bengali(2), "b2"), [mx + 0.35, 0, mz + 1.85], f, { mode: "stand", expr: "relief_open", prop: "iceblock" }, { flip: true });
-        }
-        const crowd: [number, number, number, Expr][] = [[-7.6, 1.6, 3, "smile"], [-5.4, 2.4, 4, "grin"], [-6.3, 0.9, 5, "smile_closed"], [5.4, 1.4, 6, "grin"], [6.6, 2.6, 7, "smile"],
-          [-3.0, 4.0, 8, "smile_closed"], [4.4, 7.4, 9, "grin"], [1.6, 9.0, 10, "smile"], [-1.8, 7.6, 11, "grin"], [8.8, 5.0, 12, "smile_closed"]];
-        crowd.forEach(([dx, dz, v, e], i) => fig(out, cam, mk(85 + i, bengali(v), "b" + v), [mx + dx, 0, mz + dz], f,
-          { mode: i % 4 === 3 ? "stroll" : "stand", phase: q(((f / FPS) * 0.8 + i * 0.27) % 1, 60), expr: e, prop: i % 3 === 0 ? "drink" : i % 3 === 1 ? "iceblock" : null, wave: i % 3 === 2 ? q(0.5 + 0.5 * Math.sin(f * 0.3 + i), 6) : undefined }, { flip: i % 2 === 1 }));
-        fig(out, cam, TUD, MARKET.tudor, f, { mode: "stand", expr: id === 29 && f >= cue(W.man) + 4 ? "smile_closed" : "smile", look: id === 29 ? 0 : -1, facing: id === 29 ? 0 : -1, headTilt: id === 29 ? -4 : 2 * Math.sin(f * 0.12), prop: "drink" });
-      }
-      break;
-    }
-    default: break;
   }
   return out;
 };
-export { FPS, clamp01, bodySide };
-export type { Outfit, SideOpts };

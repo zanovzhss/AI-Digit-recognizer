@@ -7,7 +7,7 @@
 // preset gradient, and the preset tint (measured on WHITE heads) is applied at TINT_K so peach skin stays clean
 // (lighting.md 9.1 note: golden ~[1, .88, .76], day ~[1, .97, .96] for peach skin).
 import * as THREE from "three";
-import { LFB, CHAR } from "./shade";
+import { LFB, CHAR, PRACT } from "./shade";
 
 export const GRAD_K = 5.5;   // head: preset charGrad x5.5, capped at .4 linear: ~14 % on screen after the grade /
                              // tone-map highlight roll-off (faces sit at ~.96 there; review round 2)
@@ -56,12 +56,13 @@ vec3 outgoingLight = diffuseColor.rgb * tintK;
   #endif
 }
 #endif
+outgoingLight += diffuseColor.rgb * practicalLight( geometryPosition, geometryNormal, 1.0 ) * uCardPract;   // mandel: lamp light on the cast
 `;
 
 const DECL = "#include <common>\nuniform vec3 uCharTint; uniform float uCharShade; uniform float uGrad; uniform float uBodyGrad; uniform vec3 uSideTint;"
-  + " uniform float uGradK; uniform float uGradKB; uniform float uTintK; uniform float uNorm; uniform float uGain; uniform float uPx;";
+  + " uniform float uGradK; uniform float uGradKB; uniform float uTintK; uniform float uNorm; uniform float uGain; uniform float uPx; uniform float uCardPract;";
 /** card-only constants (not per light): gradient share, tint share, overall gain (calibrated: faces ~.93 V) */
-export const CARD_K = { uGradK: { value: GRAD_K }, uGradKB: { value: GRAD_KB }, uTintK: { value: TINT_K }, uNorm: { value: 0.7 }, uGain: { value: 1.03 }, uPx: { value: 0.5 } }; // uPx = render height / 1920 (set per draw in cast.ts)
+export const CARD_K = { uGradK: { value: GRAD_K }, uGradKB: { value: GRAD_KB }, uTintK: { value: TINT_K }, uNorm: { value: 0.7 }, uGain: { value: 1.03 }, uPx: { value: 0.5 }, uCardPract: { value: 0.55 } }; // uPx = render height / 1920 (set per draw in cast.ts)
 
 /** MeshLambertMaterial -> lit card: no emissive, scene tint, bright floor, side gradient toward the sun. */
 export function cardShade(m: THREE.MeshLambertMaterial) {
@@ -70,10 +71,11 @@ export function cardShade(m: THREE.MeshLambertMaterial) {
     Object.assign(sh.uniforms, CHAR, CARD_K);
     sh.fragmentShader = sh.fragmentShader
       .replace("#include <common>", DECL)
+      .replace("#include <lights_pars_begin>", "#include <lights_pars_begin>\n" + PRACT)
       .replace("#include <lights_fragment_begin>", "float sunVis = 1.0;\n" + LFB)
       .replace("vec3 outgoingLight = reflectedLight.directDiffuse + reflectedLight.indirectDiffuse + totalEmissiveRadiance;", CARD);
   };
-  m.customProgramCacheKey = () => "card9";
+  m.customProgramCacheKey = () => "card10p";
   return m;
 }
 

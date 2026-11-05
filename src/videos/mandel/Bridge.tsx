@@ -1,4 +1,4 @@
-// "The Man Who Sold Ice to the Tropics": ~55 s short in the flat-characters-in-a-3D-toon-world style (bridge template post chain, unchanged).
+// "The Man Who Won the Lottery 14 Times": ~54 s short, flat characters in a 3D toon world (IceShort post chain: focus, lens, ink), with captions.
 // One three.js world (world.ts) posed per frame from the story timeline (story.ts). Post chain (look-match pass):
 //   InkPass (world ink lines, own pass) -> lens blur pre + main (thin-lens DOF per shot from dofAt) ->
 //   [bloom (emissive only) + NEUTRAL tone mapping + colour grade] (one merged EffectPass), MSAA 4.
@@ -18,7 +18,8 @@ import { InkPass, noInkFallback } from "./ink";
 import { LensBlur, GrainEffect } from "./lensblur";
 import { GradeEffect, GRADES, GRADE_STRENGTH, gradeFor } from "./grade";
 import { Kit } from "./build";
-import { TOTAL, FLASH_AT, SHOTS, layersAt, dofAt, camAt } from "./story";
+import { TOTAL, FLASH_AT, SHOTS, layersAt, dofAt, camAt, FPS } from "./story";
+import { CAPTIONS } from "./captions";
 import { MotionBlurEffect } from "./motionblur";
 
 export const MANDEL_FRAMES = TOTAL;
@@ -76,7 +77,7 @@ const Inner: React.FC<{ id: number; kit: Kit }> = ({ id, kit }) => {
     mblur: new MotionBlurEffect(100),
     grain: new GrainEffect({ amount: 0.025, cellPx: 1.5 }), // film grain, OFF by default (inputProps post.grain): the reference measures no grain and it quadruples the file size
   }), [camera, scene]);
-  useEffect(() => () => fx.ink.dispose(), [fx]);
+  useEffect(() => () => { (fx.ink as unknown as { dispose?: () => void }).dispose?.(); }, [fx]);
   const post = useMemo(() => (
     <EffectComposer multisampling={4}>
       {[
@@ -106,10 +107,11 @@ const Inner: React.FC<{ id: number; kit: Kit }> = ({ id, kit }) => {
   prevCam.fov = pc.fov; prevCam.aspect = cam.aspect; prevCam.near = cam.near; prevCam.far = cam.far;
   prevCam.updateProjectionMatrix(); prevCam.updateMatrixWorld();
   fx.mblur.setCameras(cam.matrixWorld, cam.projectionMatrix, prevCam.projectionMatrix, prevCam.matrixWorldInverse);
-  // streak only on fast moves: the screen travel over the shutter of a point at the focus distance and of a far point
-  // (px at 1080 wide); none below ~60 px (glides, orbits, holds), full from ~160 px (whips, fly-throughs)
+  // streak only on fast moves (rule 2: motion blur only above 40 px/frame): the travel over the half-frame shutter of a
+  // point at the focus distance and of a far point (px at 1080 wide); none below 20 px per half frame (= 40 px/f),
+  // full from 60 (= 120 px/f, whips)
   fx.mblur.depth = fx.lens.focus;
-  fx.mblur.amount = THREE.MathUtils.smoothstep(Math.max(screenTravel(cam, prevCam, fx.lens.focus), screenTravel(cam, prevCam, 400)), 60, 160);
+  fx.mblur.amount = THREE.MathUtils.smoothstep(Math.max(screenTravel(cam, prevCam, fx.lens.focus), screenTravel(cam, prevCam, 400)), 20, 60);
   gradeFor(fx.grade, SHOTS[id - 1].light);
   fx.grain.seed = f; // deterministic per frame
   return (
@@ -131,15 +133,34 @@ const ShotView: React.FC<{ id: number; kit: Kit; alpha: number }> = ({ id, kit, 
   </AbsoluteFill>
 );
 
+/** Captions (this video has them): one word at a time (2-3 only for very short words), hard swap on each word, synced to
+ *  words.json via captions.ts. White, bold clean sans (Segoe UI Black: the system's nearest to Montserrat ExtraBold),
+ *  thin black outline ~4 px at 1080 wide, no box, ~5.5 % of the frame height, centred at 60 % down (clear of the top
+ *  12 % and the bottom 20 %). Sized in % of the frame so the 2K export matches. */
+const Caption: React.FC<{ f: number }> = ({ f }) => {
+  const t = f / FPS, c = CAPTIONS.find(([s, e]) => t >= s && t < e);
+  if (!c) return null;
+  return (
+    <AbsoluteFill style={{ pointerEvents: "none" }}>
+      <div style={{ position: "absolute", left: "5%", right: "5%", top: "60%", transform: "translateY(-50%)", textAlign: "center",
+        fontFamily: "'Segoe UI Black', 'Montserrat', 'Arial Black', sans-serif", fontWeight: 900, fontSize: "5.5vh", lineHeight: 1.05, color: "#ffffff",
+        WebkitTextStroke: "0.42vh #000000", paintOrder: "stroke fill", letterSpacing: "0.01em" }}>
+        {c[2]}
+      </div>
+    </AbsoluteFill>
+  );
+};
+
 export const MandelShort: React.FC = () => {
   const f = useCurrentFrame();
   const kit = useKit();
   if (!kit) return null;
   const flash = FLASH_AT !== null && f >= FLASH_AT && f < FLASH_AT + 4 ? [1, 0.75, 0.45, 0.2][f - FLASH_AT] : 0;
   return (
-    <AbsoluteFill style={{ background: "#cfe3f2" }}>
-      {layersAt(f).map((l, i) => <ShotView key={i ? "over" : "base"} id={l.id} kit={kit} alpha={l.alpha} />)}
+    <AbsoluteFill style={{ background: "#120e16" }}>
+      {layersAt(f).map((l, i) => <ShotView key={SHOTS[l.id - 1].place} id={l.id} kit={kit} alpha={l.alpha} />)}
       {flash > 0 && <AbsoluteFill style={{ background: "#ffffff", opacity: flash }} />}
+      <Caption f={f} />
     </AbsoluteFill>
   );
 };

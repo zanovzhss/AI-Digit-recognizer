@@ -174,13 +174,29 @@ export const GRADE_GOLDEN2: GradeParams = {
   tintS: [0.024, 0.002], tintM: [0, 0], tintH: [-0.012, 0.006],
   vig: [0.26, 0.22], nd: [0.09, 0.2],
 };
-export const GRADES: Record<"day" | "golden", GradeParams> = { day: GRADE_DAY2, golden: GRADE_GOLDEN2 };
-/** One strength (0..1, the effect's `amount`) per preset, set against the NEW world (bridge_world, 2026-10-31): full-strength
- *  presets overshot (day median Y' .59-.67 vs target .571, golden .58 vs .52); day 0.65 / golden 0.45 land at
- *  .54-.62 / ~.52. Re-fit the presets (grade.md 5.C) after the merge and raise these again. */
-export const GRADE_STRENGTH: Record<"day" | "golden", number> = { day: 1, golden: 1 };
+// mandel short (STYLE_REFERENCE rule 5): saturation ~1.0-1.05 so the frame lands near the reference's mean ~0.44
+export const GRADE_NIGHT: GradeParams = {
+  ky: [0, 0.04, 0.19, 0.64, 0.94, 0.995, 1],
+  sat: [0.96, 1.02, 1.04],
+  tintS: [0.02, -0.004], tintM: [0, 0], tintH: [-0.01, 0.008],
+  vig: [0.28, 0.22], nd: [0.02, 0.12],
+};
+export const GRADE_INTERIOR: GradeParams = {
+  ky: [0, 0.05, 0.21, 0.655, 0.94, 0.995, 1],
+  sat: [0.97, 1.03, 1.03],
+  tintS: [0.012, 0.004], tintM: [0, 0], tintH: [0.004, 0],
+  vig: [0.24, 0.24], nd: [0.04, 0.14],
+};
+export type GradeLight = "day" | "golden" | "night" | "interior";
+export const GRADES: Record<GradeLight, GradeParams> = {
+  day: { ...GRADE_DAY2, sat: [0.97, 1.03, 1.03] },
+  golden: { ...GRADE_GOLDEN2, sat: [0.96, 1.03, 1.05] },
+  night: GRADE_NIGHT,
+  interior: GRADE_INTERIOR,
+};
+export const GRADE_STRENGTH: Record<GradeLight, number> = { day: 1, golden: 1, night: 1, interior: 1 };
 /** Apply the preset of a light to the effect (only touches uniforms when the light changes). */
-export function gradeFor(fx: GradeEffect, light: "day" | "golden") {
+export function gradeFor(fx: GradeEffect, light: GradeLight) {
   const tag = fx as unknown as { _light?: string };
   if (tag._light !== light) { fx.set(GRADES[light]); tag._light = light; }
   fx.amount = GRADE_STRENGTH[light];

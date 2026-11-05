@@ -9,7 +9,23 @@ export const TONE = {
   uShadeLift: { value: new THREE.Vector3() }, uLambert: { value: 0.35 }, uSideK: { value: 0.84 }, uTerm: { value: 0.2 },
   uBounce: { value: new THREE.Vector3() }, // warm bounce on shaded faces turned to the camera (golden only; day = 0)
   uSat: { value: 1 }, // world albedo saturation around its luminance (characters are not twoTone, so unaffected)
+  uPract: { value: 1 }, // mandel: strength of the practical lamps (point lights) on the world
 };
+/** mandel: warm practical lamps (point lights): diffuse with a soft wrap and three's own distance falloff, so every lamp
+ *  throws a pool on the floor / desk and lights the faces turned to it. Used by twoTone (world) and cardShade (cast). */
+export const PRACT = /* glsl */ `
+vec3 practicalLight( vec3 pos, vec3 nrm, float wrap ) {
+  vec3 pr = vec3( 0.0 );
+  #if NUM_POINT_LIGHTS > 0
+  for ( int i = 0; i < NUM_POINT_LIGHTS; i ++ ) {
+    vec3 lv = pointLights[ i ].position - pos;
+    float ld = length( lv );
+    float nl = clamp( ( dot( nrm, lv / ld ) + wrap ) / ( 1.0 + wrap ), 0.0, 1.0 );
+    pr += pointLights[ i ].color * getDistanceAttenuation( ld, pointLights[ i ].distance, pointLights[ i ].decay ) * nl;
+  }
+  #endif
+  return pr;
+}`;
 /** character-card uniforms (lighting.md 9.2 cardShade); world.ts keeps them in sync with LIGHTS for cardshade.ts */
 export const CHAR = {
   uCharTint: { value: new THREE.Vector3(1, 0.94, 0.92) }, uCharShade: { value: 0.86 }, uGrad: { value: 0.07 },
@@ -40,8 +56,12 @@ const TWO_TONE = /* glsl */ `
   reflectedLight.indirectDiffuse = vec3( 0.0 );                               // hemisphere/fill no longer used here
 }
 #endif
+{
+  vec3 albP = max( mix( vec3( dot( diffuseColor.rgb, vec3( 0.2126, 0.7152, 0.0722 ) ) ), diffuseColor.rgb, uSat ), 0.0 );
+  reflectedLight.directDiffuse += albP * practicalLight( geometryPosition, geometryNormal, 0.15 ) * uPract;
+}
 `;
-const DECL = "#include <common>\nuniform vec3 uLitCol; uniform vec3 uShadeCol; uniform vec3 uShadeLift; uniform float uLambert; uniform float uSideK; uniform float uTerm; uniform vec3 uBounce; uniform float uSat;";
+const DECL = "#include <common>\nuniform vec3 uLitCol; uniform vec3 uShadeCol; uniform vec3 uShadeLift; uniform float uLambert; uniform float uSideK; uniform float uTerm; uniform vec3 uBounce; uniform float uSat; uniform float uPract;";
 
 /** Lambert (or Phong: its specular term is kept, masked by the shadow) -> two-tone. Call once per material. */
 export function twoTone<T extends THREE.MeshLambertMaterial | THREE.MeshPhongMaterial>(m: T, liftK = 1): T {
@@ -49,10 +69,11 @@ export function twoTone<T extends THREE.MeshLambertMaterial | THREE.MeshPhongMat
     Object.assign(sh.uniforms, TONE);
     sh.fragmentShader = sh.fragmentShader
       .replace("#include <common>", DECL + `\n#define LIFT_K ${liftK.toFixed(3)}`)
+      .replace("#include <lights_pars_begin>", "#include <lights_pars_begin>\n" + PRACT)
       .replace("#include <lights_fragment_begin>", "float sunVis = 1.0;\n" + LFB)
       .replace("#include <lights_fragment_end>", "#include <lights_fragment_end>\n" + TWO_TONE);
   };
-  m.customProgramCacheKey = () => "twoTone5_" + liftK.toFixed(3);
+  m.customProgramCacheKey = () => "twoTone6p_" + liftK.toFixed(3);
   return m;
 }
 

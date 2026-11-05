@@ -1,12 +1,14 @@
-// Timeline of "The Man Who Sold Ice to the Tropics" (~55 s): 29 shots timed to the narration words
-// (ice-short/voice/words.json), the places they happen in, the story actions (sawing, loading, the brig leaving, the
-// laugh, the slip, the melt, the coin, the yawn, the bulb, the icicle, the towel, the sawdust, the calendar, the hatch,
-// the market) and the camera: one eased move per shot (never a hold), fly-throughs inside a place, whips and
-// foreground wipes between places (cut frames unchanged), impacts are 7-frame kicks that flip sign every frame.
+// Timeline of "The Man Who Won the Lottery 14 Times" (53.94 s). Shot plan: shots.md (whole video); this file holds
+// what is built so far (shots 1-3, 0-5 s) plus a placeholder hold for the rest.
+// Camera rules (research/ricks/STYLE_REFERENCE.md, section 8): every shot glides over its first ~36 %, then holds and
+// creeps in at 0.08-0.12 %/frame with no float; place changes are 8-16 f crossfades or a push-in to a prop insert that
+// crossfades into the next place and pulls back; no kicks, no hand-held drift.
+import { holdPoint, STEFAN } from "./toon";
+
 export const FPS = 30;
-export const VOICE_S = 55.170612; // ice-short/voice/voice.wav
-export const TOTAL = Math.round(VOICE_S * FPS); // 1655 frames
-export const D0 = 0; // ground level (m); build.ts houses stand on it
+export const VOICE_S = 53.941479; // mandel-short/voice/voice.wav
+export const TOTAL = Math.round(VOICE_S * FPS); // 1618 frames
+export const D0 = 0; // ground level (m)
 export type V3 = [number, number, number];
 
 export const clamp01 = (x: number) => Math.max(0, Math.min(1, x));
@@ -17,131 +19,53 @@ export const glide = (u: number) => { const x = clamp01(u); return x * x * x * (
 export const lerp3 = (a: V3, b: V3, k: number): V3 => [a[0] + (b[0] - a[0]) * k, a[1] + (b[1] - a[1]) * k, a[2] + (b[2] - a[2]) * k];
 export const add3 = (a: V3, b: V3): V3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
 
-// ---------------- words (voice/words.json onsets, seconds) ----------------
-export const W = {
-  never: 1.97, you: 3.63, and1: 5.48, loaded: 6.99, ship: 7.33, headed: 9.82, the: 11.11, newspaper: 11.24, joke: 12.28,
-  prove: 13.64, slippery: 13.97, it: 15.78, melts: 17.46, and2: 19.32, dollars: 21.21, so: 22.08, and3: 23.7, again2: 23.97,
-  by: 25.2, prison: 27.24, and4: 27.93, figures: 28.78, ice: 29.86, it2: 31.73, warm: 33.11, ever: 34.15, wrapped: 34.33,
-  the2: 36.12, heat: 37.99, so2: 38.82, which: 40.73, in: 43.1, ships: 44.42, eighty: 45.41, of: 46.04, india: 46.51,
-  a: 47.32, hundred: 47.4, arrive: 48.3, and5: 49.08, city: 50.4, bought: 52.32, man: 53.45,
-};
-/** every visual reaction lands 0-3 frames before its word */
+// ---------------- words (mandel-short/voice/words.json onsets, seconds) ----------------
+export const W = { won: 0.18, fourteen: 0.74, and0: 2.0, never: 2.24, lucky: 3.08, you: 3.89, see: 3.96, its: 4.4, sixties: 4.64, and1: 5.64 };
+/** every visual reaction lands 0-2 frames before its word */
 export const LEAD_F = 2;
 export const cue = (s: number) => Math.round(s * FPS) - LEAD_F;
 
-// ---------------- places: each is built around its own x offset (far beyond the fog of the others) ----------------
-export type PlaceId = "street" | "cell" | "harbor" | "pond" | "beach" | "mill" | "port" | "hold" | "ocean" | "calcutta";
-export const OFF: Record<PlaceId, number> = { street: 0, cell: 1500, harbor: 3000, pond: -3000, beach: 6000, mill: -6000, port: 9000, hold: 12000, ocean: 15000, calcutta: 18000 };
+// ---------------- places: each built around its own x offset (far beyond the others' fog) ----------------
+export type PlaceId = "hall" | "flat";
+export const OFF: Record<PlaceId, number> = { hall: 0, flat: 3000 };
 export const at = (pl: PlaceId, x: number, y: number, z: number): V3 => [OFF[pl] + x, y, z];
 
-// the snowy street (CellarShort's lane, reused): houses at x = -10 facing +x, lane x -6..-1.35, fence at x = -0.95
-export const LANE_X1 = -1.35, FENCE_X = -0.95;
-export const HATCH = { x0: -6.0, x1: -4.75, z0: 5.25, z1: 6.75, top: 0.85 };
-// the cell (CellarShort's cellar room, reused as the debtors' prison): stone room at OFF.cell
-export const CX = OFF.cell;
-export const C = (x: number, y: number, z: number): V3 => [CX + x, y, z];
-export const CELLAR = { x0: -2.6, x1: 2.6, z0: -3.4, z1: 1.6, h: 2.6 };
-export const CELL_WIN = { x: 0.95, y: 1.85, w: 0.56, h: 0.44 }; // barred window in the back wall
-export const BARS_Z = 1.6; // the bar wall between the cell and the corridor
-export const BENCH = { x0: -2.2, x1: 0.4, z: -3.05, h: 0.44, d: 0.42 };
-
-// ---------------- the brig: harbor / port / ocean / calcutta (one model, posed per shot) ----------------
-export const DECK_Y = 1.2; // deck above the waterline
-export const WATER_Y = -1.0; // harbour water level under the quays (quay top = 0)
-export type BrigPose = { pos: V3; yaw: number; roll: number; sail: string; show: boolean; furled?: boolean };
-const SAIL = "#f1e9d6", RED = "#c8473a", GREEN = "#3f8a54";
-/** where the brig is at frame f of shot id (all poses are pure functions of id + f) */
-export const brigAt = (id: number, f: number): BrigPose => {
-  const s = SHOTS[id - 1], u = (f - s.a) / Math.max(1, s.b - s.a), bob = 0.012 * Math.sin(f * 0.11);
-  const P = (pl: PlaceId, x: number, z: number, yaw = 0, sail = SAIL): BrigPose => ({ pos: at(pl, x, WATER_Y, z), yaw, roll: bob, sail, show: true });
-  switch (s.place) {
-    case "beach": return { ...P("beach", 6, -46, 0.5), roll: bob * 2 };
-    case "harbor":
-      if (id === 6) return P("harbor", -4 - 6 * u, -16 - 10 * u, 2.11);
-      if (id === 8) return P("harbor", 6, -44, 0.6);
-      if (id === 13) return P("harbor", -6 - 4 * u, -20 - 7 * u, 2.09, RED);
-      if (id === 14) return P("harbor", -2 - 3 * u, -22 - 6 * u, 2.03, GREEN);
-      return P("harbor", 0, -4.2);
-    case "port": return P("port", 0, -4.2);
-    case "ocean": return { pos: at("ocean", 3.2 * (f - s.a) / FPS, WATER_Y, 0), yaw: 0, roll: 0.03 * Math.sin(f * 0.09), sail: SAIL, show: true };
-    case "calcutta": return P("calcutta", 0, -6.2);
-    default: return { pos: [0, -100, 0], yaw: 0, roll: 0, sail: SAIL, show: false };
-  }
+// ---------------- the cast's layout ----------------
+export const SU = 0.00216; // metres per design unit of the character canvas (600 x 1000, soles at 975)
+export const STEFAN_SEED = ((7 * 5 + 3) % 7) + 1; // cast.ts seedOf(7): Stefan's head shape in every shot
+/** lottery hall (hook): Stefan on the floor in front of tiered risers packed with the crowd, the jackpot board behind */
+export const HALL = {
+  stefan: at("hall", 0, 0, 0),
+  neighbour: at("hall", 0.68, 0, -0.32),
+  rows: [-1.9, -2.65, -3.4, -4.15, -4.9, -5.65, -6.4] as const, // crowd rows (z); row i stands on riser i (i * riserH up)
+  riserH: 0.3, backZ: -8.4, w: 22, h: 8.5,
 };
-
-// ---------------- story actions ----------------
-// shot 1-2 beach: Tudor holds out the block, the local stares; sweat runs
-export const BEACH = { tudor: at("beach", 0.55, 0, 0) as V3, local: at("beach", -0.55, 0, 0.12) as V3 };
-// shot 3 pond: three cutters saw a channel; a stack of cut blocks on the bank
-export const POND = { workers: [at("pond", -1.05, 0, -4.3), at("pond", 0.1, 0, -4.05), at("pond", 1.2, 0, -4.35)] as V3[] };
-// harbor: the quay (top y 0) runs along x, water for z < 0, houses at z = 24; the gangplank meets the brig's side
-export const PLANK = { x: 2.2, z0: 0.5, z1: -1.75 }; // quay end -> deck end (deck end at DECK_Y + WATER_Y)
-export const HARBOR = { tudor: at("harbor", -1.1, 0, 3.0) as V3, stack: at("harbor", -1.6, 0, 1.5) as V3 };
-/** loading (shot 5): two cutters carry blocks from the stack up the plank onto the deck */
-export const carrierAt = (i: number, f: number): { p: V3; walking: boolean; phase: number } => {
-  const f0 = 208 + i * 26, u = clamp01((f - f0) / 62);
-  const z = (i ? 4.4 : 3.2) + ((PLANK.z0 - 0.35) - (i ? 4.4 : 3.2)) * u;
-  const y = z < PLANK.z0 ? ((PLANK.z0 - z) / (PLANK.z0 - PLANK.z1)) * (DECK_Y + WATER_Y) : 0;
-  return { p: at("harbor", PLANK.x + (i ? -0.05 : 0.08), y, z), walking: u > 0 && u < 1, phase: (((f - f0) * 1.6) / FPS / 1.6) % 1 };
+/** the hold grip of Stefan's front card in world space (card facing +z), pushed `fwd` toward the lens */
+const gripOf = (p: V3, fwd: number): V3 => {
+  const [hx, hy] = holdPoint(STEFAN, { mode: "stand", prop: "hold", seed: STEFAN_SEED });
+  return [p[0] + (hx - 300) * SU, p[1] + (975 - hy) * SU, p[2] + fwd];
 };
-// shot 7-9 street: the newsboy with the paper, the man who slips on the ice patch
-export const NEWSBOY_P: V3 = [-3.15, 0, 4.0];
-export const ICE_PATCH: V3 = [-3.4, 0, 5.25];
-export const SLIP = cue(W.slippery);
-export const slipperAt = (f: number): { p: V3; fall: number; walking: boolean } => {
-  const u = clamp01((f - 404) / (SLIP - 404));
-  const z = 4.15 + (ICE_PATCH[2] - 4.15) * u;
-  const k = clamp01((f - SLIP) / 9);
-  return { p: [ICE_PATCH[0] + 0.05, 0.32 * Math.sin(Math.PI * Math.min(1, k * 1.2)) * (1 - k * 0.5), z + 0.25 * smooth(k)], fall: k, walking: f < SLIP };
-};
-// shots 10-12, 15 port: blocks melt into puddles, Tudor sweats; the wallet and the coin
-export const PORT = { stack: at("port", -1.4, 0, 2.3) as V3, tudor: at("port", -2.2, 0, 0.6) as V3, wallet: at("port", 2.4, 0.0, 3.2) as V3 };
-/** melt 0..1 of the port stack: shot 10 a little, shot 11 most of it, shot 15 nearly gone */
-export const meltAt = (id: number, f: number) => id === 10 ? 0.1 + 0.15 * clamp01((f - 471) / 51) : id === 11 ? 0.25 + 0.55 * smooth((f - 522) / 56) : id === 15 ? 0.94 : 0;
-export const WALLET_OPEN = [582, 600] as const;
-export const COIN_F = cue(W.dollars);
-// shots 16-21 cell
-export const TUDOR_CELL: V3 = C(-0.45, BENCH.h - 0.02, BENCH.z + 0.08);
-export const TUDOR_WIN: V3 = C(0.15, 0, -2.75);
-export const GUARD_P: V3 = C(1.45, 0, 1.85);
-export const YAWN = [cue(W.prison) - 6, cue(W.prison) + 26] as const;
-export const BULB = cue(W.figures);
-export const BOTTLE: V3 = C(-1.75, BENCH.h, BENCH.z + 0.04);
-export const WRAP = [cue(W.wrapped), cue(W.wrapped) + 22] as const;
-export const towelAt = (f: number) => (f < 1023 ? 0 : smooth((f - WRAP[0]) / (WRAP[1] - WRAP[0])));
-export const HEAT_F = cue(W.heat);
-// shots 22, 25 hold: sawdust rises over the ice; the calendar flips four months
-export const HOLD = { workers: [at("hold", -0.38, 0, 2.3), at("hold", 0.55, 0, 3.2)] as V3[], post: at("hold", -1.0, 0, 3.0) as V3 };
-export const sawdustAt = (f: number) => (f < 1163 ? 0.98 : 0.32 + 0.66 * smooth((f - 1163) / 57));
-export const FLIPS = [1342, cue(W.eighty) + 2, cue(W.of), cue(W.india)];
-// shot 26 calcutta: the hatch cover comes off
-export const HATCH_OPEN = [cue(W.hundred) + 2, cue(W.hundred) + 20] as const;
-// market (calcutta place, x 60..90)
-export const MARKET = { stall: at("calcutta", 70, 0, 12.0) as V3, tudor: at("calcutta", 73.3, 0, 15.0) as V3 };
+/** the page of maths in Stefan's hands: centre, tilted back so it faces up toward his eyes and out to the lens */
+export const PAGE = { pos: gripOf(HALL.stefan, 0.17), tilt: -0.62, w: 0.22, h: 0.29 };
+/** the faint (gag): the neighbour topples over backwards-right into the confetti on "never" */
+export const FAINT = [cue(W.never) - 4, cue(W.never) + 14] as const;
+export const faintAt = (f: number) => { const u = clamp01((f - FAINT[0]) / (FAINT[1] - FAINT[0])); return u * u * (1.6 - 0.6 * u); };
+/** the Bucharest flat: desk by the frosted window, Stefan sitting at it */
+export const DESK = { pos: at("flat", 0, 0, 0), h: 0.76, w: 1.2, d: 0.66 };
+export const FLAT_STEFAN: V3 = at("flat", 0, 0, -0.62);
+export const PAGE_DESK: V3 = at("flat", 0.02, DESK.h + 0.004, 0.06);
 
 // ---------------- shots ----------------
-export type Light = "day" | "golden";
+export type Light = "day" | "golden" | "night" | "interior";
 export type ShotDef = { id: number; a: number; b: number; light: Light; place: PlaceId; sunAz?: number; sunEl?: number };
-const B = [0, cue(W.never), cue(W.you), cue(W.and1), cue(W.loaded), cue(W.headed), cue(W.the), cue(W.joke), cue(W.prove), cue(W.it),
-  cue(W.melts), cue(W.and2), cue(W.so), cue(W.and3), 736, cue(W.by), cue(W.and4), cue(W.ice), cue(W.it2), cue(W.ever), cue(W.the2),
-  cue(W.so2), cue(W.which), cue(W.in), cue(W.ships), cue(W.a), cue(W.and5), cue(W.city), cue(W.man), TOTAL];
-const PL: [PlaceId, Light, number?, number?][] = [
-  ["beach", "golden"], ["beach", "golden"],                                  // 1-2 hook
-  ["pond", "day"], ["harbor", "day"], ["harbor", "day"], ["harbor", "day"],   // 3-6 1806 Boston
-  ["street", "day"], ["harbor", "day"], ["street", "day"],                   // 7-9 the joke
-  ["port", "day"], ["port", "day"], ["port", "day"],                         // 10-12 the melt
-  ["harbor", "day"], ["harbor", "day"], ["port", "day"],                     // 13-15 again and again
-  // cell: the key is the one warm window (back wall, right of frame), so Tudor and the room fall into violet-blue shade
-  ["cell", "golden", 38, 24], ["cell", "golden", 38, 24], ["cell", "golden", 12, 18], ["cell", "golden", 42, 24], // 16-19
-  ["cell", "golden", 60, 30], ["cell", "golden", 60, 30],                    // 20-21 the towel
-  ["hold", "golden", 120, 62], ["mill", "day"],                              // 22-23 sawdust
-  ["ocean", "day"], ["hold", "golden", 120, 62],                             // 24-25 1833
-  ["calcutta", "golden"], ["calcutta", "golden"], ["calcutta", "golden"], ["calcutta", "golden"], // 26-29
-];
+// 1 hook in the hall (to the push), 2 the page insert, 3 the page on the Bucharest desk (pull back), 4 placeholder hold
+const B = [0, 106, 130, 168, TOTAL];
+// sun = the key: the hall's stage spots from the front-left; the flat's moon through the window behind Stefan (back light)
+const PL: [PlaceId, Light, number?, number?][] = [["hall", "golden", -140, 34], ["hall", "golden", -140, 34], ["flat", "night", 25, 20], ["flat", "night", 25, 20]];
 export const SHOTS: ShotDef[] = PL.map(([place, light, sunAz, sunEl], i) => ({ id: i + 1, a: B[i], b: B[i + 1], light, place, sunAz, sunEl }));
-/** hard cuts only (crossfades unused) */
-export const XFADE: Record<number, number> = {};
-/** no white flash: the brief allows one only on the single big impact, and none of the cuts is one */
+/** crossfades (frames, centred on the shot's first frame): the page insert in the hall -> the same page on the desk */
+export const XFADE: Record<number, number> = { 3: 12 };
+/** no white flashes */
 export const FLASH_AT: number | null = null;
 
 export const shotAt = (f: number) => SHOTS.find((s) => f >= s.a && f < s.b) ?? SHOTS[SHOTS.length - 1];
@@ -154,15 +78,10 @@ export const layersAt = (f: number): { id: number; alpha: number }[] => {
 };
 
 // ---------------- camera ----------------
-// Cinematic pass: the camera never holds. Every shot is one eased move (orbit / push / crane, with a slow float on
-// top) around its subject, and every shot boundary is a transition that straddles the unchanged cut frame:
-//   (the transitions section below: whips, flights, match cuts, tilts, hard cuts and passes of real objects)
 export type Cam = { pos: V3; look: V3; fov: number; roll: number };
-/** a framing around a subject: distance (m), azimuth (deg from +z toward +x), elevation (deg; negative = lens below
- *  the look point, looking up), fov (deg), roll (deg) */
+/** a framing around a subject: distance (m), azimuth (deg from +z toward +x), elevation (deg; negative = lens below the
+ *  look point, looking up), fov (deg), roll (deg) */
 type Sph = { d: number; az: number; el: number; fov: number; roll: number };
-type Rig = { look: (f: number) => V3; A: Sph; B: Sph };
-const T = (f: number) => f / FPS;
 const D2R = Math.PI / 180;
 const S = (d: number, az: number, el: number, fov = 40, roll = 0): Sph => ({ d, az, el, fov, roll });
 const mixS = (a: Sph, b: Sph, k: number): Sph => ({ d: a.d + (b.d - a.d) * k, az: a.az + (b.az - a.az) * k, el: a.el + (b.el - a.el) * k, fov: a.fov + (b.fov - a.fov) * k, roll: a.roll + (b.roll - a.roll) * k });
@@ -171,275 +90,50 @@ const sph = (look: V3, s: Sph): Cam => {
   return { pos: [look[0] + s.d * Math.cos(el) * Math.sin(az), look[1] + s.d * Math.sin(el), look[2] + s.d * Math.cos(el) * Math.cos(az)], look, fov: s.fov, roll: s.roll * D2R };
 };
 const mixC = (a: Cam, b: Cam, k: number): Cam => ({ pos: lerp3(a.pos, b.pos, k), look: lerp3(a.look, b.look, k), fov: a.fov + (b.fov - a.fov) * k, roll: a.roll + (b.roll - a.roll) * k });
-/** ease-in / ease-out over the whole shot */
-const ease = (u: number) => 0.5 - 0.5 * Math.cos(Math.PI * clamp01(u));
-const fixed = (pl: PlaceId, x: number, y: number, z: number) => () => at(pl, x, y, z);
-const brigLook = (id: number, up: number, ahead = 1.5) => (f: number): V3 => {
-  const b = brigAt(id, f); return [b.pos[0] + ahead * Math.cos(b.yaw), b.pos[1] + up, b.pos[2] - ahead * Math.sin(b.yaw)];
-};
+/** move-then-hold: glide A -> B (and lookA -> lookB) over the first `g` of the shot, then creep in at `creep` per frame */
+type Rig = { lookA: V3; lookB: V3; A: Sph; B: Sph; g?: number; creep?: number };
+const PAGE_N: V3 = [0, Math.sin(-PAGE.tilt), Math.cos(-PAGE.tilt)]; // the page's face normal (toward the lens, tilted up)
 const RIGS: Record<number, Rig> = {
-  // 1 beach: low glide in over the sand to the two-shot, ending below eye level
-  1: { look: fixed("beach", 0, 1.0, 0), A: S(9.5, -30, 9, 42), B: S(4.0, 18, -7, 36, 1.5) },
-  // 2 close-up on the local past Tudor's shoulder and the ice
-  2: { look: fixed("beach", -0.5, 1.5, 0.12), A: S(2.5, 72, -8, 30, -2), B: S(1.7, 22, -1, 30, -3) },
-  // 3 pond: low along the channel, the cutters in a diagonal receding from the lens
-  3: { look: fixed("pond", 0.1, 1.0, -4.3), A: S(7.6, 64, 3, 38), B: S(5.4, 36, -4, 36, 2) },
-  // 4 harbor: Tudor from below, proud, the brig behind
-  4: { look: fixed("harbor", -1.0, 1.35, 2.8), A: S(4.8, 42, -9, 35, -2), B: S(3.4, 14, -11, 34, -3) },
-  // 5 on deck: crane down toward the plank as the blocks come aboard
-  5: { look: fixed("harbor", 2.3, 0.9, 1.6), A: S(6.8, 166, 15, 40, 2), B: S(6.0, 156, 10, 40, 1) },
-  // 6 aerial: orbit the brig as it leaves the snowy harbour
-  6: { look: (f) => { const b = brigAt(6, f); return [b.pos[0] - 2, 0, b.pos[2] - 6]; }, A: S(64, 60, 40), B: S(42, 10, 30) },
-  // 7 street: the newspaper from below, sliding round the newsboy
-  7: { look: fixed("street", -3.12, 0.9, 4.1), A: S(2.6, -14, -7, 36, 2), B: S(1.9, 14, -3, 36, 3) },
-  // 8 harbor quay: low through the laughing crowd
-  8: { look: fixed("harbor", -6.5, 1.15, 3.8), A: S(10.4, 30, 0, 40, -1), B: S(9.4, 14, -3, 38, -2) },
-  // 9 street: ground-level push down the lane to the slip
-  9: { look: fixed("street", -3.0, 0.8, 5.2), A: S(7.8, 26, 3, 40), B: S(6.6, 8, -1, 40, 1.5) },
-  // 10 Caribbean port wide (scale): crane down onto the quay
-  10: { look: fixed("port", -0.6, 0.9, 0.4), A: S(22, 52, 30, 40), B: S(12, 12, 7, 40) },
-  // 11 the melting stack, Tudor sweating behind it, from below
-  11: { look: fixed("port", -1.7, 0.75, 1.5), A: S(6.0, 46, 1, 36, 2), B: S(4.2, 16, -5, 34, 3) },
-  // 12 the empty wallet on the dock boards; the look follows the coin as it rolls away
-  12: { look: (f) => lerp3(at("port", 2.42, 0.04, 3.2), at("port", 3.1, 0.05, 3.25), glide((f - 630) / 30)), A: S(1.7, -55, 30, 34), B: S(1.0, 10, 12, 34) },
-  // 13-14 two departures from Boston, sweeping under the sails
-  13: { look: brigLook(13, 10.2), A: S(48, 45, -2, 40, 1), B: S(34, 0, -6, 40, 2) },
-  14: { look: brigLook(14, 10.2), A: S(44, -20, -2, 40, -1), B: S(34, 28, -6, 40, -2.5) },
-  // 15 port: the puddles, fast push
-  15: { look: fixed("port", -1.4, 0.2, 2.0), A: S(6.6, 40, 25, 38), B: S(4.6, 22, 15, 38) },
-  // 16 cell: from the corridor past the yawning guard's shoulder, trucking along the bars
-  16: { look: fixed("cell", -0.45, 0.85, -2.8), A: S(8.8, 19, -1, 40), B: S(6.6, 2, 5, 40) },
-  // 17 the light-bulb moment, from below
-  17: { look: fixed("cell", -0.45, 1.43, -2.95), A: S(3.0, 48, -10, 38), B: S(1.9, 0, -5, 38, -2) },
-  // 18 the icicle in the window, looking up
-  18: { look: fixed("cell", 0.95, 1.98, -3.55), A: S(1.5, -35, -18, 32, 2), B: S(1.0, 15, -6, 32, 3) },
-  // 19 Tudor at the window
-  19: { look: fixed("cell", 0.35, 1.45, -3.05), A: S(3.8, -45, -8, 38, -1), B: S(2.6, 0, -2, 38, -2) },
-  // 20-21 the bottle and the towel: one orbit carried across the cut
-  20: { look: fixed("cell", -1.75, 0.66, -3.0), A: S(1.2, 70, 28, 30), B: S(0.8, -20, 8, 30) },
-  21: { look: fixed("cell", -1.75, 0.66, -3.0), A: S(1.4, -20, 6, 34, 1), B: S(1.0, 50, 18, 34, 3) },
-  // 22 the hold: sawdust shovelled over the ice
-  22: { look: fixed("hold", 0.1, 1.0, 2.0), A: S(4.6, 22, 12, 40), B: S(4.5, 2, 5, 40, -1) },
-  // 23 the mill yard, low past the logs
-  23: { look: fixed("mill", -1.78, 1.51, -2.5), A: S(12.5, 50, 6, 40), B: S(8.2, 10, -1, 40, 1.5) },
-  // 24 the brig alone on the hot ocean, aerial orbit (scale)
-  24: { look: brigLook(24, 6), A: S(60, -62, 16), B: S(40, -12, 11) },
-  // 25 the calendar on the post
-  25: { look: fixed("hold", -1.0, 1.42, 3.06), A: S(2.6, -30, -6, 34), B: S(2.0, 26, 3, 34, 1) },
-  // 26 Calcutta: over the hatch as its cover comes off
-  26: { look: fixed("calcutta", 0.4, 0.35, -6.6), A: S(6.6, -30, 62, 40, -2), B: S(4.4, 22, 38, 40, -1) },
-  // 27 the market, wide (scale)
-  27: { look: fixed("calcutta", 71.5, 1.3, 11.5), A: S(24, 38, 12, 40), B: S(14, 2, 4, 40) },
-  // 28 the stall, low, orbiting the counter
-  28: { look: fixed("calcutta", 70.0, 1.25, 12.4), A: S(6.6, -32, -4, 40), B: S(4.4, 22, -6, 40, 1.5) },
-  // 29 Tudor's smile, from below
-  29: { look: fixed("calcutta", 73.3, 1.6, 15.0), A: S(3.1, -40, -9, 32, -2), B: S(2.0, 8, -4, 32, -3) },
+  // 1 LOW angle: the lens 0.4-0.6 m off the floor glides up and in toward Stefan (crowd on the risers behind him,
+  //   the jackpot board above), then holds and creeps in at 0.10 %/f
+  //   Stefan on the left third, the neighbour on the right third (his faint stays in frame)
+  1: { lookA: at("hall", 0.3, 1.02, 0), lookB: at("hall", 0.42, 1.24, -0.1), A: S(5.6, -16, -6.5, 52, 1.2), B: S(3.6, -7, -12, 52, -0.8), g: 0.36, creep: 0.0015 },
+  // 3 Bucharest: starts top-down on the page under the lamp (matching the insert), pulls back and up to Stefan at the desk
+  3: { lookA: PAGE_DESK, lookB: at("flat", -0.02, 1.02, -0.3), A: S(0.5, 0, 84, 50), B: S(2.25, -24, 34, 50), g: 0.4, creep: 0.0015 },
+  4: { lookA: at("flat", -0.02, 1.02, -0.3), lookB: at("flat", -0.02, 1.02, -0.3), A: S(2.25, -24, 34, 50), B: S(2.25, -24, 34, 50), g: 0.01, creep: 0.0008 },
 };
-const MOVE_X = 1.14;
-/** the shot's own move (no transitions, no kicks): what the sight lines, the sun and the foreground props are built for */
+/** the page insert framing: lens 0.5 m off the page along its normal (fov 50: the page fills ~65 % of the frame height) */
+const pageCam = (): Cam => ({ pos: add3(PAGE.pos, [PAGE_N[0] * 0.5, PAGE_N[1] * 0.5, PAGE_N[2] * 0.5]), look: PAGE.pos, fov: 50, roll: 0 });
+const creepIn = (c: Cam, k: number): Cam => ({ ...c, pos: lerp3(c.look, c.pos, Math.max(0.5, 1 - k)) });
+const rigCam = (id: number, f: number): Cam => {
+  const s = SHOTS[id - 1], r = RIGS[id], n = s.b - s.a, g = r.g ?? 0.36, u = (f - s.a) / n, k = glide(u / g);
+  const c = sph(lerp3(r.lookA, r.lookB, k), mixS(r.A, r.B, k));
+  return creepIn(c, (r.creep ?? 0.001) * Math.max(0, f - (s.a + g * n)));
+};
+/** the shot's own camera move: what the sight lines, the sun and the foreground props are built for */
 export const camRig = (id: number, f: number): Cam => {
-  // the move runs 7 % past A and B at either end (MOVE_X = 1.14): a little more travel, framings kept
-  const s = SHOTS[id - 1], r = RIGS[id], k = mixS(r.A, r.B, 0.5 + (ease((f - s.a) / (s.b - s.a)) - 0.5) * MOVE_X);
-  const c = sph(r.look(f), k), a = 0.016 * k.d; // float: a slow drift of ~1.6 % of the distance
-  return { ...c, pos: [c.pos[0] + a * Math.sin(f * 0.085 + id), c.pos[1] + 0.6 * a * Math.sin(f * 0.11 + 2 * id), c.pos[2] + a * Math.cos(f * 0.075 + id)] };
+  if (id === 2) { // the push-in to the page: eased over 18 f from the end of shot 1, then a creep
+    const s = SHOTS[1], a = rigCam(1, s.a), k = glide((f - s.a) / 18);
+    return creepIn(mixC(a, pageCam(), k), 0.0015 * Math.max(0, f - s.a - 18));
+  }
+  return rigCam(id, f);
 };
+export const camAt = (id: number, f: number): Cam => camRig(id, f);
 
-// ---------------- transitions (key k = the boundary between shot k and shot k+1, on its unchanged cut frame) ----------------
-// Six kinds, picked by what the line is about (transitions.md lists them all). Every move eases with the template's
-// smootherstep (glide); hard cuts land on a strong word with a flip kick. Nothing is inserted into the scene: the
-// object wipes use the brig's own sail and hull and a Calcutta passer-by, all of them really in the shot.
-//   whip  - fast sideways swing (yaw), landing on a face that comes in close to the lens and settles back
-//   fly   - the camera keeps flying forward (and down); the place changes at peak speed inside the motion blur.
-//           Inside one place it is one continuous flight between the two framings.
-//   match - the outgoing camera centres one object, the incoming one starts on a matching shape at the same place
-//           and size in the frame, then glides into its own move
-//   tilt  - tilt up to the sky or down to the ground, then back down / up into the new place
-//   cut   - a plain hard cut on the word, with a 7-frame flip kick and a creeping push-in
-//   pass  - object wipe: a real object of the shot passes right in front of the lens (camera-driven)
-type Kind = "whip" | "fly" | "match" | "tilt" | "cut" | "pass";
-type Tr = { kind: Kind; pre: number; post: number; dir?: 1 | -1; deg?: number; lift?: number; push?: number; drop?: number;
-  a?: (f: number) => Cam; b?: (f: number) => Cam; via?: (f: number) => Cam; side?: "in" | "out" | "both" };
-/** a framing around a target point (for match cuts and passes) */
-const camOn = (look: (f: number) => V3, s: Sph) => (f: number) => sph(look(f), s);
-const whip = (dir: 1 | -1, pre: number, post: number, deg = 55): Tr => ({ kind: "whip", pre, post, dir, deg });
-/** fly: same place = continuous flight with a lift; place change = forward flight (push x rig distance) and drop (m) */
-const fly = (pre: number, post: number, lift = 0, push = 0, drop = 0): Tr => ({ kind: "fly", pre, post, lift, push, drop });
-const match = (pre: number, post: number, a: (f: number) => Cam, b: (f: number) => Cam): Tr => ({ kind: "match", pre, post, a, b });
-/** tilt: dir +1 = up to the sky, -1 = down to the ground */
-const tilt = (dir: 1 | -1, pre: number, post: number, deg = 72): Tr => ({ kind: "tilt", pre, post, dir, deg });
-/** cut: instant, then a punch-word push-in (template: ~0.5 %/f) settling into the shot's own move over `post` frames */
-const cut = (post = 10): Tr => ({ kind: "cut", pre: 0, post });
-/** pass: `via` is the camera beside the passing object. Between two places it drives one side of the cut only and the
- *  other side keeps moving with a fast push (out) or a flying arrival (in), `push` x rig distance */
-const pass = (pre: number, post: number, via: (f: number) => Cam, side: "in" | "out" | "both" = "both", push = 0): Tr => ({ kind: "pass", pre, post, via, side, push });
-// brig-local point -> world (local +x = bow), for the sail / hull passes
-const onBrig = (id: number, f: number, x: number, y: number, z: number): V3 => {
-  const b = brigAt(id, f), c = Math.cos(b.yaw), s = Math.sin(b.yaw);
-  return [b.pos[0] + x * c + z * s, b.pos[1] + y, b.pos[2] - x * s + z * c];
-};
-const BULB_PT: V3 = [TUDOR_CELL[0], TUDOR_CELL[1] + 1.45, TUDOR_CELL[2] + 0.05];
-export const TRANS: Record<number, Tr> = {
-  1: whip(1, 4, 6),                                       // "never seen snow": whip onto the local's face
-  2: tilt(1, 7, 7),                                       // tropics -> 1806 Boston: up into the sky, down onto the pond
-  3: whip(-1, 5, 4, 50),                                  // "...and Frederic Tudor": whip onto Tudor's face
-  4: cut(),                                               // hard cut on "loaded"
-  5: fly(6, 6, 6),                                        // the ship sets off: one flight up off the deck
-  6: cut(),                                               // hard cut on "the newspaper"
-  7: whip(1, 5, 6),                                       // "calls it a joke": whip onto the laughing crowd
-  8: cut(),                                               // hard cut on "prove"
-  9: match(10, 4, camOn(() => [ICE_PATCH[0], 0.02, ICE_PATCH[2]], S(2.4, 10, 65, 40)),
-    camOn(() => at("port", PORT.stack[0] - OFF.port, 1.0, PORT.stack[2]), S(3.6, 10, 65, 40))), // ice patch -> the melting stack
-  10: fly(5, 5, 2),                                       // "most of the ice melts": flight down to the stack
-  11: tilt(-1, 6, 6, 45),                                 // "...even lands": tilt down onto the boards and the wallet
-  12: pass(3, 6, (f) => {                                 // "so he tries again": the departing brig's own sail sweeps the lens
-    const u = clamp01((f - 657) / 9), zz = 1.6 + 6.0 * glide(u); // already sliding on the cut frame
-    return { pos: onBrig(13, f, 6.4, 6.4, zz), look: onBrig(13, f, 3.4, 6.4, zz), fov: 40, roll: 0 };
-  }, "in", 0.8),
-  13: match(3, 3, camOn(brigLook(13, 10.2), S(40, 12, -4, 40)), camOn(brigLook(14, 10.2), S(40, 12, -4, 40))), // brig -> brig
-  14: fly(6, 7, 0, 0.45, 3),                              // "again and again": flying on with the voyage into the port
-  15: tilt(-1, 5, 6, 30),                                     // "by 1812": down into the puddles, up from the cell floor
-  16: whip(1, 5, 6, 80),                                  // "figures it out": whip onto Tudor
-  17: match(2, 3, camOn(() => BULB_PT, S(0.9, 15, -5, 38)), camOn(() => C(CELL_WIN.x, CELL_WIN.y, CELLAR.z0), S(1.0, 0, -5, 38))), // bulb -> window
-  18: cut(),                                              // hard cut on "it needs"
-  19: tilt(-1, 4, 5, 55),                                 // "warm air": down to the bench and the bottle
-  20: cut(),                                              // hard cut on "towel"
-  21: match(3, 4, camOn(() => [BOTTLE[0], BOTTLE[1] + 0.15, BOTTLE[2]], S(0.75, 20, 12, 34)),
-    camOn(() => at("hold", 0.03, 0.72, 1.8), S(2.2, 55, 20, 34))), // the wrapped bottle -> ice packed in sawdust
-  22: tilt(-1, 6, 7, 50),                                 // "lumber mills": down onto the sawdust, up from the mill's sandy yard
-  23: fly(7, 7, 0, 0.4, 2),                               // "in 1833 he ships": flying out over the ocean
-  24: pass(6, 6, (f) => {                                 // "...to India": dive at the brig's hull, through into the hold
-    const u = clamp01((f - 1325) / 6), y = 1.5 - 1.1 * eIn(u);
-    return { pos: onBrig(24, f, -1.5 + 3 * glide(u), y, 4.0), look: onBrig(24, f, -1.5 + 3 * glide(u), y - 0.3, 0), fov: 40, roll: 0 };
-  }, "out", 0.6),
-  25: match(3, 4, camOn(() => at("hold", -1.0, 1.42, 3.12), S(1.4, 0, 0, 34)), camOn((f) => onBrig(26, f, 0.4, 1.52, 0), S(5.5, 0, 85, 40))), // calendar page -> hatch lid
-  26: fly(6, 6, 8),                                       // "arrive": from the ship to the market in one flight
-  27: pass(6, 6, (f) => {                                 // "a city": past a strolling buyer, close to the lens
-    const p = at("calcutta", 74.4, 1.05, 19.4), u = clamp01((f - 1504) / 12), dx = -1.1 + 2.2 * glide(u);
-    return { pos: [p[0] + 0.55 + dx, p[1], p[2] + 0.5], look: [p[0] - 3.5 + dx, 1.2, p[2] - 6.0], fov: 40, roll: 0 };
-  }),
-  28: whip(-1, 5, 6),                                     // "...from the man": whip onto Tudor's smile
-};
-/** yaw the view about the lens (whips), with a little roll into the turn */
-const yawAbout = (c: Cam, ang: number): Cam => {
-  const dx = c.look[0] - c.pos[0], dz = c.look[2] - c.pos[2], cs = Math.cos(ang), sn = Math.sin(ang);
-  return { ...c, look: [c.pos[0] + dx * cs + dz * sn, c.look[1], c.pos[2] - dx * sn + dz * cs], roll: c.roll + 0.12 * ang };
-};
-/** pitch the view about the lens (tilts), clamped short of straight up / down */
-const pitchAbout = (c: Cam, ang: number): Cam => {
-  const d: V3 = [c.look[0] - c.pos[0], c.look[1] - c.pos[1], c.look[2] - c.pos[2]], L = Math.hypot(...d), h = Math.hypot(d[0], d[2]) || 1e-6;
-  const e = Math.max(-1.5, Math.min(1.5, Math.atan2(d[1], h) + ang));
-  return { ...c, look: [c.pos[0] + (d[0] / h) * Math.cos(e) * L, c.pos[1] + Math.sin(e) * L, c.pos[2] + (d[2] / h) * Math.cos(e) * L] };
-};
-/** smootherstep halves: ease-in (fastest at u = 1) and ease-out (fastest at u = 0), each with glide's peak speed */
-const eIn = (u: number) => 2 * glide(u / 2), eOut = (u: number) => 2 * glide(0.5 + u / 2) - 1;
-const fwdOf = (c: Cam): V3 => { const d: V3 = [c.look[0] - c.pos[0], c.look[1] - c.pos[1], c.look[2] - c.pos[2]], L = Math.hypot(...d) || 1; return [d[0] / L, d[1] / L, d[2] / L]; };
-const along = (c: Cam, v: V3, k: number, dy = 0): Cam => ({ ...c, pos: [c.pos[0] + v[0] * k, c.pos[1] + v[1] * k + dy, c.pos[2] + v[2] * k], look: [c.look[0] + v[0] * k, c.look[1] + v[1] * k + dy, c.look[2] + v[2] * k] });
-/** camera of shot id at frame f before kicks: its rig, taken over near its boundaries by the transitions */
-const camT = (id: number, f: number): Cam => {
-  const s = SHOTS[id - 1], out = TRANS[id], inn = TRANS[id - 1];
-  const samePlace = (k: number) => SHOTS[k - 1].place === SHOTS[k].place;
-  if (out && out.kind !== "cut" && f >= s.b - out.pre) {
-    const u = (f - (s.b - out.pre) + 1) / out.pre, c = camRig(id, f); // u reaches 1 on the last frame before the cut
-    switch (out.kind) {
-      case "whip": return yawAbout(c, out.dir! * out.deg! * D2R * eIn(u));
-      case "tilt": return pitchAbout(along(c, [0, 0, 0], 0, out.dir! * 0.5 * eIn(u)), out.dir! * out.deg! * D2R * eIn(u));
-      case "match": return mixC(c, out.a!(f), eIn(u)); // matched on motion: arrives at speed
-      case "pass": {
-        if (out.side !== "in") return mixC(c, out.via!(f), eIn(u));
-        const R = Math.hypot(c.pos[0] - c.look[0], c.pos[1] - c.look[1], c.pos[2] - c.look[2]);
-        return along(c, fwdOf(c), out.push! * R * eIn(u));
-      }
-      case "fly": {
-        if (samePlace(id)) { const v = (f - (s.b - out.pre)) / (out.pre + out.post), m = mixC(c, camRig(id + 1, f), glide(v)); m.pos[1] += out.lift! * Math.sin(Math.PI * clamp01(v)); return m; }
-        const R = Math.hypot(c.pos[0] - c.look[0], c.pos[1] - c.look[1], c.pos[2] - c.look[2]);
-        return along(c, fwdOf(c), out.push! * R * eIn(u), -out.drop! * eIn(u));
-      }
-    }
-  }
-  if (inn && inn.kind === "cut" && f >= s.a && f < s.a + inn.post) {
-    const c = camRig(id, f), R = Math.hypot(c.pos[0] - c.look[0], c.pos[1] - c.look[1], c.pos[2] - c.look[2]);
-    return along(c, fwdOf(c), -0.05 * R * (1 - eOut((f - s.a) / inn.post)));
-  }
-  if (inn && inn.kind !== "cut" && f < s.a + inn.post) {
-    const u = (f - s.a) / inn.post, c = camRig(id, f);
-    switch (inn.kind) {
-      case "whip": { // lands on the face: the lens comes in to ~70 % of the distance and settles back with the swing
-        const k = 1 - 0.3 * (1 - glide(clamp01(u))), d: V3 = [c.pos[0] - c.look[0], c.pos[1] - c.look[1], c.pos[2] - c.look[2]];
-        return yawAbout({ ...c, pos: [c.look[0] + d[0] * k, c.look[1] + d[1] * k, c.look[2] + d[2] * k] }, -inn.dir! * inn.deg! * D2R * (1 - eOut(u)));
-      }
-      case "tilt": return pitchAbout(along(c, [0, 0, 0], 0, inn.dir! * 0.5 * (1 - eOut(u))), inn.dir! * inn.deg! * D2R * (1 - eOut(u)));
-      case "match": return mixC(inn.b!(f), c, eOut(clamp01(u))); // and leaves at speed
-      case "pass": {
-        if (inn.side !== "out") return mixC(inn.via!(f), c, eOut(clamp01(u)));
-        const R = Math.hypot(c.pos[0] - c.look[0], c.pos[1] - c.look[1], c.pos[2] - c.look[2]);
-        return along(c, fwdOf(c), -inn.push! * R * (1 - eOut(u)));
-      }
-      case "fly": {
-        if (samePlace(id - 1)) { const v = (f - (s.a - inn.pre)) / (inn.pre + inn.post), m = mixC(camRig(id - 1, f), c, glide(v)); m.pos[1] += inn.lift! * Math.sin(Math.PI * clamp01(v)); return m; }
-        const R = Math.hypot(c.pos[0] - c.look[0], c.pos[1] - c.look[1], c.pos[2] - c.look[2]);
-        return along(c, fwdOf(c), -inn.push! * R * (1 - eOut(u)), inn.drop! * (1 - eOut(u)));
-      }
-    }
-  }
-  return camRig(id, f);
-};
-
-// impact kicks (flip sign every frame, decay over 7 f): the slip, the bulb, the hatch, and the hard cuts' words
-const CUT_KICKS: [number, number][] = Object.entries(TRANS).filter(([, t]) => t.kind === "cut").map(([k]) => [SHOTS[Number(k) - 1].b / FPS, 0.7]);
-const KICKS: [number, number][] = [[(SLIP + 4) / FPS, 1], [BULB / FPS, 0.6], [(HATCH_OPEN[0] + 1) / FPS, 0.5], ...CUT_KICKS];
-export const kickAt = (t: number) => {
-  let a = 0;
-  for (const [t0, g] of KICKS) {
-    const n = Math.floor((t - t0) * FPS + 1e-6);
-    if (n >= 0 && n < 7) a += g * (n % 2 ? -1 : 1) * (1 - n / 7) ** 1.5;
-  }
-  return a;
-};
-export const camAt = (id: number, f: number): Cam => {
-  const c = camT(id, f), a = kickAt(T(f));
-  if (!a) return c;
-  const d: V3 = [c.look[0] - c.pos[0], c.look[1] - c.pos[1], c.look[2] - c.pos[2]];
-  const L = Math.hypot(...d), h = Math.hypot(d[0], d[2]) || 1;
-  const m = (3 / 640) * Math.tan((c.fov * Math.PI) / 360) * L * a;
-  return { ...c, look: [c.look[0] - (d[2] / h) * m, c.look[1] + 0.6 * m, c.look[2] + (d[0] / h) * m], roll: c.roll + a * 0.004 };
-};
-
-// ---------------- lens: depth of field + foreground framing ----------------
-/** cInf = blur-disc radius in px at 1080x1920 for things at infinity (template: hook CU 15-16, CU 12-14, MS 10-12, wides 0) */
+// ---------------- lens: depth of field ----------------
+/** cInf = blur-disc radius in px at 1080x1920 for things at infinity (IceShort final values, x DOF_SCALE) */
 export type Dof = { f: number; dur?: number; cInf: number; focus?: (f: number) => V3 };
-export const EYE_H = 1.62;
+export const EYE_H = 1.5;
 const eyes = (p: V3, h = EYE_H): (() => V3) => () => [p[0], p[1] + h, p[2]];
 export const DOF: Dof[] = [
-  { f: 0, cInf: 0 }, { f: 4, dur: 26, cInf: 11, focus: eyes(BEACH.local, 1.55) },
-  { f: 57, cInf: 15, focus: eyes(BEACH.local, 1.55) },
-  { f: 107, cInf: 10, focus: eyes(POND.workers[1]) },
-  { f: 162, cInf: 11, focus: eyes(HARBOR.tudor) },
-  { f: 208, cInf: 7, focus: (f) => { const c = carrierAt(0, f).p; return [c[0], c[1] + EYE_H, c[2]]; } },
-  { f: 293, cInf: 0 },
-  { f: 331, cInf: 13, focus: () => [NEWSBOY_P[0], 0.85, NEWSBOY_P[2] + 0.2] },
-  { f: 366, cInf: 10, focus: () => at("harbor", -6.4, EYE_H, 3.2) },
-  { f: 407, cInf: 9, focus: () => [ICE_PATCH[0], 1.2, ICE_PATCH[2]] },
-  { f: 471, cInf: 0 },
-  { f: 522, cInf: 13, focus: () => [PORT.stack[0], 0.4, PORT.stack[2]] },
-  { f: 578, cInf: 14, focus: (f) => camRig(12, f).look }, // the wallet, then the rolling coin
-  { f: 660, cInf: 0 },
-  { f: 736, cInf: 9, focus: () => [PORT.stack[0], 0.1, PORT.stack[2]] },
-  { f: 754, cInf: 10, focus: (f) => lerp3([TUDOR_CELL[0], 1.05, TUDOR_CELL[2]], [GUARD_P[0], EYE_H, GUARD_P[2]], glide((f - 762) / 12)) }, // Tudor, racking to the guard before his yawn
-  { f: 836, cInf: 11, focus: () => [TUDOR_CELL[0], 1.1, TUDOR_CELL[2]] },
-  { f: 894, cInf: 13, focus: () => C(CELL_WIN.x, CELL_WIN.y + 0.1, CELLAR.z0 - 0.1) },
-  { f: 950, cInf: 11, focus: () => [TUDOR_WIN[0], EYE_H, TUDOR_WIN[2]] },
-  { f: 1023, cInf: 14, focus: () => [BOTTLE[0], BOTTLE[1] + 0.18, BOTTLE[2]] },
-  { f: 1082, cInf: 13, focus: () => [BOTTLE[0], BOTTLE[1] + 0.18, BOTTLE[2]] },
-  { f: 1163, cInf: 9, focus: () => [HOLD.workers[0][0], EYE_H, HOLD.workers[0][2]] },
-  { f: 1220, cInf: 5, focus: () => at("mill", -1.2, 1.6, -1.0) },
-  { f: 1291, cInf: 0 },
-  { f: 1331, cInf: 13, focus: () => [HOLD.post[0], 1.42, HOLD.post[2] + 0.08] },
-  { f: 1418, cInf: 9, focus: () => at("calcutta", 0, DECK_Y + WATER_Y + 0.1, -6.2) },
-  { f: 1471, cInf: 4, focus: () => [MARKET.stall[0], 1.4, MARKET.stall[2]] },
-  { f: 1510, cInf: 11, focus: () => [MARKET.stall[0], 1.5, MARKET.stall[2] + 0.9] },
-  { f: 1602, cInf: 14, focus: () => [MARKET.tudor[0], EYE_H, MARKET.tudor[2]] },
+  { f: 0, cInf: 11, focus: eyes(HALL.stefan) },           // the subject sharp, the crowd and the board soft
+  // from the insert on, focus = each layer's own look target (the page in the hall, then the page on the desk, then
+  // Stefan as the pull-back reaches him), so both layers of the crossfade are sharp on their own page
+  { f: 106, dur: 18, cInf: 14 },
+  { f: 130, cInf: 12 },
+  { f: 146, dur: 20, cInf: 11 },
 ];
-/** sharpness pass: every blur strength at 60 % of the table (all at or under the template's documented values) */
+/** IceShort's sharpness setting: every blur strength at 60 % of the table */
 export const DOF_SCALE = 0.6;
 export const dofAt = (f: number) => {
   let i = 0; while (i + 1 < DOF.length && f >= DOF[i + 1].f) i++;
@@ -449,48 +143,6 @@ export const dofAt = (f: number) => {
 };
 export const focusAt = (id: number, f: number): V3 => { const d = dofAt(f); return d.focus ? d.focus(f) : camAt(id, f).look; };
 
-/** near framing objects (built outside the sight-line test), placed from each shot's own camera move so they stay
- *  close to the lens at the frame edge and slide past with the camera (parallax): barrels, crates, ice, posts, rope */
+/** near framing objects (none in shots 1-3: the confetti and the crowd frame the hook) */
 export type Fg = { a: number; b: number; kit: string; pos: V3; s?: number; yaw?: number };
-/** a point on the floor (height y) `dist` m ahead of shot id's lens at fraction u of the shot, sx half-frame widths
- *  to the side (sx = +-0.8: near the frame edge) */
-const nearLens = (id: number, u: number, dist: number, sx: number, y = 0): V3 => {
-  const s = SHOTS[id - 1], c = camRig(id, s.a + u * (s.b - s.a));
-  const fx = c.look[0] - c.pos[0], fz = c.look[2] - c.pos[2], n = Math.hypot(fx, fz) || 1, tx = Math.tan((c.fov * D2R) / 2) * (9 / 16) * dist * sx;
-  return [c.pos[0] + (fx / n) * dist - (fz / n) * tx, y, c.pos[2] + (fz / n) * dist + (fx / n) * tx];
-};
-/** horizontal screen position of p in shot id at frame f (half-frame widths; NaN behind the lens) */
-const screenX = (id: number, f: number, p: V3) => {
-  const c = camRig(id, f), fx = c.look[0] - c.pos[0], fz = c.look[2] - c.pos[2], n = Math.hypot(fx, fz) || 1;
-  const dx = p[0] - c.pos[0], dz = p[2] - c.pos[2], depth = (dx * fx + dz * fz) / n, side = (-dx * fz + dz * fx) / n;
-  return depth > 0.3 ? side / (depth * Math.tan((c.fov * D2R) / 2) * (9 / 16)) : NaN;
-};
-/** a framing prop near the lens. A close prop sweeps across the frame as the camera orbits, so the placement is
- *  searched (anchor moment, side distance, depth): in view (|x| < 1.1) for at least a quarter of the shot, over the
- *  middle of the frame (|x| < 0.6, where the subject is) for at most 8 % of it, as much screen time as possible */
-const fgOf = (id: number, kit: string, u: number, dist: number, sx: number, sc = 1, yaw = 0.4, y = 0, maxOver = 0.08): Fg | null => {
-  const s = SHOTS[id - 1];
-  let best: { pos: V3; score: number } | null = null;
-  for (const dk of [1, 1.4, 1.9]) for (const ak of [1, 1.2, 1.45]) for (const uu of [u, 0.1, 0.3, 0.5, 0.7, 0.9]) {
-    const pos = nearLens(id, uu, dist * dk, sx * ak, y);
-    let seen = 0, over = 0, n = 0;
-    for (let f = s.a; f < s.b; f += 2, n++) {
-      const x = screenX(id, f, pos);
-      if (Number.isNaN(x)) continue;
-      if (Math.abs(x) < 0.6) over++;
-      if (Math.abs(x) < 1.1) seen++;
-    }
-    const score = seen - 4 * over - 3 * (dk - 1) * n * 0.1;
-    if (seen >= n / 4 && over <= n * maxOver && (!best || score > best.score)) best = { pos, score };
-  }
-  return best ? { a: s.a, b: s.b, kit, pos: best.pos, s: sc, yaw } : null;
-};
-export const FOREGROUND: Fg[] = ([
-  // low crates / barrels (they cross legs, not faces) may pass the middle a little longer
-  fgOf(1, "barrel", 0.8, 1.6, -1.25, 0.9, 0.4, 0, 0.12), fgOf(3, "ice", 0.7, 2.2, 1.25, 0.8), fgOf(4, "lantern", 0.6, 1.4, -1.2, 2.8),
-  fgOf(5, "barrel", 0.5, 1.8, 1.2, 0.8, 0.4, DECK_Y + WATER_Y, 0.12), fgOf(8, "crate", 0.6, 2.0, 1.15, 0.9, 0.4, 0, 0.12),
-  fgOf(9, "fencepost", 0.7, 1.4, -1.1, 1.1), fgOf(12, "rope", 0.6, 0.55, -0.85, 0.45),
-  fgOf(15, "crate", 0.5, 1.9, -1.15, 0.8), fgOf(22, "barrel", 0.6, 1.9, -1.2, 0.8), fgOf(23, "cart", 0.6, 4.0, 1.3, 1.5, 2.2),
-  fgOf(26, "rope", 0.6, 2.0, -0.7, 1, 0, DECK_Y + WATER_Y), fgOf(27, "barrel", 0.6, 3.0, 0.9, 1, 0.4, 0, 0.12),
-  fgOf(28, "crate", 0.6, 1.9, -1.25, 0.8, 0.4, 0, 0.12), fgOf(29, "barrel", 0.6, 1.5, 1.15),
-]).filter((g): g is Fg => g !== null);
+export const FOREGROUND: Fg[] = [];

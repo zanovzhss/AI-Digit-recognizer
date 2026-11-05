@@ -18,6 +18,8 @@ export type Outfit = {
   jacket: string; pants: string; boots: string; hat?: string | null; belt?: string | null; buttons?: string; rifle?: boolean;
   sash?: string; sword?: boolean; moustache?: string; skin?: string; head?: number; cap?: string; hair?: string; dress?: string;
   build?: Build;
+  /** mandel short: round glasses (frame colour), a pencil behind the ear, a tie, a printed shirt (dots of this colour) */
+  glasses?: string; pencil?: boolean; tie?: string; print?: string;
 };
 type P2 = [number, number];
 
@@ -79,6 +81,32 @@ export const soldier = (v = 0, extra: Partial<Outfit> = {}): Outfit => {
   if (v % 4 === 1) o.moustache = "#4a3426";
   if (v % 4 === 3) o.moustache = "#2a201a";
   return { ...o, ...extra };
+};
+
+// ---------------- mandel short cast ----------------
+/** Stefan Mandel: bean head, round glasses, a pencil behind the ear, a grey suit (a beach shirt at the end) */
+export const STEFAN: Outfit = { jacket: "#8d929b", pants: "#5b5f68", boots: "#2a2428", hat: "hair", hair: "#3a2a24", skin: SKIN, buttons: "#5b5f68",
+  glasses: INK, pencil: true, tie: "#7a3a3a" };
+export const STEFAN_BEACH: Outfit = { ...STEFAN, jacket: "#2aa59a", pants: "#e8d8b0", boots: "#8a5a3a", buttons: "#e8f4ee", tie: undefined, print: "#ffb347" };
+/** his friends in 1960s Bucharest: knit and work clothes, caps and hair */
+export const friend = (v = 0): Outfit => ({ jacket: ["#6b4a3a", "#3f5a6b", "#7a6a3a", "#5a3f5a"][v % 4], pants: "#3a3836", boots: "#2e241e",
+  hat: v % 2 ? "flatcap" : "hair", cap: "#5a5248", hair: ["#2a1d18", "#5a3b2a", "#8a6a4a", "#3a2a24"][v % 4], skin: SKINS[v % 4], moustache: v === 1 ? "#3a2a20" : undefined });
+/** couriers in Virginia: bright windbreakers and caps */
+export const courier = (v = 0): Outfit => ({ jacket: ["#e2453c", "#2f6ab5", "#f2a23a", "#3a9a5a", "#8a4ab5"][v % 5], pants: ["#2f3a52", "#4a4238"][v % 2], boots: "#2a2428",
+  hat: v % 3 ? "cap" : "hair", cap: ["#f4f1ea", "#2a2a32", "#e2453c"][v % 3], hair: "#3a2a24", skin: SKINS[v % 4] });
+/** store clerks: work shirts with a green apron band */
+export const clerk = (v = 0): Outfit => ({ jacket: ["#c8d4e2", "#e8d8b8"][v % 2], pants: "#3a3f52", boots: "#2a2428", hat: "hair", hair: ["#5a3b2a", "#2a1d18", "#c9a46a"][v % 3],
+  skin: SKINS[(v + 1) % 4], belt: "#2f6a43", build: v % 2 ? "stout" : "adult" });
+/** the cheering crowd: mixed coats, dresses, caps and hair */
+export const crowd = (v = 0): Outfit => {
+  const coats = ["#3f6fb5", "#8c3b4a", "#5d7a3a", "#b5653f", "#2f5f6a", "#7b5ac9", "#c9a441", "#6b4a3a"];
+  const o: Outfit = { jacket: coats[v % 8], pants: ["#3b3f52", "#4a4238", "#2f3a4a"][v % 3], boots: "#3a2a20", skin: SKINS[(v * 3) % 4] };
+  const k = v % 5;
+  if (k === 0) return { ...o, hat: "flatcap", cap: ["#6f6658", "#4a4f5e", "#8a6a4a"][v % 3] };
+  if (k === 1) return { ...o, hat: "hair", hair: ["#5a3b2a", "#2a1d18", "#c9a46a", "#8a4a2a"][v % 4], dress: ["#d9a441", "#c25a7a", "#5a8fc2", "#e07a4a"][v % 4] };
+  if (k === 2) return { ...o, hat: "hair", hair: ["#2a1d18", "#5a3b2a", "#3a2a24"][v % 3], tie: ["#c0353a", "#2f4a8a"][v % 2] };
+  if (k === 3) return { ...o, hat: "cap", cap: ["#e2453c", "#2f6ab5", "#f2a23a"][v % 3] };
+  return { ...o, hat: "hair", hair: ["#8a4a2a", "#c9a46a", "#2a1d18"][v % 3], dress: ["#7b5ac9", "#3a9a8a", "#d95a4a"][v % 3], glasses: v % 3 ? undefined : INK };
 };
 
 export const townsfolk = (v = 0): Outfit => {
@@ -469,6 +497,8 @@ export type FrontOpts = {
   prop?: Prop; tilt?: number; headTilt?: number; wave?: number;
   /** cellar short: knees bend and the hips drop (0..1); left arm reaches out-down (0..1); head dips in a nod (0..1) */
   crouch?: number; reach?: number; nod?: number;
+  /** mandel short: both arms up in a V (0..1, also the shake), face tint (green envy, red heat) */
+  cheer?: number; tint?: string;
   /** canvas angle the key light comes FROM (painted crescent + thick outline side) */
   light?: number; facing?: -1 | 0 | 1; seed?: number;
 };
@@ -515,7 +545,7 @@ export const holdPoint = (o: Outfit, opts: FrontOpts): P2 => {
 export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
   const { phase = 0, expr = "neutral", mode = "march", look = 0, blink = false, lift = 60, prop = null, tilt = 0, headTilt = 0, wave,
     light = DEF_LIGHT, facing = 0, seed = 1 } = opts;
-  const Bd = BUILD[o.build ?? "adult"], skin = o.skin ?? SKIN, two = Math.PI * 2, lid = lidOf(blink);
+  const Bd = BUILD[o.build ?? "adult"], skin = opts.tint ? mix(o.skin ?? SKIN, opts.tint, 0.6) : o.skin ?? SKIN, two = Math.PI * 2, lid = lidOf(blink);
   const H = headBlob(seed, Bd.a, facing), W = 2 * H.a, HH = 2 * H.b, u = W / 100;
   const tall = (1 + Bd.torso + Bd.legs) * HH, sole = 975;
   // body bob 5 % (march) / 3 % (stroll) of the height, lowest at contact (phase 0 and 0.5)
@@ -590,6 +620,10 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
   const arms: Arm[] = [];
   if (mode === "sit") for (const side of [-1, 1]) arms.push({ pts: [sh(side), [tcx + side * (1.1 * T.a + 6 * u), sh(side)[1] + 0.4 * HH], [tcx + side * (1.2 * T.a + 10 * u), torsoBot + 0.04 * HH]], front: false });
   else if (mode === "fall") for (const side of [-1, 1]) arms.push({ pts: [sh(side), [tcx + side * (1.15 * T.a + 12 * u), sh(side)[1] - 0.25 * HH], [tcx + side * (1.3 * T.a + 24 * u), sh(side)[1] - 0.68 * HH]], front: false });
+  else if (opts.cheer !== undefined) for (const side of [-1, 1]) { // mandel: both arms up in a V, shaking with the cheer
+    const k = opts.cheer, S = sh(side);
+    arms.push({ pts: [S, [tcx + side * (1.1 * T.a + 8 * u + 4 * u * k), S[1] - 0.3 * HH], [tcx + side * (1.15 * T.a + 18 * u + 10 * u * k), S[1] - (0.72 + 0.08 * k) * HH]], front: false });
+  }
   else {
     const bucket = Array.isArray(prop) && prop[0] === "bucket";
     if (reach > 0) {
@@ -659,6 +693,15 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
         if (o.sash && Math.abs(y - (torsoBot - 0.32 * HH)) < 0.08 * HH) continue;
         p.dot(tcx + 2 * u * facing, y, 2.2 * u + 0.8 * u, INK); p.dot(tcx + 2 * u * facing, y, 2.2 * u, o.buttons ?? shade(o.jacket, 0.7));
       }
+      if (o.print) for (let i = 0; i < 26; i++) { // printed shirt: scattered flower dots
+        const x = tcx + (rnd(seed + 40, i) - 0.5) * 2.2 * T.a, y = chin + (0.08 + 0.9 * rnd(seed + 41, i)) * Bd.torso * HH;
+        p.ell(x, y, 5 * u, 4 * u, o.print, 0); p.dot(x, y, 1.6 * u, "#fff6d8");
+      }
+      if (o.tie) { // narrow tie with a knot under the chin
+        const x = tcx + 2 * u * facing, y0 = chin + 0.02 * HH;
+        p.poly([[x - 5 * u, y0], [x + 5 * u, y0], [x + 3 * u, y0 + 9 * u], [x - 3 * u, y0 + 9 * u]], o.tie, 1.4 * u);
+        p.poly([[x - 3 * u, y0 + 9 * u], [x + 3 * u, y0 + 9 * u], [x + 5 * u, y0 + 0.62 * HH], [x, y0 + 0.68 * HH], [x - 5 * u, y0 + 0.62 * HH]], o.tie, 1.4 * u);
+      }
     });
     if (o.sash) { const s = facing || 1; p.poly([[tcx + s * 0.55 * T.a, torsoBot - 0.3 * HH], [tcx + s * 0.75 * T.a, torsoBot + 0.05 * HH], [tcx + s * 0.45 * T.a, torsoBot + 0.02 * HH]], o.sash, 1.6 * u); }
     p.inkRing(tp, ow, thick);
@@ -716,12 +759,24 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
   const Ah = A + headTilt, [cpx, cpy] = rotAbout([300, chin], rad(A), [300, hipY]), dip = nod * 0.07 * HH;
   p.rot = Ah || dip ? [rad(Ah), 300, chin, cpx - 300, cpy - chin + dip] : null;
   hatBehind(p, o, H, 300, hc, light, thick, ow, false);
+  if (o.pencil) { // a yellow pencil tucked behind the (hidden) right ear, sticking up past the hair
+    const a0: P2 = [300 + 0.72 * H.a, hc + 0.05 * H.b], a1: P2 = [300 + 1.12 * H.a, hc - 0.92 * H.b];
+    p.band([a0, a1], "#f2c230", 7 * u, 1.6 * u);
+    const dx = a1[0] - a0[0], dy = a1[1] - a0[1], L = Math.hypot(dx, dy), ux = dx / L, uy = dy / L;
+    p.band([a1, [a1[0] + ux * 7 * u, a1[1] + uy * 7 * u]], "#e88a9a", 7 * u, 1.6 * u);
+  }
   const hp = blobPts(300, hc, H);
   p.shadedFill(hp, skin, mul(skin, SH_SKIN), light, H.a);
   p.inkRing(hp, ow, thick);
   hatOn(p, o, hp, H, 300, hc, light, seed, facing, false);
   const brim = !!o.hat && o.hat !== "hair" && o.hat !== "bonnet" && o.hat !== "cap" && o.hat !== "turban";
   faceFront(p, 300, hc + nod * 9 * u, W, expr, facing, look, lid, brim, skin, o.moustache, o.build === "stout");
+  if (o.glasses) { // round wire glasses over the eyes (eyes 26u apart, slid toward the facing side)
+    const fx = 300 + 7 * u * facing, ey = hc + nod * 9 * u, gx = 13 * u, r = 11.5 * u;
+    for (const s of [-1, 1]) p.ell(fx + s * gx, ey, r, r * 0.92, null, 2.6 * u);
+    p.arc(fx, ey - 1 * u, gx - r + 1 * u, 3 * u, 200, 340, 2.4 * u);
+    for (const s of [-1, 1]) p.stroke([[fx + s * (gx + r), ey - 2 * u], [fx + s * (gx + r + 9 * u), ey - 4 * u]], 2.2 * u, o.glasses);
+  }
   p.rot = null;
 };
 
