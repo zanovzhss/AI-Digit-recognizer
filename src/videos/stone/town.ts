@@ -237,7 +237,7 @@ export const buildTown = (root: THREE.Object3D): { parts: TownParts } => {
   const grass: Inst[] = [];
   for (let k = 0; k < 700; k++) {
     const a = r() * 6.283, d = 0.35 + 3.4 * Math.sqrt(r()), x = ox + Math.cos(a) * d * 1.3, z = oz + Math.sin(a) * d * 0.8 + 0.4;
-    const front = z - oz > 0.6, hh = 0.3 + 0.35 * r() * (d < 1.2 ? 1.3 : 1);
+    const front = z - oz > 0.6, bench = x - ox > 0.6 && x - ox < 2.6, hh = (0.3 + 0.35 * r() * (d < 1.2 ? 1.3 : 1)) * (bench ? 0.55 : 1);
     if (front && r() < 0.45) continue;
     grass.push({ x, y: 0, z, h: front ? Math.min(0.28, hh * 0.5) : hh, w: front ? 0.7 + 0.3 * r() : 0.9 + 0.5 * r(), c: Math.floor(r() * 4) });
   }
@@ -253,8 +253,8 @@ export const buildTown = (root: THREE.Object3D): { parts: TownParts } => {
   const tmpG = new THREE.Group(); wb.build(tmpG, false); const win: THREE.Mesh[] = []; for (const ch of [...tmpG.children]) { root.add(ch); win.push(ch as THREE.Mesh); }
   // ---- the town sea (the 2011 wave sweeps in over the plain) ----
   const water = waterUniforms();
-  water.uFrontH.value = 0.45 * W2011_H; water.uOrigin.value.set(O, 0); // the flood behind the 2011 wall (wave backLevel x H)
-  const w2011 = makeWave(WAVE_DEF.w2011.cx, WAVE_DEF.w2011.len, WAVE_DEF.w2011.base, { back: "#1e4a6c", foam: "#f2f6f8", faceTop: "#62b8d8", face: "#1f5a80", toe: "#e6edf1" }, 11, 260);
+  water.uFrontH.value = 0.45 * W2011_H; water.uFrontBump.value = 0; water.uOrigin.value.set(O, 0); // the flood behind the 2011 wall (wave backLevel x H)
+  const w2011 = makeWave(WAVE_DEF.w2011.cx, WAVE_DEF.w2011.len, WAVE_DEF.w2011.base, { back: "#1f4a68", foam: "#eef3f6", faceTop: "#4f9cc2", face: "#1f5a84", toe: "#dfe8ee" }, 11, 260);
   root.add(w2011.mesh);
   const wm = waterMaterial(water, "town"), wink = waterInkMaterial(water);
   for (const g of [waterGrid(O - 760, O + 760, -470, 230, 3.5, 3.5), waterGrid(O - 2600, O + 2600, 230, 2700, 26, 12), waterGrid(O - 2600, O - 760, -60, 230, 30, 12), waterGrid(O + 760, O + 2600, -60, 230, 30, 12)]) {

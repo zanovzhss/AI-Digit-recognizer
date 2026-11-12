@@ -259,7 +259,7 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
     }
     for (let k = 0; k < 22; k++) { const [x, y, z] = at((rr() - 0.5) * 11, -0.5 - rr() * 7); lbox(rb, plank, tr(x, y + 0.05, z, rr() * 3).multiply(new THREE.Matrix4().makeRotationZ((rr() - 0.5) * 0.5)), -0.6 - rr() * 0.5, 0.6 + rr() * 0.5, 0, 0.06, -0.1, 0.1); }
     { const [x, y, z] = at(-3.4, -3.6, 0.35); rb.add(new THREE.BoxGeometry(3.4, 0.32, 2.2), lam("thatchFallen", () => ({ color: "#7d6640" })), tr(x, y, z, 0.7).multiply(new THREE.Matrix4().makeRotationX(0.28))); }
-    { const [x, y, z] = at(2.8, -4.8, 0.04); lbox(rb, col("doorFrame", "#5a4030"), tr(x, y, z, 0.3), -0.9, 0.9, 0, 0.05, -0.45, 0.45); lbox(rb, col("doorPaper", "#d8ccb0"), tr(x, y, z, 0.3), -0.8, 0.8, 0.05, 0.06, -0.38, 0.38); }
+    { const [x, y, z] = at(2.8, -4.8, 0.04); lbox(rb, col("doorFrame", "#5a4030"), tr(x, y, z, 0.3), -0.9, 0.9, 0, 0.05, -0.45, 0.45); lbox(rb, col("doorPaper", "#a89c80"), tr(x, y, z, 0.3), -0.8, 0.8, 0.05, 0.06, -0.38, 0.38); }
     for (const [dx, dz, s2] of [[1.4, -2.2, 0.5], [-2.2, -1.1, 0.45], [4.4, -3.6, 0.55]] as const) { const [x, y, z] = at(dx, dz); crateY(rb, x, y - 0.12, z, s2, dx); }
     netHeap(rb, bx - 1.0, by, bz - 2.8, 0.6);
   }
@@ -274,6 +274,10 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
   rb.build(groups.ruins, true);
 
   // ---- the 1933 rebuild: timber-and-plaster houses with tile roofs, the plaque, a telegraph line ----
+  { // a telegraph pole with its wires by the plaque house, so the plaque shot reveals it
+    const qp = new Batch(), px = PLAQUE_POS[0] - 1.8, pz = PLAQUE_POS[2] + 5.5, a = utilityPole(qp, px, H(px, pz) - 0.2, pz, 0.2, 7.5, false), b2 = utilityPole(qp, px - 26, H(px - 26, pz - 6) - 0.2, pz - 6, 0.25, 7.5, false);
+    wires(qp, a.slice(1, 3), b2.slice(1, 3), 0.6); qp.build(groups.v1933, true);
+  }
   const qb = new Batch(), qw = new Batch();
   VILLAGE.forEach(([, , yaw], i) => { const p = villageAt(i); jHouse(qb, qw, p[0], p[1], p[2], yaw, { w: 7.2 + (i % 3) * 0.7, d: REBUILT_D, style: "rebuilt", roof: i % 3 ? "#4e5866" : "#5a5048", seed: i + 20 }); });
   for (const [x, u, yaw] of beachBoats) woodBoat(qb, x + 2, H(x + 2, -u - 0.4) + 0.35, -u - 0.4, yaw + 0.1, 6.4, { tint: "#9a7656" });
@@ -361,7 +365,7 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
   };
   lab("1896", "#ff8a4a", MAP_1896, -1); lab("1933", "#ffd84a", MAP_1933, 1);
   void ringMarkTex;
-  { const big = makeStone(); big.scale.setScalar(22); big.position.set(STONE.x, STONE.y - 0.3, STONE.z); big.lookAt(mapEye.x, STONE.y, mapEye.z); groups.map.add(big);
+  { const big = makeStone(); big.scale.setScalar(30); big.position.set(STONE.x, STONE.y - 0.3, STONE.z); big.lookAt(mapEye.x, STONE.y, mapEye.z); groups.map.add(big);
     const halo = new THREE.Mesh(new THREE.CircleGeometry(17, 40), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 1.35, 0.9), transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending }));
     void halo; }
 

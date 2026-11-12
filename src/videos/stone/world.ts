@@ -10,7 +10,7 @@ import { LIGHTS, LOOK, LightPreset } from "./lights";
 import { TONE, CHAR, untone } from "./shade";
 import { NOINK, TWIN_LAYER } from "./ink";
 import { Pool, Actor, Fx, stage } from "./cast";
-import { waveAt } from "./story";
+import { waveAt, W2011_H } from "./story";
 import { FPS, SHOTS, camAt, camRig, ShotDef, OFF, floodAt, swellAt, townFrontAt, ringAt, growAt, SHAKE_F, smooth, clamp01, onPath, HAUL_U, cue, W } from "./story";
 import { pathX, H } from "./terrain";
 import { buildHill, HillParts } from "./hill";
@@ -192,7 +192,7 @@ export class World {
       T.fish.visible = false;
       const w = T.water;
       w.uTime.value = t;
-      w.uFrontOn.value = id === 19 ? 1 : 0; w.uFrontZ.value = townFrontAt(f);
+      w.uFrontOn.value = id === 19 ? 1 : 0; w.uFrontZ.value = townFrontAt(f) + 0.5 * W2011_H; // the flood's step hides inside the wave wall
       const wt = waveAt(id, f);
       T.w2011.update({ on: wt?.key === "w2011", toe: wt?.toe ?? 0, H: wt?.H ?? 1, curl: wt?.curl ?? 0, backLevel: wt?.backLevel ?? 0, t });
       w.uChop.value = id === 19 ? 2.2 : 1.0; w.uFlow.value = id === 19 ? 1.6 : 0; w.uFlowDir.value.set(0, -1);

@@ -8,7 +8,7 @@ import * as THREE from "three";
 import { keepClear } from "./obstacles";
 import { crestPoint, toePoint, WaveDef } from "./wave";
 import { Pen, bodyFront, bodySide, fxShadow, fxContact, Outfit, FrontOpts, SideOpts, fisher, villager, modern, VENDOR, LUNCH, GRANDPA, GRANDMA } from "./toon";
-import { FPS, SHOTS, V3, W, clamp01, cue, smooth, STONE, onStone, houseAt, SURV2, SURV4, SURV6, survivorAt, BOAT_OVER, YARD, HAUL_U, STOP_U, STONE_U, MARKET, OLDSTONE, GULL_F, SHAKE_F, onPath, at, lerp3, OFF, townFrontAt, waveAt, WaveSpec, WAVE_DEF } from "./story";
+import { FPS, SHOTS, V3, W, clamp01, cue, smooth, STONE, onStone, houseAt, villageAt, SURV2, SURV4, SURV6, survivorAt, BOAT_OVER, YARD, HAUL_U, STOP_U, STONE_U, MARKET, OLDSTONE, GULL_F, SHAKE_F, onPath, at, lerp3, OFF, townFrontAt, waveAt, WaveSpec, WAVE_DEF } from "./story";
 import { H } from "./terrain";
 import { SEA_Y_TOWN as SEA_TOWN } from "./town";
 import { LIGHTS, LightName, LOOK } from "./lights";
@@ -341,8 +341,8 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       break;
     }
     case 4: { // the two survivors on the slope, backs to the lens, looking down at the empty shore
-      fig(out, cam, mk(10, fisher(1), "surv1"), survivorAt(SURV2, BOAT_OVER, 3.0, 0.38), f, { mode: "stand", back: true, prop: "shoulder", nod: 0.4 });
-      fig(out, cam, mk(11, villager(1), "surv2"), survivorAt(SURV2, BOAT_OVER, 3.15, -0.32), f, { mode: "stand", back: true, nod: 0.7 });
+      fig(out, cam, mk(10, fisher(1), "surv1"), survivorAt(SURV2, villageAt(7), 3.4, 0.42), f, { mode: "stand", back: true, prop: "shoulder", nod: 0.4 });
+      fig(out, cam, mk(11, villager(1), "surv2"), survivorAt(SURV2, villageAt(7), 3.55, -0.36), f, { mode: "stand", back: true, nod: 0.7 });
       break;
     }
     case 2: { // the 1896 wave: foam puffs boil along its crest as it rises and comes in (storm grey)
@@ -437,7 +437,9 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
         const kid = i % 6 === 2, elder = i % 7 === 5, sp = elder ? 2.8 : 3.6 + 1.6 * hh(i, 31);
         const u = STOP_U - 6 + 30 * hh(i, 32) + sp * (f - 1396) / 30;
         // on the path and the verge in front of the lens; the near ones pass it at 1-3 m and leave the frame at its sides
-        const dx = -0.6 + 5.6 * hh(i, 33) * Math.max(0.35, 1 - Math.max(0, u - STOP_U - 14) / 14);
+        // on the path and the verge ahead of the lens (it stands on the path at dx 1.5); near it they part to either side
+        let dx = -1.2 + 5.0 * hh(i, 33); const off = dx - 1.5, near = clamp01((u - STOP_U - 14) / 8);
+        dx += Math.sign(off || 1) * Math.max(0, 1.2 - Math.abs(off)) * near;
         if (u > STOP_U + 26.5) continue;
         const o = kid ? { ...modern(i), build: "kid" as const } : modern(i + 2), p = onPath(u, dx, 0);
         walker(out, cam, mk(100 + i, o, "runner" + i), p, f, [p[0] - cam.pos.x, p[2] - cam.pos.z],

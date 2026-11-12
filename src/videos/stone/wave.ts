@@ -96,11 +96,11 @@ export const makeWave = (cx: number, len: number, base: number, look: WaveLook, 
       let fc = 0;
       if (sg < foamBack) { tmp.copy(cBack).lerp(cTop, Math.max(0, (sg - foamBack + 1.2) / 1.2) * 0.55); fc = 0.35; }
       else if (sg < foamFace) { tmp.copy(cFoam); fc = 0; }
-      else if (sg < toe) { const k = Math.min(1, (sg - foamFace) / 2.4); tmp.copy(cTop).lerp(cFace, k); fc = 1.0 - 0.4 * k; }
+      else if (sg < toe) { const k = Math.min(1, (sg - foamFace) / 3.6); tmp.copy(cTop).lerp(cFace, k); fc = 1.0 - 0.3 * k; }
       else { tmp.copy(cFace).lerp(cToe, Math.min(1, (sg - toe) / 0.6)); fc = 0.5; }
       col.set([tmp.r, tmp.g, tmp.b], (i * ns + j) * 3);
       face[i * ns + j] = fc;
-      uv.set([(i / (nx - 1)) * len / 60, (j / (ns - 1)) * 1.6], (i * ns + j) * 2);
+      uv.set([(i / (nx - 1)) * len / 28, (j / (ns - 1)) * 1.2], (i * ns + j) * 2);
     }
   }
   const tex = veinTex().clone(); tex.wrapS = tex.wrapT = THREE.RepeatWrapping; tex.needsUpdate = true;

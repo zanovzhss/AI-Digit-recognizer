@@ -140,7 +140,7 @@ const PL: [PlaceId, Light, Era, number?, number?][] = [
   ["hill", "grey", "now"],                  // 18 the map: old water lines
   ["town", "dark", "town"],                 // 19 the wave over the rooftops
   ["hill", "dark", "now"],                  // 20 up the valley
-  ["hill", "dark", "now"],                  // 21 it stops
+  ["hill", "dark", "now", 165, 26],                  // 21 it stops
   ["hill", "sunset", "now", -10, 16],       // 22 every house still standing (the low sun just above the ridge, in frame)
 ];
 /** world-fixed sun directions (toward the sun) where a camera-relative key cannot light both framings of a shot:
@@ -268,7 +268,7 @@ const KEYS: Record<number, Key[]> = {
   6: [
     { f: SA(6), cam: cam(add3(SURV6, [0.8, 4.2, -1.2]), PP(8, 6, 0), 50) },
     { f: SA(6), dur: 24, cam: cam(add3(SURV6, [0.6, 4.0, -1.0]), PP(8, 6, 0), 50) },
-    { f: cue(W.four), dur: 22, cam: cam(add3(SURV6, [0, 2.35, 0]), PP(10, 6, 1), 50) },
+    { f: cue(W.four), dur: 22, cam: cam(add3(SURV6, [0.4, 2.7, -1.0]), PP(14, 6, -8), 50) },
   ],
   // 7 OTS from a carver onto the other carver chiselling the stone (lantern night)
   7: [
@@ -343,8 +343,8 @@ const KEYS: Record<number, Key[]> = {
   ],
   // 20 LOW on the path looking down the valley: the water climbs far below, people run up past the lens
   20: [
-    { f: SA(20), cam: cam(PP(STOP_U + 25, -1.9, 1.05), PP(STOP_U - 30, -4.5, 0), 54) },
-    { f: SA(20), dur: 24, cam: cam(PP(STOP_U + 24.5, -1.9, 1.0), PP(STOP_U - 30, -4.5, 0), 54) },
+    { f: SA(20), cam: cam(PP(STOP_U + 26, 1.5, 1.1), PP(STOP_U - 20, 1.5, 0), 54) },
+    { f: SA(20), dur: 24, cam: cam(PP(STOP_U + 25.6, 1.5, 1.08), PP(STOP_U - 20, 1.5, 0), 54) },
   ],
   // 21 OTS past a villager beside the stone (its carved face toward us): the water stops at the 300 ft post far below
   21: [
