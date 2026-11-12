@@ -373,8 +373,10 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
     }
     case 7: { // the carvers: one in the foreground (OTS, his profile, blurred), the other kneels at the stone with hammer and chisel
       const tap = (f % 14) / 14, k = tap < 0.25 ? tap / 0.25 : 1 - (tap - 0.25) / 0.75;
-      fig(out, cam, mk(30, fisher(0), "carverA"), [YARD[0] - 1.27, YARD[1] + 0.17, YARD[2] - 1.04], f, { mode: "sit", expr: "neutral", prop: ["hammer", q((k + 0.5) % 1, 8)], chisel: true, facing: 1, headTilt: 10 }, { shadow: false });
-      fig(out, cam, mk(31, fisher(3), "carverB"), [YARD[0] + 0.23, YARD[1] + 0.05, YARD[2] - 0.43], f, { mode: "sit", expr: "stern", prop: ["hammer", q(k, 8)], chisel: true, facing: -1, headTilt: 8 }, { shadow: false });
+      // both carvers sit on their straw mats, >= 0.6 m from the stone and every prop (carver A no longer sits in a crate;
+      // carver B stays exactly where round 3 drew him, the spot the collision rule had pushed him to)
+      fig(out, cam, mk(30, fisher(0), "carverA"), [YARD[0] - 1.27, YARD[1] + 0.05, YARD[2] - 1.04], f, { mode: "sit", expr: "neutral", prop: ["hammer", q((k + 0.5) % 1, 8)], chisel: true, facing: 1, headTilt: 10 }, { shadow: false, seat: "mat:carverA" });
+      fig(out, cam, mk(31, fisher(3), "carverB"), [YARD[0] + 0.5765, YARD[1] + 0.05, YARD[2] - 0.6193], f, { mode: "sit", expr: "stern", prop: ["hammer", q(k, 8)], chisel: true, facing: -1, headTilt: 8 }, { shadow: false, seat: "mat:carverB" });
       fig(out, cam, mk(32, villager(0), "watcher"), [YARD[0] + 2.4, YARD[1], YARD[2] - 1.6], f, { mode: "stand", expr: "neutral", facing: -1 });
       if (tap < 0.35) for (let i = 0; i < 5; i++) { const u2 = tap / 0.35, a = hh(i + Math.floor(f / 14) * 7, 3) * Math.PI; out.fx.push({ key: "chip", cw: 32, ch: 32, draw: chipDraw, x: YARD[0] - 0.15 + Math.cos(a) * 0.3 * u2, y: YARD[1] + 0.7 + 0.25 * u2 - 0.5 * u2 * u2, z: YARD[2] - 0.23 + Math.sin(a) * 0.2 * u2, w: 0.025, h: 0.025, rot: i + f }); }
       break;

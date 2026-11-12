@@ -95,3 +95,15 @@ Before = the previous final (`out/stone/final_round2_before.mp4`), after = the n
 
 Final (`out/stone/final.mp4`): 1440x2560, 30 fps, audio = voice.wav (54.187 s), voice + SFX, no music, no captions;
 sharpness mean 11.25 / p10 5.17; copied to `C:\cartoon-shorts\out\stone\final.mp4`.
+
+## Round 3 + one fix (2026-11-13)
+
+The round-4 changes were undone: `src/videos/stone/` is back at round 3 (`3e2ace6`), restored as a new commit. Then one
+bug was fixed, in shot 7 only (the carving yard, 17.75–19.4 s):
+
+| ID | Bug | What changed | Status |
+|---|---|---|---|
+| H01 | ~18 s: the blue carver (carver A) clips into the wooden crate | He sat 16 cm in front of the crate's centre, lower than its top, so the crate cut through him. He now sits on his straw mat (like carver B). The crate stands behind the two carvers, >= 0.62 m from everyone and apart from both on screen. The collision rule (0.6 m, `obstacles.ts`) now covers every prop of the yard, not only the stone: both logs, both crates, the sack, the chisels, the two lantern poles, the lantern box, bucket, rope coil, and the two straw mats (each carver's own mat is his seat). The near log was shortened (it ran under carver B) and the sack moved 15 cm, so nobody needs pushing: carver A >= 0.62 m and carver B >= 0.61 m from every prop. Carver B stays exactly where round 3 drew him | **fixed** |
+
+Check: stills every 0.25 s from 16 s to 21 s (21 frames, `out/stone/v3fix/check_16-21s.jpg`), looked at; no character
+overlaps a prop. The render log shows no collision push in shot 7.

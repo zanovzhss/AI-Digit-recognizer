@@ -316,16 +316,26 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
   // (one stone material: no separate side colour for the yard)
   yardStone.rotation.set(-Math.PI / 2, 0, 0.25, "YXZ"); yardStone.rotation.y = 0.25; yardStone.position.set(yx, yy + 0.52, yz + STONE.h / 2 - 0.1); groups.yard.add(yardStone);
   addObst("stone:yard", yx - 0.29, yz - 0.03, STONE.w / 2 + 0.05, STONE.h / 2 + 0.04, 0.5);
-  for (const dz of [-0.6, 0.6]) yb.add(new THREE.CylinderGeometry(0.13, 0.13, 1.3, 12).rotateZ(Math.PI / 2), lam("log", () => ({ map: rep(beamHD(), 1, 0.3), color: "#5e5044" })), tr(yx, yy + 0.24, yz + dz, 0.25));
+  // the two logs under the slab; the near one stops short of carver B's mat (it used to run under him)
+  const logM = lam("log", () => ({ map: rep(beamHD(), 1, 0.3), color: "#5e5044" })), lc = Math.cos(0.25), ls = Math.sin(0.25);
+  yb.add(new THREE.CylinderGeometry(0.13, 0.13, 1.3, 12).rotateZ(Math.PI / 2), logM, tr(yx, yy + 0.24, yz + 0.6, 0.25));
+  yb.add(new THREE.CylinderGeometry(0.13, 0.13, 0.95, 12).rotateZ(Math.PI / 2), logM, tr(yx - 0.525 * lc, yy + 0.24, yz - 0.6 + 0.525 * ls, 0.25));
   // straw mats under the two carvers (one each side of the slab, as seen from its foot)
   lbox(yb, lam("strawMatY", () => ({ color: "#9a8456" })), tr(yx + 0.3, yy, yz - 0.5, 0.5), -0.5, 0.5, 0, 0.03, -0.9, 0.9);
   lbox(yb, lam("strawMatY", () => ({ color: "#9a8456" })), tr(yx - 1.2, yy, yz - 0.9, 0.5), -0.5, 0.5, 0, 0.03, -0.7, 0.7);
   for (let k = 0; k < 5; k++) lbox(yb, col("chisel", "#8a8e94"), tr(yx + 0.39 + k * 0.08, yy + 0.04, yz + 0.96, 0.3 + k * 0.2), -0.1, 0.1, 0, 0.02, -0.01, 0.01);
-  bucket(yb, yx - 0.8, yy, yz + 0.87); ropeCoil(yb, yx + 1.08, yy, yz + 0.87); sack(yb, yx - 2.0, yy, yz - 0.8); crateY(yb, yx + 1.5, yy, yz - 1.9, 0.5, 0.4); crateY(yb, yx - 1.27, yy, yz - 1.2, 0.46, 0.3); // carver A's seat
+  // carver A sits on his mat; the crate that was under him (he clipped into it) stands behind him, clear of everyone
+  bucket(yb, yx - 0.8, yy, yz + 0.87); ropeCoil(yb, yx + 1.08, yy, yz + 0.87); sack(yb, yx - 2.15, yy, yz - 0.85); crateY(yb, yx + 1.5, yy, yz - 1.9, 0.5, 0.4); crateY(yb, yx - 1.0, yy, yz - 2.05, 0.46, 0.3);
   const lanternPos: V3[] = [[yx - 0.71, yy + 1.75, yz - 1.68], [yx + 0.78, yy + 1.9, yz - 1.13]];
   for (const [lx, ly, lz] of lanternPos) { chochin(yb, groups.yard, lx, ly, lz, 1.2); yb.add(new THREE.CylinderGeometry(0.03, 0.03, 2.4, 6).translate(0, 1.2, 0), col("bambooPole", "#8a9a5a"), tr(lx + 0.25, yy, lz)); lbox(yb, col("bambooPole", "#8a9a5a"), tr(lx, ly + 0.35, lz), -0.02, 0.27, -0.02, 0.02, -0.02, 0.02); }
   andon(yb, groups.yard, yx + 0.34, yy, yz + 1.61); addObst("andon", yx + 0.34, yz + 1.61, 0.2, 0.2);
   addObst("bucket", yx - 0.8, yz + 0.87, 0.2, 0.2); addObst("rope", yx + 1.08, yz + 0.87, 0.3, 0.3); addObst("crate", yx + 1.5, yz - 1.9, 0.3, 0.3);
+  // the collision rule covers every prop of the yard, not only the stone: logs, both crates, the sack, the chisels, the
+  // lantern poles, and the straw mats (each carver sits on his own mat, named as his seat)
+  addObst("log", yx - 0.525 * lc, yz - 0.6 + 0.525 * ls, 0.475, 0.13, 0.25); addObst("log", yx, yz + 0.6, 0.65, 0.13, 0.25);
+  addObst("crate", yx - 1.0, yz - 2.05, 0.25, 0.25, 0.3); addObst("sack", yx - 2.15, yz - 0.85, 0.26, 0.2); addObst("chisels", yx + 0.55, yz + 0.96, 0.25, 0.12);
+  for (const [lx, , lz] of lanternPos) addObst("lanternPole", lx + 0.25, lz, 0.05, 0.05);
+  addObst("mat:carverA", yx - 1.2, yz - 0.9, 0.5, 0.7, 0.5); addObst("mat:carverB", yx + 0.3, yz - 0.5, 0.5, 0.9, 0.5);
   yb.build(groups.yard, true);
   for (const [lx, ly, lz] of lanternPos) { lights.push({ place: "hill", pos: [lx, ly - 0.2, lz], color: "#ffa850", intensity: 3.8, distance: 4.2, shots: [7] }); const p = pool(2.8, 2.8, 0.14, 0.08, 0.03, "yardPool"); p.rotation.x = -Math.PI / 2; p.position.set(lx, yy + 0.04, lz); groups.yard.add(p); }
   lights.push({ place: "hill", pos: [yx + 0.34, yy + 0.6, yz + 1.61], color: "#ffb860", intensity: 1.6, distance: 3, shots: [7] });
