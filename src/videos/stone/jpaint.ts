@@ -232,9 +232,7 @@ export const calendar2011Tex = () => ctex("cal2011", 640, 900, (g) => {
 /** distance post board: "300 FT" with an arrow up the slope to the stone */
 export const postTex = (label: string) => ctex("post" + label, 512, 320, (g) => {
   g.fillStyle = "#f4f0e6"; g.fillRect(0, 0, 512, 320); g.strokeStyle = "#1e1e24"; g.lineWidth = 16; g.strokeRect(8, 8, 496, 304);
-  // the label fits between the arrow and the right border (it used to run under the arrow and off the edge: "↑00 F")
-  g.fillStyle = "#1e1e24"; g.textAlign = "center"; g.textBaseline = "middle"; g.font = `bold 150px ${SANS}`;
-  const fs = Math.min(150, Math.floor(150 * 330 / g.measureText(label).width)); g.font = `bold ${fs}px ${SANS}`; g.fillText(label, 318, 165);
+  g.fillStyle = "#1e1e24"; g.textAlign = "center"; g.textBaseline = "middle"; g.font = `bold 150px ${SANS}`; g.fillText(label, 300, 165);
   g.fillStyle = "#c8352a"; g.beginPath(); g.moveTo(80, 70); g.lineTo(130, 150); g.lineTo(98, 150); g.lineTo(98, 250); g.lineTo(62, 250); g.lineTo(62, 150); g.lineTo(30, 150); g.closePath(); g.fill();
 });
 /** map labels painted on the hill (transparent background) */

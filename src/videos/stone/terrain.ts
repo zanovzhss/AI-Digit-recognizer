@@ -30,10 +30,7 @@ export const rawH = (x: number, z: number) => {
   const side = (0.6 * d + 0.0035 * d * d) * seaFade;
   const bump = (2.2 * Math.sin(x * 0.045 + 1.7) * Math.sin(z * 0.038) + 1.2 * Math.sin(x * 0.11 - z * 0.07) + 0.6 * Math.sin(x * 0.23 + z * 0.19)) * sstep(2, 18, d);
   const dish = 0.006 * Math.min(400, (x - px) * (x - px)) * sstep(-10, 20, u);
-  // the path from the 300 ft post up to the stone sinks a little in the middle (up to 0.8 m) so the slope has no brow:
-  // from the bank behind the stone the eye reaches the line where the 2011 water stopped (the water never gets this high)
-  const sag = 0.8 * sstep(108, 134, u) * (1 - sstep(140, 182, u)) * (1 - sstep(12, 28, Math.abs(x - px)));
-  return floorY(u) + side + bump + dish - sag;
+  return floorY(u) + side + bump + dish;
 };
 /** the ground height (with the pads) */
 export const H = (x: number, z: number) => {

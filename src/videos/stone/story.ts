@@ -52,10 +52,9 @@ export const onPath = (u: number, dx = 0, lift = 0): V3 => gnd(pathX(-u) + dx, u
 export const SU = 0.00216; // metres per design unit of the character canvas (600 x 1000, soles at 975)
 /** the eleven houses, all up the hill above the stone: x offset from the path, u inland, yaw (0 = facing the sea, +z) */
 export const HOUSES: [number, number, number][] = [
-  // a hamlet fanned out up the valley head and its two slopes, each house in its own line of sight from the stone (the last
-  // shot sees all eleven above the stone; laid out by a visibility search from END_CAM, every house >= 78 % unhidden)
-  [16.6, 272, -0.15], [-31.6, 282, 0.15], [-21.6, 267, 0.15], [-42.7, 295, 0.15], [-9.2, 280, 0.15], [45.8, 287, -0.15],
-  [10.1, 291, -0.15], [-20.5, 294, 0.15], [34.2, 271, -0.15], [26.8, 286, -0.15], [34.0, 301, -0.15],
+  // a compact hamlet: two staggered columns of terraced houses each side of the path (all eleven fit one frame with the stone)
+  [-8.5, 217, 0.12], [-16.5, 227, 0.2], [-8.5, 239, 0.12], [-16.5, 250, 0.2], [-8.5, 262, 0.1], [-16.5, 273, 0.18],
+  [8.5, 219, -0.12], [16.5, 230, -0.2], [8.5, 243, -0.12], [16.5, 255, -0.2], [8.5, 267, -0.1],
 ];
 /** the old village on the shore terrace (1896, rebuilt 1933): x, u, yaw */
 export const VILLAGE: [number, number, number][] = [
@@ -142,7 +141,7 @@ const PL: [PlaceId, Light, Era, number?, number?][] = [
   ["hill", "grey", "now"],                  // 18 the map: old water lines
   ["town", "dark", "town"],                 // 19 the wave over the rooftops
   ["hill", "dark", "now"],                  // 20 up the valley
-  ["hill", "grey", "now", 165, 26],                  // 21 it stops
+  ["hill", "dark", "now", 165, 26],                  // 21 it stops
   ["hill", "sunset", "now", -10, 16],       // 22 every house still standing (the low sun just above the ridge, in frame)
 ];
 /** world-fixed sun directions (toward the sun) where a camera-relative key cannot light both framings of a shot:
@@ -150,7 +149,7 @@ const PL: [PlaceId, Light, Era, number?, number?][] = [
 const SUNW: Record<number, V3> = { 1: [0.22, 0.42, -0.88] };
 export const SHOTS: ShotDef[] = PL.map(([place, light, era, sunAz, sunEl], i) => ({ id: i + 1, a: B[i], b: B[i + 1], light, place, era, sunAz, sunEl, sunW: SUNW[i + 1] }));
 /** crossfades (frames, centred on the shot's first frame) */
-export const XFADE: Record<number, number> = { 2: 8, 3: 12, 4: 10, 5: 12, 6: 10, 7: 10, 8: 8, 9: 12, 10: 12, 11: 8, 12: 8, 14: 12, 15: 8, 16: 10, 17: 10, 18: 12, 19: 10, 21: 10, 22: 8 };
+export const XFADE: Record<number, number> = { 2: 8, 3: 12, 4: 10, 5: 12, 6: 10, 7: 10, 8: 8, 9: 12, 10: 12, 11: 8, 12: 8, 14: 12, 15: 8, 16: 10, 17: 10, 18: 12, 19: 10, 21: 10, 22: 12 };
 export const FLASH_AT: number | null = null;
 
 export const shotAt = (f: number) => SHOTS.find((s) => f >= s.a && f < s.b) ?? SHOTS[SHOTS.length - 1];
@@ -236,17 +235,9 @@ const RM = (x: number, y: number, z: number): V3 => at("room", x, y, z);
 /** a move that ramps up over its first 40 % and then runs at a steady speed (no jolt when it starts, no stop at the end) */
 const RAMP = (u: number) => { const a = 0.4, k = 1 - a / 2; return (u < a ? (u * u) / (2 * a) : u - a / 2) / k; };
 /** shot 22 ends on all eleven houses (the middle of the hamlet, a little above it) */
-/** the end of the last crane: 2.6 m behind the stone on its line to the valley head, 1.9 m up: the stone 31 % of the frame,
- *  whole, and the eleven houses in a band just above it */
-const END_LOOK: V3 = onPath(270, 0, -4.4);
-export const END_CAM: V3 = (() => {
-  const s = onStone(0, 0, 0), l = onPath(270, 0, 0), n = Math.hypot(s[0] - l[0], s[2] - l[2]), ux = (s[0] - l[0]) / n, uz = (s[2] - l[2]) / n;
-  return [s[0] + ux * 2.6 + uz * 0.3, s[1] + 1.9, s[2] + uz * 2.6 - ux * 0.3] as V3;
-})();
+const END_LOOK: V3 = (() => { const a = houseAt(4), b = houseAt(10), c = houseAt(5); return [(a[0] + b[0]) / 2, c[1] + 15, -245] as V3; })();
 /** shot 21 looks just past the stone, down the path toward the stopped water */
-const L21 = lerp3(onStone(0, 0.6, 0), onPath(POSTS_U[2], 2.3, 3), 0.12);
-/** shot 21: on the bank 7.5 m behind the stone, 1 m above the grass (the slope below has no brow, so the stop line shows) */
-const C21: V3 = (() => { const g = onStone(-0.25, 0, 7.5); return gnd(g[0], -g[2], 1.0); })();
+const L21 = lerp3(onStone(0, 0.6, 0), onPath(STOP_U, 2.3, 1), 0.1);
 const KEYS: Record<number, Key[]> = {
   // 1 macro of the carved main column, a slow tilt down it; on "do" pull back and crane up over the eleven houses to the
   //   valley and the sea far below; hold + creep; on "You see" push back into the carved years (Meiji 29 = 1896)
@@ -258,9 +249,10 @@ const KEYS: Record<number, Key[]> = {
   ],
   // 2 the 1896 notice board above the village, then back and up over the thatched village to the stormy sea
   2: [
-    { f: SA(2), cam: cam(add3(BOARD_1896, [-1.6, 3.3, -9]), [BOARD_1896[0] - 26, -2, 120], 56) },
-    { f: SA(2) + 4, dur: 8, cam: cam(add3(BOARD_1896, [0, 3.5, -9]), [BOARD_1896[0], -6, 200], 56), ease: glide, creep: 0.0001 },
-    { f: SA(2) + 12, dur: 100, cam: cam(add3(BOARD_1896, [0, 3.4, -7.6]), [BOARD_1896[0], -5, 200], 56), ease: glide, creep: 0.0001 }, // a slow push, the whole board stays framed
+    { f: SA(2), cam: cam(add3(BOARD_1896, [-2.4, 2.3, -3.8]), add3(BOARD_1896, [-9, -1, 9]), 44) },
+    { f: SA(2) + 4, dur: 10, cam: cam(add3(BOARD_1896, [-0.5, 1.85, -3.6]), add3(BOARD_1896, [0, 1.5, 0]), 42) },
+    { f: SA(2) + 20, dur: 44, cam: cam(PP(53, 1.5, 3.2), [0, 5, 200], 52), ease: glide },
+    { f: cue(W.wiped), dur: 50, cam: cam(PP(52.5, 1.5, 3.0), [0, 12, 190], 52) },
   ],
   // 3 LOW beside the empty overturned boat at the water's edge
   3: [
@@ -361,12 +353,14 @@ const KEYS: Record<number, Key[]> = {
   ],
   // 21 OTS past a villager beside the stone (its carved face toward us): the water stops at the 300 ft post far below
   21: [
-    { f: SA(21), cam: cam(C21, L21, 26), creep: 0.00025 },
+    { f: SA(21), cam: cam(onStone(0.2, 2.65, 5.2), L21, 42) },
+    { f: SA(21), dur: 22, cam: cam(onStone(0.2, 2.5, 4.9), L21, 42) },
+    { f: cue(W.three) + 4, dur: 30, cam: cam(onStone(0.2, 2.9, 5.5), L21, 42) },
   ],
   // 22 low behind the stone at sunset, crane up to all eleven houses up the hill; hold to the last frame
   22: [
-    { f: SA(22), cam: cam(onStone(0.8, 0.5, -2.0), onStone(0, 0.75, 0), 72), creep: 0 },
-    { f: SA(22) + 4, dur: 20, cam: cam(END_CAM, END_LOOK, 88), ease: glide, creep: 0.00003 },
+    { f: SA(22), cam: cam(onStone(3.6, 3.0, -10), END_LOOK, 76) },
+    { f: SA(22), dur: 24, cam: cam(onStone(6, 5.5, -16.5), END_LOOK, 80), ease: glide },
   ],
 };
 
@@ -390,18 +384,14 @@ const rigCam = (id: number, f: number): Cam => {
 /** pacing: a slow sideways drift through the holds of these shots (fraction of the lens-to-look distance per frame) */
 const DRIFT: Record<number, [number, number]> = { // [fraction of the look distance per frame, cap in metres per frame]
   3: [0.0012, 0.015], 4: [0.0016, 0.012], 6: [0.0003, 0.02], 7: [0.0011, 0.012], 9: [0.0004, 0.8], 10: [0.0007, 0.03], 12: [0.0009, 0.012],
-  16: [0.0012, 0.006], 18: [0.0016, 0.8] }; // (no drift in 21: the villager stays beside the stone)
+  16: [0.0012, 0.006], 18: [0.0016, 0.8], 21: [-0.0013, 0.015] };
 const drift = (c: Cam, id: number, f: number): Cam => {
   const k = DRIFT[id]; if (!k) return c;
   const s = SHOTS[id - 1], dx = c.look[0] - c.pos[0], dz = c.look[2] - c.pos[2], d = Math.hypot(dx, dz, c.look[1] - c.pos[1]), hl = Math.hypot(dx, dz) || 1;
   const m = Math.sign(k[0]) * Math.min(Math.abs(k[0]) * d, k[1]) * (f - s.a); // metres slid since the shot began (sign = side)
   return { ...c, pos: [c.pos[0] - (dz / hl) * m, c.pos[1], c.pos[2] + (dx / hl) * m], look: [c.look[0] - (dz / hl) * m * 0.6, c.look[1], c.look[2] + (dx / hl) * m * 0.6] };
 };
-const holdThroughFades = (id: number, f: number) => {
-  const s = SHOTS[id - 1], xin = XFADE[id] ?? 0, xout = XFADE[id + 1] ?? 0;
-  return Math.min(Math.max(f, s.a + Math.ceil(xin / 2)), s.b - Math.ceil(xout / 2));
-};
-export const camRig = (id: number, f0: number): Cam => { const f = holdThroughFades(id, f0); return drift(rigCam(id, f), id, f); };
+export const camRig = (id: number, f: number): Cam => drift(rigCam(id, f), id, f);
 
 // ---------------- the whip (one in the video): a fast yaw out of shot 19 into shot 20 ----------------
 const WHIPS: Record<number, { pre: number; post: number; dir: 1 | -1; deg: number }> = { 19: { pre: 4, post: 5, dir: 1, deg: 32 } };
@@ -430,7 +420,7 @@ export const EYE_H = 1.5;
 const fixed = (p: V3): (() => V3) => () => p;
 export const DOF: Dof[] = [
   { f: 0, cInf: 7, focus: fixed(STONE_FACE) }, { f: cue(W.do), dur: 30, cInf: 0 },
-  { f: SA(2), cInf: 0 },
+  { f: SA(2), cInf: 10 }, { f: SA(2) + 8, dur: 30, cInf: 0 },
   { f: SA(3), cInf: 11 }, { f: SA(4), cInf: 8 }, { f: SA(5), cInf: 6 },
   { f: SA(6), cInf: 0 }, { f: cue(W.four), dur: 16, cInf: 5 },
   { f: SA(7), cInf: 11 }, { f: SA(8), cInf: 9 },
@@ -438,7 +428,7 @@ export const DOF: Dof[] = [
   { f: SA(12), cInf: 10 }, { f: SA(13), cInf: 12 },
   { f: SA(14), cInf: 12 }, { f: SA(14) + 6, dur: 30, cInf: 0 }, { f: SA(15), cInf: 6, focus: () => PP(STONE_U, 0.2, 1.0) },
   { f: SA(16), cInf: 12 }, { f: cue(W.y2011) + 6, dur: 20, cInf: 7 }, { f: SA(17), cInf: 10 },
-  { f: SA(18), cInf: 5, focus: () => [0, 22, -118] }, { f: SA(19), cInf: 0 }, { f: SA(20), cInf: 5, focus: () => PP(STOP_U + 15, 0, 1.4) }, { f: SA(21), cInf: 1.5, focus: () => onStone(0, 0.7, 0) },
+  { f: SA(18), cInf: 5, focus: () => [0, 22, -118] }, { f: SA(19), cInf: 0 }, { f: SA(20), cInf: 5, focus: () => PP(STOP_U + 15, 0, 1.4) }, { f: SA(21), cInf: 4, focus: () => onStone(0, 0.7, 0) }, { f: cue(W.three) + 4, dur: 24, cInf: 4, focus: () => onStone(0, 0.7, 0) },
   { f: SA(22), cInf: 0 },
 ];
 export const DOF_SCALE = 0.6;

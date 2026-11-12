@@ -95,34 +95,3 @@ Before = the previous final (`out/stone/final_round2_before.mp4`), after = the n
 
 Final (`out/stone/final.mp4`): 1440x2560, 30 fps, audio = voice.wav (54.187 s), voice + SFX, no music, no captions;
 sharpness mean 11.25 / p10 5.17; copied to `C:\cartoon-shorts\out\stone\final.mp4`.
-
-## Round 4 (the last six problems)
-
-Before = the round-3 final (`out/stone/final_round3_before.mp4`), after = the new final, same times. Sheets made by
-`stone-short/tools/fixsheets.py <before> <after> 4`. Crossfade strips (14 frames across every crossfade) and stills every
-0.5 s from 44 s to the end by `stone-short/tools/xstrips.py`, all looked at.
-
-| ID | Problem | What changed | Before / after | Status |
-|---|---|---|---|---|
-| G01 | 47–51 s: the water stopping below the stone is not visible | Cause: the slope between the stone and the 300 ft post bulged ~0.8 m (a brow), so from anywhere near the stone the stop line was hidden; and a road pole stood exactly in line with the post. Now the path's middle sinks up to 0.8 m so the slope has no brow (`terrain.ts`; the water never climbs that high, so the flood and its timing are unchanged), the poles either side of the post stand back off the sight line (`hill.ts`), the post is a tall red-and-white 8 m pole with a big "300 FT" sign in front of it. The camera sits low on the bank 7.5 m behind the stone (lens 26): the stone big and sharp (33 % of the frame), the water rushing up the valley toward us, slowing and stopping at the post's foot (f1508), then 1.5 s of calm water. Grey light, readable | [G01.jpg](../../../out/stone/fixes/G01.jpg) | **fixed** |
-| G02 | Double-exposure crossfades (6 s, 28 s, 39 s) | Every crossfade is 8–12 frames (the 19 in the table `XFADE`) and dissolves between two still frames: each shot's camera is frozen for the length of its incoming and outgoing crossfades (`holdThroughFades` in `story.ts`). All 19 checked with 14-frame strips | [G02.jpg](../../../out/stone/fixes/G02.jpg) | **fixed** |
-| G03 | 7 s: the "1896" board cut off | Shot 2 lands on the whole board (8-frame turn) and holds it centred with a margin on every side, the wave rising over the sea above it | [G03.jpg](../../../out/stone/fixes/G03.jpg) | **fixed** |
-| G04 | 13–14 s: a thick dark pole blocks the centre | The 1933 telegraph pole stands behind the house line, left; nothing big crosses the middle third | [G04.jpg](../../../out/stone/fixes/G04.jpg) | **fixed** |
-| G05 | 49–51 s: the villager drifts out of frame | No drift in shot 21; the villager stands whole beside the stone (0.6 m clear of it), back to us, looking down at the stopped water | [G05.jpg](../../../out/stone/fixes/G05.jpg) | **fixed** |
-| G06 | Final "Every single house is still standing" | The eleven houses are laid out as a fan up the valley head and its two slopes, each in its own line of sight from the stone (a visibility search; every house at least two-thirds unhidden), and nothing tall grows on those lines. The shot starts low on the stone's back, cranes up 1.4 m in 20 frames until the whole stone stands in the lower frame (31 %, crisp) with the eleven lit houses above it in the sunset, and holds 1.5 s. The houses are small (60–110 m away) and partly overlapping, as the brief allows | [G06.jpg](../../../out/stone/fixes/G06.jpg) | **fixed** |
-
-Side effects of G06 (said plainly): shot 14 (dawn, "eleven families keep their houses up the hill") shows the same
-eleven houses in their new places, its camera unchanged; the opening crane no longer passes over house roofs at its
-very end (it looks down the valley to the sea, as before).
-
-Also fixed on the way (part of G01): the distance signs read "↑00 F" because the label ran under the arrow and off the
-board. The label is now sized to fit, so they read "↑ 300 FT", "↑ 200 FT", "↑ 100 FT" (`jpaint.ts` postTex).
-
-Checks: draft at 1080x1920 (`--gl=angle`); all 19 crossfades looked at in 14-frame strips (8–12 blended frames, a
-single still scene on both sides); stills every 0.5 s from 44 s to the end looked at; the same on the final.
-Static frames rose to 20.4 % (round 3: 8.9 %). They sit in the holds this brief asks for: shot 21 (the calm water, no
-drift; the water front moves in a small part of the frame) and shot 22 (the 1.5 s end hold). The cameras also now hold
-still through every crossfade. The first 5 s still have 0 static frames.
-
-Final (`out/stone/final.mp4`): 1440x2560, 30 fps, 1626 frames, audio = voice.wav (54.187 s), voice + SFX, no music, no
-captions; sharpness mean 10.99 / p10 5.66; copied to `C:\cartoon-shorts\out\stone\final.mp4` (same SHA-256).
