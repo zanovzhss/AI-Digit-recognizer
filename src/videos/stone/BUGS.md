@@ -114,3 +114,15 @@ Before = the round-3 final (`out/stone/final_round3_before.mp4`), after = the ne
 Side effects of G06 (said plainly): shot 14 (dawn, "eleven families keep their houses up the hill") shows the same
 eleven houses in their new places, its camera unchanged; the opening crane no longer passes over house roofs at its
 very end (it looks down the valley to the sea, as before).
+
+Also fixed on the way (part of G01): the distance signs read "↑00 F" because the label ran under the arrow and off the
+board. The label is now sized to fit, so they read "↑ 300 FT", "↑ 200 FT", "↑ 100 FT" (`jpaint.ts` postTex).
+
+Checks: draft at 1080x1920 (`--gl=angle`); all 19 crossfades looked at in 14-frame strips (8–12 blended frames, a
+single still scene on both sides); stills every 0.5 s from 44 s to the end looked at; the same on the final.
+Static frames rose to 20.4 % (round 3: 8.9 %). They sit in the holds this brief asks for: shot 21 (the calm water, no
+drift; the water front moves in a small part of the frame) and shot 22 (the 1.5 s end hold). The cameras also now hold
+still through every crossfade. The first 5 s still have 0 static frames.
+
+Final (`out/stone/final.mp4`): 1440x2560, 30 fps, 1626 frames, audio = voice.wav (54.187 s), voice + SFX, no music, no
+captions; sharpness mean 10.99 / p10 5.66; copied to `C:\cartoon-shorts\out\stone\final.mp4` (same SHA-256).
