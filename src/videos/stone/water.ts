@@ -92,8 +92,8 @@ const FRAG_COLOR = /* glsl */ `
   float dist = length( vWPos - cameraPosition );
   vec3 col = mix( uNear, uFar, smoothstep( 60.0, 900.0, dist ) );
   // painted crest marks drifting on the open water (short dashes, fewer far away)
-  float m = fNoise( vec2( q.x * 0.09 + uTime * 0.05, q.y * 0.32 - uTime * 0.12 ) );
-  col = mix( col, mix( col, uFoam, 0.55 ), smoothstep( 0.8, 0.88, m ) * ( 1.0 - smoothstep( 150.0, 500.0, dist ) ) );
+  float m = fNoise( vec2( q.x * 0.2 + uTime * 0.05, q.y * 0.62 - uTime * 0.12 ) );
+  col = mix( col, mix( col, uFoam, 0.45 ), smoothstep( 0.84, 0.9, m ) * ( 1.0 - smoothstep( 150.0, 500.0, dist ) ) );
   col = mix( col, uDeep, 0.35 * smoothstep( 0.2, 0.0, m ) );
   float foam = 0.0;
   if ( uHasGround > 0.5 ) {                       // shoreline / flood edge: foam where the water is shallow
@@ -106,7 +106,7 @@ const FRAG_COLOR = /* glsl */ `
       vec2 d = normalize( uFlowDir ), n2 = vec2( -d.y, d.x );
       float a = dot( q, d ), b = dot( q, n2 );
       float s1 = fNoise( vec2( b * 0.22, a * 0.05 - uTime * 1.6 * uFlow ) ), s2 = fNoise( vec2( b * 0.5 + 7.0, a * 0.11 - uTime * 2.3 * uFlow ) );
-      float shallow = 1.0 - smoothstep( 3.0, 14.0, depth );
+      float shallow = 1.0 - smoothstep( 1.5, 5.0, depth );
       foam = max( foam, ( smoothstep( 0.62, 0.8, s1 ) * 0.85 + smoothstep( 0.72, 0.86, s2 ) * 0.6 ) * shallow );
       col = mix( col, uDeep * 0.8 + uFoam * 0.08, 0.35 * shallow );
     }

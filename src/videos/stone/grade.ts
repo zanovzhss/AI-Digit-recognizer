@@ -206,8 +206,8 @@ const GRADE_DAWN: GradeParams = { // dawn: day curve, a warm-pink lift in the hi
   tintS: [0.016, 0.004], tintM: [0, 0.002], tintH: [-0.006, 0.008], vig: [0.22, 0.25], nd: [0.06, 0.15],
 };
 export const GRADES: Record<GradeLight, GradeParams> = {
-  golden: { ...GRADE_GOLDEN2, sat: [0.96, 1.03, 1.05] },
-  sunset: { ...GRADE_GOLDEN2, sat: [0.96, 1.03, 1.05] },
+  golden: { ...GRADE_GOLDEN2, sat: [0.96, 1.03, 1.05], tintH: [0, 0.004] },
+  sunset: { ...GRADE_GOLDEN2, sat: [0.96, 1.03, 1.05], tintH: [0, 0.004] },
   storm: GRADE_STORM,
   lantern: GRADE_NIGHT,
   day: { ...GRADE_DAY2, sat: [0.97, 1.03, 1.03] },

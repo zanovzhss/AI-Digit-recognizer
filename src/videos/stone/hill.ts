@@ -36,6 +36,11 @@ const segs = () => {
   return SEGS;
 };
 const tmp = new THREE.Vector3(), cl = new THREE.Vector3();
+/** true inside the corridor the shot-1 sun crosses on its way to the stone (no trees or bamboo may shade the face) */
+const inSunPath = (x: number, z: number) => {
+  const sx = 0.24, sz = -0.97, dx = x - STONE.x, dz = z - STONE.z, t = dx * sx + dz * sz, perp = Math.abs(dx * sz - dz * sx);
+  return t > -2 && t < 60 && perp < 6 + t * 0.12;
+};
 /** true when a thing of radius r / height h at (x, y, z) stays clear of every lens and its first 70 m of sight */
 export const clear = (x: number, y: number, z: number, r: number, h: number) => {
   for (const { a, b } of segs()) {
@@ -50,7 +55,7 @@ export const clear = (x: number, y: number, z: number, r: number, h: number) => 
 
 // ---------------- terrain ----------------
 const C = (h: string) => new THREE.Color(h);
-const GR = [C("#76984f"), C("#688a47"), C("#86a25a"), C("#94a464")], FOREST = C("#56723f"), ROCK = C("#8c8474"), SAND = C("#d6c39a"), WET = C("#b4a07c"),
+const GR = [C("#76984f"), C("#688a47"), C("#86a25a"), C("#94a464")], FOREST = C("#56723f"), ROCK = C("#8c8474"), SAND = C("#bca67c"), WET = C("#8e7c60"),
   BED = C("#8a9a8a"), DIRT = C("#a8885e"), FIELD = C("#8a7448");
 const terrainMat = () => {
   const m = twoTone(new THREE.MeshLambertMaterial({ vertexColors: true, map: rep(groundDetailTex(), 160, 140) }));
@@ -125,19 +130,19 @@ const buildForest = (root: THREE.Object3D) => {
     if (dp < 4.5 && u > -5) continue;
     if (nearPad(px, pz, 11)) continue;
     if (u < 62 && Math.abs(px) < 60 && sd < 10) { if (r() < 0.06 && dp > 8) round.push({ x: px, y, z: pz, h: 6 + 3 * r(), c: Math.floor(r() * 4) }); continue; } // the shore village terrace: open
-    if (onFloor) { if (r() < 0.12 && dp > 7) (r() < 0.5 ? round : bush).push({ x: px, y, z: pz, h: r() < 0.5 ? 6 + 4 * r() : 1.6 + r(), c: Math.floor(r() * 4) }); continue; }
+    if (onFloor) { if (r() < 0.12 && dp > 7 && !inSunPath(px, pz)) (r() < 0.5 ? round : bush).push({ x: px, y, z: pz, h: r() < 0.5 ? 6 + 4 * r() : 1.6 + r(), c: Math.floor(r() * 4) }); continue; }
     const h = 11 + 9 * r(), kind = u < 40 && sd > 10 && r() < 0.6 ? "pine" : r() < 0.78 ? "sugi" : "round";
-    if (!clear(px, y, pz, kind === "sugi" ? 2.2 : 3.4, h)) continue;
+    if (!clear(px, y, pz, kind === "sugi" ? 2.2 : 3.4, h) || inSunPath(px, pz)) continue;
     (kind === "pine" ? pine : kind === "sugi" ? sugi : round).push({ x: px, y, z: pz, h: kind === "round" ? h * 0.65 : h, w: kind === "sugi" ? h * 0.85 : undefined, c: Math.floor(r() * 4) });
   }
   // bamboo groves and bushes behind the houses up the hill; grass tufts along the path and around the stone; rocks
   for (let i = 0; i < HOUSES.length; i++) {
     const p = houseAt(i), s = HOUSES[i][0] < 0 ? -1 : 1;
-    for (let k = 0; k < 9; k++) { const x = p[0] + s * (7 + 6 * r()), z = p[2] + (r() - 0.5) * 14; if (clear(x, H(x, z), z, 1.2, 8)) bamboo.push({ x, y: H(x, z), z, h: 7 + 3 * r(), w: 5 }); }
-    for (let k = 0; k < 4; k++) { const x = p[0] + (r() - 0.5) * 16, z = p[2] - 6 - 3 * r(); if (clear(x, H(x, z), z, 1, 1.6)) bush.push({ x, y: H(x, z), z, h: 1.2 + 0.6 * r() }); }
+    for (let k = 0; k < 9; k++) { const x = p[0] + s * (7 + 6 * r()), z = p[2] + (r() - 0.5) * 14; if (clear(x, H(x, z), z, 1.2, 8) && !inSunPath(x, z)) bamboo.push({ x, y: H(x, z), z, h: 7 + 3 * r(), w: 5 }); }
+    for (let k = 0; k < 4; k++) { const x = p[0] + (r() - 0.5) * 16, z = p[2] - 6 - 3 * r(); if (clear(x, H(x, z), z, 1, 1.6) && !inSunPath(x, z)) bush.push({ x, y: H(x, z), z, h: 1.2 + 0.6 * r() }); }
   }
-  for (let u = 4; u < 330; u += 2.3) for (const s of [-1, 1]) {
-    const x = pathX(-u) + s * (2.1 + 3.5 * r()), z = -u + (r() - 0.5) * 0.8, y = H(x, z);
+  for (let u = 4; u < 330; u += 3.4) for (const s of [-1, 1]) {
+    const x = pathX(-u) + s * (2.6 + 4.5 * r()), z = -u + (r() - 0.5) * 0.8, y = H(x, z);
     if (Math.hypot(x - STONE.x, z - STONE.z) < 1.0) continue;
     if (!clear(x, y, z, 0.4, 0.5)) continue;
     tuft.push({ x, y, z, h: 0.3 + 0.3 * r(), w: 0.45 + 0.35 * r(), c: Math.floor(r() * 4) });
@@ -168,7 +173,7 @@ export const makeStone = () => {
   const side = twoTone(new THREE.MeshLambertMaterial({ color: "#8e877c", map: rep(groundDetailTex(), 2, 3) }));
   // BoxGeometry groups: +x, -x, +y, -y, +z (front, the inscription), -z
   const mesh = new THREE.Mesh(g, [side, side, side, side, face, side]);
-  mesh.castShadow = true; mesh.receiveShadow = true;
+  mesh.castShadow = true; mesh.receiveShadow = false; // the carved face always takes the key (no stray cast shadow over the inscription)
   return mesh;
 };
 

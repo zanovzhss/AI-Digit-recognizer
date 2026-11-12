@@ -7,7 +7,7 @@ import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js
 import { twoTone } from "./shade";
 import { ctex } from "./paint";
 
-export type TreeKind = "sugi" | "round" | "pine" | "bush" | "tuft" | "rock" | "bamboo";
+export type TreeKind = "sugi" | "round" | "pine" | "bush" | "tuft" | "rock" | "bamboo" | "blades";
 const sph = (r: number, sy: number, x: number, y: number, z: number, ws = 16, hs = 11) => new THREE.SphereGeometry(r, ws, hs).scale(1, sy, 1).translate(x, y, z);
 /** unit-height geometries (scaled per instance) */
 const canopyGeo = (k: TreeKind): THREE.BufferGeometry => {
@@ -17,6 +17,7 @@ const canopyGeo = (k: TreeKind): THREE.BufferGeometry => {
     case "pine": return mergeGeometries([sph(0.26, 0.42, 0.06, 0.84, 0), sph(0.2, 0.42, -0.14, 0.7, 0.05), sph(0.17, 0.45, 0.12, 0.62, -0.08)].map((g) => g.toNonIndexed()));
     case "bush": return mergeGeometries([sph(0.5, 0.8, 0, 0.42, 0, 14, 9), sph(0.36, 0.8, 0.36, 0.32, 0.08, 12, 8), sph(0.34, 0.8, -0.34, 0.3, -0.06, 12, 8)].map((g) => g.toNonIndexed()));
     case "tuft": return mergeGeometries([sph(0.32, 1.3, 0, 0.32, 0, 10, 7), sph(0.24, 1.25, 0.26, 0.24, 0.06, 9, 6), sph(0.22, 1.25, -0.24, 0.22, -0.05, 9, 6), sph(0.2, 1.2, 0.04, 0.2, 0.25, 9, 6)].map((g) => g.toNonIndexed()));
+    case "blades": { const bl: THREE.BufferGeometry[] = []; for (let i = 0; i < 11; i++) { const a = (i / 11) * Math.PI * 2 + 0.3 * Math.sin(i * 7.7), lean = 0.18 + 0.22 * ((i * 0.37) % 1), h = 0.7 + 0.3 * ((i * 0.61) % 1); bl.push(new THREE.ConeGeometry(0.022, h, 3, 1).translate(0, h / 2, 0).scale(1, 1, 0.35).rotateY(a).rotateZ(lean * Math.cos(a)).rotateX(-lean * Math.sin(a)).translate(0.05 * Math.cos(a), 0, 0.05 * Math.sin(a)).toNonIndexed()); } return mergeGeometries(bl); }
     case "rock": { const g = new THREE.IcosahedronGeometry(0.5, 1); const p = g.attributes.position as THREE.BufferAttribute; for (let i = 0; i < p.count; i++) { const y = p.getY(i); p.setXYZ(i, p.getX(i) * (1 + 0.15 * Math.sin(i * 1.7)), (y < 0 ? y * 0.3 : y * 0.75) + 0.12, p.getZ(i) * (1 + 0.15 * Math.cos(i * 2.3))); } g.computeVertexNormals(); return g; }
     case "bamboo": { const st: THREE.BufferGeometry[] = []; for (let i = 0; i < 5; i++) { const a = i * 2.4, rr = 0.12 * (i % 3); st.push(new THREE.CylinderGeometry(0.025, 0.03, 1, 6).translate(rr * Math.cos(a), 0.5, rr * Math.sin(a)).rotateZ(0.05 * Math.cos(a)).toNonIndexed()); } st.push(sph(0.22, 0.7, 0.05, 0.9, 0, 10, 7).toNonIndexed(), sph(0.16, 0.7, -0.12, 0.8, 0.06, 10, 7).toNonIndexed()); return mergeGeometries(st); }
   }
@@ -32,7 +33,7 @@ const leafTex = () => ctex("leafInst", 256, 128, (g, r) => {
 });
 const COLS: Record<TreeKind, string[]> = {
   sugi: ["#3f6e3a", "#36643a", "#4a7a40", "#2f5c36"], round: ["#5a9a40", "#4e8c3a", "#6aa648", "#7aa84a"], pine: ["#3e6a3c", "#48743e", "#365e36"],
-  bush: ["#5a9040", "#4e8838", "#6a9c48"], tuft: ["#86a656", "#78984c", "#92ae5c", "#a2ae60"], rock: ["#8e8a80", "#7e7a72", "#9c968a"], bamboo: ["#6a9a48", "#7aa850", "#5e8e42"],
+  bush: ["#5a9040", "#4e8838", "#6a9c48"], blades: ["#6e9a44", "#7aa64c", "#5e8a3c", "#88aa52"], tuft: ["#6e9048", "#62843f", "#7a9a52", "#86a058"], rock: ["#8e8a80", "#7e7a72", "#9c968a"], bamboo: ["#6a9a48", "#7aa850", "#5e8e42"],
 };
 export type Inst = { x: number; y: number; z: number; h: number; yaw?: number; w?: number; c?: number };
 /** build the instanced meshes of one kind; returns the group (call once per kind per set) */

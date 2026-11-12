@@ -6,7 +6,7 @@
 // world ink pass never outlines their quads. Infrastructure (pool, cards, tiers, blinks, blobs) is the template's.
 import * as THREE from "three";
 import { Pen, bodyFront, bodySide, fxShadow, fxContact, Outfit, FrontOpts, SideOpts, fisher, villager, modern, VENDOR, LUNCH, GRANDPA, GRANDMA } from "./toon";
-import { FPS, SHOTS, V3, W, clamp01, cue, smooth, STONE, onStone, houseAt, SURV2, SURV4, YARD, HAUL_U, STOP_U, STONE_U, MARKET, OLDSTONE, GULL_F, SHAKE_F, onPath, at, lerp3, OFF, townFrontAt } from "./story";
+import { FPS, SHOTS, V3, W, clamp01, cue, smooth, STONE, onStone, houseAt, SURV2, SURV4, survivorAt, BOAT_OVER, YARD, HAUL_U, STOP_U, STONE_U, MARKET, OLDSTONE, GULL_F, SHAKE_F, onPath, at, lerp3, OFF, townFrontAt } from "./story";
 import { H } from "./terrain";
 import { SEA_Y_TOWN as SEA_TOWN } from "./town";
 import { LIGHTS, LightName, LOOK } from "./lights";
@@ -311,20 +311,20 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       break;
     }
     case 4: { // the two survivors on the slope, backs to the lens, looking down at the empty shore
-      fig(out, cam, mk(10, fisher(1), "surv1"), SURV2, f, { mode: "stand", back: true, prop: "shoulder", nod: 0.4 });
-      fig(out, cam, mk(11, villager(1), "surv2"), off(SURV2, 0.62, 0.18), f, { mode: "stand", back: true, nod: 0.7 });
+      fig(out, cam, mk(10, fisher(1), "surv1"), survivorAt(SURV2, BOAT_OVER, 3.0, 0.38), f, { mode: "stand", back: true, prop: "shoulder", nod: 0.4 });
+      fig(out, cam, mk(11, villager(1), "surv2"), survivorAt(SURV2, BOAT_OVER, 3.15, -0.32), f, { mode: "stand", back: true, nod: 0.7 });
       break;
     }
     case 6: { // four survivors on the slope above the flooded lanes (seen once the camera eases back on "Four")
-      const P4: [number, number][] = [[-0.9, 0.1], [0.05, -0.25], [0.95, 0.15], [1.9, -0.1]];
+      const P4: [number, number][] = [[3.0, 1.35], [4.1, 0.45], [3.35, -0.55], [4.7, -1.5]];
       const W4: Outfit[] = [fisher(0), villager(2), fisher(4), villager(3)];
-      P4.forEach(([dx, dz], i) => fig(out, cam, mk(20 + i, W4[i], "surv4_" + i), off(SURV4, dx, dz), f, { mode: "stand", back: true, nod: 0.3 + 0.15 * i, tilt: i === 3 ? -4 : 0 }));
+      P4.forEach(([a, k], i) => fig(out, cam, mk(20 + i, W4[i], "surv4_" + i), survivorAt(SURV4, onPath(26, 0, 0), a, k), f, { mode: "stand", back: true, nod: 0.3 + 0.15 * i, tilt: i === 3 ? -4 : 0 }));
       break;
     }
     case 7: { // the carvers: one in the foreground (OTS, his profile, blurred), the other kneels at the stone with hammer and chisel
-      walker(out, cam, mk(30, fisher(2), "carverA"), [YARD[0] - 1.35, YARD[1] + 0.02, YARD[2] + 1.55], f, [1, -0.9], { mode: "stand", expr: "neutral" }, { shadow: false });
+      walker(out, cam, mk(30, fisher(2), "carverA"), [YARD[0] - 1.2, YARD[1] + 0.02, YARD[2] + 1.3], f, [1, -0.9], { mode: "stand", expr: "neutral" }, { shadow: false });
       const tap = (f % 14) / 14, k = tap < 0.25 ? tap / 0.25 : 1 - (tap - 0.25) / 0.75;
-      fig(out, cam, mk(31, fisher(3), "carverB"), [YARD[0] + 0.95, YARD[1] + 0.05, YARD[2] - 0.55], f, { mode: "sit", expr: "stern", prop: ["hammer", q(k, 8)], chisel: true, facing: -1, headTilt: 8 }, { shadow: false });
+      fig(out, cam, mk(31, fisher(3), "carverB"), [YARD[0] + 1.15, YARD[1] + 0.05, YARD[2] + 0.55], f, { mode: "sit", expr: "stern", prop: ["hammer", q(k, 8)], chisel: true, facing: -1, headTilt: 8 }, { shadow: false });
       fig(out, cam, mk(32, villager(0), "watcher"), [YARD[0] + 2.4, YARD[1], YARD[2] - 1.6], f, { mode: "stand", expr: "neutral", facing: -1 });
       if (tap < 0.35) for (let i = 0; i < 5; i++) { const u2 = tap / 0.35, a = hh(i + Math.floor(f / 14) * 7, 3) * Math.PI; out.fx.push({ key: "chip", cw: 32, ch: 32, draw: chipDraw, x: YARD[0] + 0.55 + Math.cos(a) * 0.3 * u2, y: YARD[1] + 0.62 + 0.25 * u2 - 0.5 * u2 * u2, z: YARD[2] - 0.2 + Math.sin(a) * 0.2 * u2, w: 0.025, h: 0.025, rot: i + f }); }
       break;
@@ -403,7 +403,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       break;
     }
     case 21: { // a villager by the stone watches the water stop far below (backs to the lens); two more further up
-      fig(out, cam, mk(110, modern(6), "watcherStone"), G(onStone(1.0, 0, 0.35)), f, { mode: "stand", back: true, nod: f > cue(W.stops) + 20 ? 0.2 : 0.5 });
+      fig(out, cam, mk(110, modern(6), "watcherStone"), G(onStone(1.3, 0, 0.3)), f, { mode: "stand", back: true, nod: f > cue(W.stops) + 20 ? 0.2 : 0.5 });
       fig(out, cam, mk(111, modern(1), "watcher2"), onPath(STONE_U + 6, 1.2, 0), f, { mode: "stand", back: true, nod: 0.4 });
       fig(out, cam, mk(112, modern(8), "watcher3"), onPath(STONE_U + 7, 2.2, 0), f, { mode: "stand", back: true, prop: "shoulder" });
       break;

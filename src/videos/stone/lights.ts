@@ -58,7 +58,7 @@ export const LIGHTS: Record<LightName, LightPreset> = {
   // dawn (the fishermen walk down): a low pink-gold sun from the sea, soft cool shade, peach-pink horizon
   dawn: {
     ...base, az: 30, el: 12,
-    lit: [1.42, 1.24, 1.08], shade: [0.27, 0.25, 0.32], lift: [0.04, 0.04, 0.07], term: 0.2,
+    lit: [1.42, 1.24, 1.08], shade: [0.31, 0.28, 0.31], lift: [0.04, 0.04, 0.06], term: 0.2,
     charTint: [1.0, 0.92, 0.86], charShade: 0.86, charGrad: 0.08, bodyGrad: 0.22, sideTint: [0.9, 0.88, 0.95],
     blob: [0.62, 0.58, 0.66], top: "#7d8fb8", hor: "#f4c8a8", fog: "#e6c2b0", fogNear: 70, fogFar: 1100, sunDisc: "#ffe0c0",
     sunCol: "#ffd2a8", sunI: 3.0, sky: "#e8d0d8", ground: "#8a7a70", hemiI: 0.5, practical: 0.3, windows: 0.45,
@@ -126,7 +126,7 @@ export const LOOK: Record<LightName, WorldLook> = {
   },
   day: {
     sky: { c: ["#c9dcef", "#a9c6e6", "#8cb4de", "#78a2d4", "#6692c8"], e: [0, 3, 8, 16, 40] },
-    sea: { near: "#346878", far: "#8eaabc", foam: "#ffffff", deep: "#204a60" }, cloud: { lit: "#fbf8f1", mid: "#e1e5f3", shade: "#c8ccdc" },
+    sea: { near: "#3e6670", far: "#8ea6b2", foam: "#ffffff", deep: "#28485a" }, cloud: { lit: "#fbf8f1", mid: "#e1e5f3", shade: "#c8ccdc" },
     bounce: [0, 0, 0], sat: 0.98, clouds: 0.6, birds: true, stars: false,
   },
   dawn: {

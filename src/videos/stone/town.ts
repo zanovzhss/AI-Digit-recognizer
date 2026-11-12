@@ -100,7 +100,7 @@ export const buildTown = (root: THREE.Object3D): { parts: TownParts } => {
   for (const h of houses) if (r() < 0.45) lotTrees.push({ x: O + h.x + (r() < 0.5 ? -1 : 1) * (h.w / 2 + 2), y: 0, z: h.z + (r() - 0.5) * 4, h: 5 + 3 * r(), c: Math.floor(r() * 4), key: h.key + 0.01 });
   lotTrees.sort((a, c2) => a.key - c2.key);
   const treeG = plant(root, "round", lotTrees), treeKeys = new Float32Array(lotTrees.map((t) => t.key));
-  const cloudShadow = new THREE.Mesh(new THREE.PlaneGeometry(1400, 900), new THREE.MeshBasicMaterial({ map: ctex("cloudShadow", 512, 512, (g, rr) => { g.fillStyle = "#ffffff"; g.fillRect(0, 0, 512, 512); g.filter = "blur(18px)"; for (let i = 0; i < 9; i++) { g.fillStyle = "rgba(90,96,120,0.55)"; g.beginPath(); g.ellipse(rr() * 512, rr() * 512, 50 + rr() * 70, 30 + rr() * 40, rr() * 3, 0, Math.PI * 2); g.fill(); } g.filter = "none"; }), blending: THREE.MultiplyBlending, transparent: true, depthWrite: false, fog: false }));
+  const cloudShadow = new THREE.Mesh(new THREE.PlaneGeometry(1400, 900), new THREE.MeshBasicMaterial({ map: ctex("cloudShadow", 512, 512, (g, rr) => { g.fillStyle = "#ffffff"; g.fillRect(0, 0, 512, 512); g.filter = "blur(18px)"; for (let i = 0; i < 9; i++) { g.fillStyle = "rgba(90,96,120,0.55)"; g.beginPath(); g.ellipse(rr() * 512, rr() * 512, 50 + rr() * 70, 30 + rr() * 40, rr() * 3, 0, Math.PI * 2); g.fill(); } g.filter = "none"; }), blending: THREE.MultiplyBlending, premultipliedAlpha: true, transparent: true, depthWrite: false, fog: false }));
   cloudShadow.rotation.x = -Math.PI / 2; cloudShadow.position.set(O, 9.5, -200); cloudShadow.layers.set(NOINK); cloudShadow.renderOrder = 3; root.add(cloudShadow);
   const n = houses.length, keys = new Float32Array(n), mats: THREE.Matrix4[] = [], roofMats: THREE.Matrix4[] = [];
   const bodyM = twoTone(new THREE.MeshLambertMaterial({ map: rep(wallTex(), 1, 1) })), roofM = twoTone(new THREE.MeshLambertMaterial({ map: rep(kawaraTex("#9aa0aa"), 3, 3), side: THREE.DoubleSide }));
@@ -180,13 +180,13 @@ export const buildTown = (root: THREE.Object3D): { parts: TownParts } => {
   sb.build(root, true);
   bicycle(root, ox + 0.78, 0, oz + 0.3, -1.25, 0.2);
   const grass: Inst[] = [];
-  const lens = [[ox - 1.0, oz + 4.4], [ox - 0.9, oz + 3.7], [ox - 0.3, oz + 1.55]];
+  const lens = [[ox - 1.0, oz + 4.4, 1.3], [ox - 0.9, oz + 3.7, 1.3], [ox - 0.3, oz + 1.55, 0.45]];
   for (let k = 0; k < 700; k++) {
     const a = r() * 6.283, d = 0.35 + 3.4 * Math.sqrt(r()), x = ox + Math.cos(a) * d * 1.3, z = oz + Math.sin(a) * d * 0.8 + 0.4;
-    if (lens.some(([lx, lz]) => Math.hypot(x - lx, z - lz) < 1.3)) continue;
-    grass.push({ x, y: 0, z, h: 0.25 + 0.3 * r() * (d < 1.2 ? 1.2 : 1), w: 0.45 + 0.3 * r(), c: Math.floor(r() * 4) });
+    if (lens.some(([lx, lz, lr]) => Math.hypot(x - lx, z - lz) < lr)) continue;
+    grass.push({ x, y: 0, z, h: 0.3 + 0.35 * r() * (d < 1.2 ? 1.3 : 1), w: 0.9 + 0.5 * r(), c: Math.floor(r() * 4) });
   }
-  plant(root, "tuft", grass, { shadow: false });
+  plant(root, "blades", grass, { shadow: false });
   // ---- street dressing: wires along the main road, a few cars, bushes ----
   const bushes: Inst[] = [];
   for (let k = 0; k < 260; k++) bushes.push({ x: O - 700 + r() * 1400, y: 0, z: -20 - r() * 440, h: 1.2 + r(), c: Math.floor(r() * 3) });

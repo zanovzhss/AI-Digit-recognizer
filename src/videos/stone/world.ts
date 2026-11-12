@@ -254,7 +254,7 @@ export class World {
       a.mesh.position.set(p.x, p.y, p.z);
       a.mesh.rotation.set(p.pitch ?? 0, p.yaw ?? Math.atan2(cam.position.x - p.x, cam.position.z - p.z), p.roll ?? 0);
       a.mesh.scale.set(p.mirror ? -sc2 : sc2, sc2, sc2);
-      a.mesh.castShadow = L.actorShadow;
+      a.mesh.castShadow = L.actorShadow && id !== 1; // shot 1: no card shadow across the carved face
       used.push(a);
     }
     for (let i = ai; i < this.actors.length; i++) this.actors[i].mesh.visible = false;

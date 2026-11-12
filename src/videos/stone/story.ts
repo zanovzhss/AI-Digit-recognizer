@@ -52,7 +52,7 @@ export const onPath = (u: number, dx = 0, lift = 0): V3 => gnd(pathX(-u) + dx, u
 export const SU = 0.00216; // metres per design unit of the character canvas (600 x 1000, soles at 975)
 /** the eleven houses, all up the hill above the stone: x offset from the path, u inland, yaw (0 = facing the sea, +z) */
 export const HOUSES: [number, number, number][] = [
-  [-11, 214, 0.2], [-25, 227, 0.3], [-13, 243, 0.2], [-27, 258, 0.3], [-12, 274, 0.15], [-24, 291, 0.25],
+  [-11, 218, 0.2], [-25, 230, 0.3], [-13, 243, 0.2], [-27, 258, 0.3], [-12, 274, 0.15], [-24, 291, 0.25],
   [12, 219, -0.2], [26, 233, -0.3], [14, 250, -0.2], [27, 267, -0.3], [13, 286, -0.15],
 ];
 /** the old village on the shore terrace (1896, rebuilt 1933): x, u, yaw */
@@ -87,6 +87,12 @@ export const YARD = gnd(pathX(-40) + 22, 40);
 export const HAUL_U = 150;
 export const SURV2 = gnd(pathX(-78) - 26, 78);
 export const SURV4 = gnd(pathX(-98) - 34, 98);
+/** a survivor's spot: k across (m) on the line from the camera spot `base` toward `toward`, `ahead` metres out */
+export const survivorAt = (base: V3, toward: V3, ahead: number, k: number): V3 => {
+  const dx = toward[0] - base[0], dz = toward[2] - base[2], l = Math.hypot(dx, dz), ux = dx / l, uz = dz / l;
+  const x = base[0] + ux * ahead - uz * k, z = base[2] + uz * ahead + ux * k;
+  return [x, H(x, z), z];
+};
 export const BOARD_1896 = onPath(58, 3.6);   // the village notice board by the path above the village (faces uphill, -z)
 export const PLAQUE_1933 = 3;                // the plaque hangs on village house 3, right of its door
 export const REBUILT_D = 5.2;                // depth of the 1933 houses
@@ -110,7 +116,7 @@ const B = [0, 194, 319, 350, 398, 458, 533, 583, 635, 756, 805, 854, 938, 992, 1
 const PL: [PlaceId, Light, Era, number?, number?][] = [
   ["hill", "golden", "now"],                // 1 the stone, the reveal (world-fixed low sun from inland, see SUNW)
   ["hill", "storm", "1896"],                // 2 1896, the swell
-  ["hill", "storm", "1896"],                // 3 the overturned boat
+  ["hill", "storm", "1896", 150, 22],       // 3 the overturned boat (the dim key from behind the lens)
   ["hill", "storm", "1896"],                // 4 the two survivors
   ["hill", "storm", "1933"],                // 5 the 1933 plaque
   ["hill", "storm", "1933"],                // 6 water between the houses, four survivors
@@ -133,7 +139,7 @@ const PL: [PlaceId, Light, Era, number?, number?][] = [
 ];
 /** world-fixed sun directions (toward the sun) where a camera-relative key cannot light both framings of a shot:
  *  shot 1 = a low golden sun from inland, raking across the carved face and down the valley toward the sea */
-const SUNW: Record<number, V3> = { 1: [-0.35, 0.36, -0.86] };
+const SUNW: Record<number, V3> = { 1: [0.22, 0.42, -0.88] };
 export const SHOTS: ShotDef[] = PL.map(([place, light, era, sunAz, sunEl], i) => ({ id: i + 1, a: B[i], b: B[i + 1], light, place, era, sunAz, sunEl, sunW: SUNW[i + 1] }));
 /** crossfades (frames, centred on the shot's first frame) */
 export const XFADE: Record<number, number> = { 2: 12, 3: 12, 5: 12, 7: 10, 8: 8, 9: 14, 12: 12, 14: 12, 15: 8, 16: 10, 18: 12, 19: 10, 22: 12 };
@@ -159,7 +165,7 @@ export const floodAt = (id: number, f: number): number | null => {
   return null;
 };
 /** the 1896 swell: height and distance from the shore (m) */
-export const swellAt = (f: number) => ({ h: 3 + 27 * smooth((f - 224) / 56), z: 560 - 400 * smooth((f - 236) / 84) });
+export const swellAt = (f: number) => ({ h: 4 + 40 * smooth((f - 224) / 56), z: 430 - 290 * smooth((f - 236) / 84) });
 /** the 2011 wave front in the town (local z, the sea is +z): it sweeps inland over the rooftops */
 export const townFrontAt = (f: number) => 160 - 440 * clamp01((f - 1318) / 100) ** 0.9;
 /** the map rings (shot 18): radius of the quake ripples and the wave line heading in */
@@ -212,13 +218,13 @@ const KEYS: Record<number, Key[]> = {
   ],
   // 3 LOW beside the empty overturned boat at the water's edge
   3: [
-    { f: SA(3), cam: cam(add3(BOAT_OVER, [-2.2, 0.75, -4.6]), add3(BOAT_OVER, [1.0, 0.35, 0.8]), 50) },
-    { f: SA(3), dur: 14, cam: cam(add3(BOAT_OVER, [-1.9, 0.7, -4.1]), add3(BOAT_OVER, [1.0, 0.35, 0.8]), 50) },
+    { f: SA(3), cam: cam(add3(BOAT_OVER, [2.9, 2.1, -4.9]), add3(BOAT_OVER, [-0.2, 0.15, 0.7]), 46) },
+    { f: SA(3), dur: 14, cam: cam(add3(BOAT_OVER, [2.6, 1.95, -4.5]), add3(BOAT_OVER, [-0.2, 0.15, 0.7]), 46) },
   ],
   // 4 OTS behind the two survivors on the slope, looking down at the empty shore
   4: [
     { f: SA(4), cam: "prev" },
-    { f: SA(4), dur: 22, cam: cam(add3(SURV2, [0.35, 2.3, -3.1]), add3(BOAT_OVER, [0, 5, 0]), 46) },
+    { f: SA(4), dur: 22, cam: cam(add3(SURV2, [0, 2.3, 0]), add3(BOAT_OVER, [0, 6, 0]), 46) },
   ],
   // 5 the 1933 plaque on a rebuilt house, pull back to the rebuilt shoreline
   5: [
@@ -229,12 +235,12 @@ const KEYS: Record<number, Key[]> = {
   6: [
     { f: SA(6), cam: "prev" },
     { f: SA(6), dur: 24, cam: cam(add3(SURV4, [-1, 9, -9]), PP(28, 0, 0), 48) },
-    { f: cue(W.four), dur: 22, cam: cam(add3(SURV4, [0.4, 2.35, -4.4]), PP(26, 0, 2), 50) },
+    { f: cue(W.four), dur: 22, cam: cam(add3(SURV4, [0, 2.4, 0]), PP(26, 0, 2), 50) },
   ],
   // 7 OTS from a carver onto the other carver chiselling the stone (lantern night)
   7: [
-    { f: SA(7), cam: cam(add3(YARD, [-2.6, 1.6, 3.4]), add3(YARD, [0.6, 0.7, -0.4]), 48) },
-    { f: SA(7), dur: 18, cam: cam(add3(YARD, [-2.4, 1.55, 3.1]), add3(YARD, [0.6, 0.72, -0.4]), 48) },
+    { f: SA(7), cam: cam(add3(YARD, [-1.95, 1.85, 2.3]), add3(YARD, [0.6, 0.55, -0.1]), 50) },
+    { f: SA(7), dur: 18, cam: cam(add3(YARD, [-1.8, 1.78, 2.05]), add3(YARD, [0.6, 0.55, -0.1]), 50) },
   ],
   // 8 LOW from the side of the path: the haulers lean up the slope; on "hillside" crane up toward the stone's spot
   8: [
@@ -250,7 +256,7 @@ const KEYS: Record<number, Key[]> = {
   // 10 crane down-and-forward to the harbour: the quay, the moored boats, the breakwater
   10: [
     { f: SA(10), cam: "prev" },
-    { f: SA(10), dur: 26, cam: cam(T(14, 21, -28), T(4, 0, 22), 50) },
+    { f: SA(10), dur: 26, cam: cam(T(-96, 13, -14), T(10, -1, 12), 50) },
   ],
   // 11 WCU at the fish stall from the customers' side, the harbour behind the vendor; the gull on "view"
   11: [
@@ -269,13 +275,13 @@ const KEYS: Record<number, Key[]> = {
   ],
   // 14 dawn: low behind the Aneyoshi stone, gliding up past it to the eleven houses up the hill
   14: [
-    { f: SA(14), cam: cam(onStone(0.75, 0.75, -1.6), PP(STONE_U + 40, 0, 7), 54) },
-    { f: SA(14) + 4, dur: 40, cam: cam(onStone(-2.0, 2.1, -5.6), PP(STONE_U + 46, 0, 5), 56) },
+    { f: SA(14), cam: cam(onStone(0.9, 0.75, -1.6), PP(STONE_U + 40, -3, 7), 54) },
+    { f: SA(14) + 4, dur: 40, cam: cam(onStone(0.6, 2.0, -5.6), PP(STONE_U + 46, -3, -2), 56) },
   ],
   // 15 LOW tracking down the steep path behind two fishermen, the stone (its carved face) passing in the foreground
   15: [
-    { f: SA(15), cam: cam(PP(STONE_U + 5, 0.9, 1.2), PP(STONE_U - 14, 0.4, 0.9), 56) },
-    { f: SA(15), dur: 46, cam: cam(PP(STONE_U - 1.5, 0.7, 1.0), PP(STONE_U - 20, 0.2, 0.7), 56), ease: glide },
+    { f: SA(15), cam: cam(PP(STONE_U + 11, -1.4, 1.1), PP(STONE_U - 14, 0.2, 0.8), 56) },
+    { f: SA(15), dur: 46, cam: cam(PP(STONE_U + 3, -1.4, 1.0), PP(STONE_U - 20, 0.2, 0.7), 56), ease: glide },
   ],
   // 16 the 2011 calendar, pull back into the room
   16: [
@@ -285,7 +291,7 @@ const KEYS: Record<number, Key[]> = {
   // 17 OTS past the old man's shoulder at the low table: the cup, his wife, the window with the power lines
   17: [
     { f: SA(17), cam: "prev" },
-    { f: SA(17), dur: 16, cam: cam(RM(-1.05, 1.62, 2.25), RM(0.3, 0.55, -0.6), 48) },
+    { f: SA(17), dur: 16, cam: cam(RM(-0.12, 1.55, 2.25), RM(0.45, 0.5, -0.65), 48) },
   ],
   // 18 TOP over the valley and bay as a map (the sea at the top of the frame)
   18: [
@@ -311,7 +317,7 @@ const KEYS: Record<number, Key[]> = {
   // 22 low behind the stone at sunset, crane up to all eleven houses up the hill; hold to the last frame
   22: [
     { f: SA(22), cam: cam(onStone(0.4, 0.75, -2.2), PP(STONE_U + 40, 0, 9), 52) },
-    { f: SA(22) + 4, dur: 44, cam: cam(PP(STONE_U - 38, 3, 24), PP(STONE_U + 50, 0, 4), 56) },
+    { f: SA(22) + 4, dur: 44, cam: cam(PP(STONE_U - 14, -2.6, 7.5), PP(STONE_U + 40, -1, -5), 60) },
   ],
 };
 
