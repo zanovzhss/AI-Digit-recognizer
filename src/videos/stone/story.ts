@@ -240,10 +240,10 @@ const KEYS: Record<number, Key[]> = {
   // 1 macro of the carved main column, a slow tilt down it; on "do" pull back and crane up over the eleven houses to the
   //   valley and the sea far below; hold + creep; on "You see" push back into the carved years (Meiji 29 = 1896)
   1: [
-    { f: 0, cam: cam(onStone(0.24, 0.64, 2.75), onStone(0, 1.12, 0), 50) },
-    { f: 0, dur: cue(W.do), cam: cam(onStone(0.1, 0.58, 1.8), onStone(0, 1.08, 0), 50), creep: 0, ease: (u: number) => u },
+    { f: 0, cam: cam(onStone(0.3, 0.66, 3.5), onStone(0, 1.12, 0), 50) },
+    { f: 0, dur: cue(W.do), cam: cam(onStone(0.08, 0.58, 1.75), onStone(0, 1.08, 0), 50), creep: 0, ease: (u: number) => u },
     { f: cue(W.do), dur: 30, cam: cam(onStone(0.1, 3.4, 4.2), onStone(0, 0.2, -9), 54), ease: glide },
-    { f: cue(W.do) + 26, dur: 40, cam: cam(PP(252, 0, 40), PP(152, 0, 0), 60), ease: glide },
+    { f: cue(W.do) + 18, dur: 48, cam: cam(PP(252, 0, 40), PP(152, 0, 0), 60), ease: glide },
   ],
   // 2 the 1896 notice board above the village, then back and up over the thatched village to the stormy sea
   2: [
@@ -379,7 +379,17 @@ const rigCam = (id: number, f: number): Cam => {
   return creepIn(c, creep * Math.max(0, f - tEnd));
 };
 /** the shot's own camera move: what the sight lines and the key light are built for */
-export const camRig = (id: number, f: number): Cam => rigCam(id, f);
+/** pacing: a slow sideways drift through the holds of these shots (fraction of the lens-to-look distance per frame) */
+const DRIFT: Record<number, [number, number]> = { // [fraction of the look distance per frame, cap in metres per frame]
+  3: [0.0012, 0.015], 4: [0.0016, 0.012], 6: [0.0003, 0.02], 7: [0.0011, 0.012], 9: [0.0004, 0.8], 10: [0.0007, 0.03], 12: [0.0009, 0.012],
+  16: [0.0012, 0.006], 18: [0.0016, 0.8], 21: [-0.0013, 0.015] };
+const drift = (c: Cam, id: number, f: number): Cam => {
+  const k = DRIFT[id]; if (!k) return c;
+  const s = SHOTS[id - 1], dx = c.look[0] - c.pos[0], dz = c.look[2] - c.pos[2], d = Math.hypot(dx, dz, c.look[1] - c.pos[1]), hl = Math.hypot(dx, dz) || 1;
+  const m = Math.sign(k[0]) * Math.min(Math.abs(k[0]) * d, k[1]) * (f - s.a); // metres slid since the shot began (sign = side)
+  return { ...c, pos: [c.pos[0] - (dz / hl) * m, c.pos[1], c.pos[2] + (dx / hl) * m], look: [c.look[0] - (dz / hl) * m * 0.6, c.look[1], c.look[2] + (dx / hl) * m * 0.6] };
+};
+export const camRig = (id: number, f: number): Cam => drift(rigCam(id, f), id, f);
 
 // ---------------- the whip (one in the video): a fast yaw out of shot 19 into shot 20 ----------------
 const WHIPS: Record<number, { pre: number; post: number; dir: 1 | -1; deg: number }> = { 19: { pre: 4, post: 5, dir: 1, deg: 32 } };
