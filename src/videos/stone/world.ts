@@ -147,9 +147,9 @@ export class World {
       this.hill.w1933.update({ on: wv?.key === "w1933", toe: wv?.toe ?? 0, H: wv?.H ?? 1, curl: wv?.curl ?? 0, backLevel: wv?.backLevel ?? 0, t });
       w.uFrontOn.value = id === 6 && f >= 460 ? 1 : 0; w.uFrontZ.value = wv?.key === "w1933" ? wv.toe : -1e5;
       w.uChop.value = s.light === "storm" ? 2.6 : s.light === "dark" ? 2.0 : 1.0;
-      w.uFlow.value = id === 6 ? 1.0 : id === 20 ? 1.3 : id === 21 ? 1.3 * (1 - clamp01((f - 1462) / 40)) + 0.15 : 0;
+      w.uFlow.value = id === 6 ? 1.0 : id === 20 ? 1.3 : id === 21 ? 1.6 * (1 - clamp01((f - 1470) / 44)) + 0.12 : 0;
       w.uFlowDir.value.set(0, -1);
-      w.uFoamW.value = id === 20 || id === 21 || id === 6 ? 2.2 : id === 3 || id === 4 ? 0.12 : 0.7;
+      w.uFoamW.value = id === 21 ? 3.6 : id === 20 || id === 6 ? 2.2 : id === 3 || id === 4 ? 0.12 : 0.7;
       const rg = id === 18 ? ringAt(f) : null;
       w.uRingR.value = rg ? rg.r : 0; w.uRingC.value.set(40, 430); w.uMapFront.value = rg && f >= cue(W.sends) ? rg.front : 1e5;
       this.seaColours(w, look);

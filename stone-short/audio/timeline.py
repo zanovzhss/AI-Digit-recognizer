@@ -43,7 +43,7 @@ RINGS = cue(W["earthquake"])
 WAVE_LINE = cue(W["sends"])
 TOWN_WAVE = (1318, 1402)
 CLIMB = (1396, 1469)
-STOP = (1462, 1498)
+STOP = (1462, 1508)
 END_CHORD = cue(W["still"])
 
 

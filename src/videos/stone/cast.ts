@@ -380,7 +380,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
     case 10: { // fishermen on the quay: one coils a rope, one waves to a boat
       // on the quay (0.6 m up): one coils a mooring rope, one waves to a boat coming in, one carries a net along the quay
       fig(out, cam, mk(50, modern(3), "quay1"), at("town", -19, 0.6, -2.2), f, { mode: "stand", expr: "neutral", prop: "hold", tilt: 4 * Math.sin(f * 0.1) });
-      fig(out, cam, mk(51, modern(2), "quay2"), at("town", -8, 0.6, -1.9), f, { mode: "stand", expr: "grin", wave: q(0.5 + 0.5 * Math.sin(f * 0.3), 4) });
+      fig(out, cam, mk(51, modern(2), "quay2"), at("town", -14, 0.6, -1.5), f, { mode: "stand", expr: "grin", wave: q(0.5 + 0.5 * Math.sin(f * 0.3), 4) });
       walker(out, cam, mk(52, { ...modern(5), jacket: "#d8a030" }, "quay3"), at("town", -24 + 1.4 * (f - 756) / 30, 0.6, -4.6), f, [1, 0], { mode: "march", phase: q((f / 30 * 0.95) % 1, 16), stride: 0.95, carry: "net", expr: "smile" });
       break;
     }

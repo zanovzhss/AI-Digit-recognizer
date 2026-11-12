@@ -11,7 +11,7 @@ Voice = `voice/voice.wav` unchanged (resampled to 48 kHz only: no gain, EQ, comp
 
 ## Master loudness (own BS.1770-4 meter)
 - Integrated **-19.1 LUFS**, true peak **-2.2 dBTP**, LRA 7.4 LU, max momentary -9.7 LUFS, max short-term -14.6 LUFS
-- Stems: voice -19.1 LUFS, music -99.0 LUFS, sfx -37.0 LUFS (voice gain +0.00 dB, same gain on every stem)
+- Stems: voice -19.1 LUFS, music -99.0 LUFS, sfx -36.9 LUFS (voice gain +0.00 dB, same gain on every stem)
 - Master limiter (4x oversampled look-ahead, ceiling -0.5 dBTP): max gain reduction -0.00 dB, active (>0.1 dB) on 0.00 % of samples, >0.5 dB on 0.00 %
 
 ffmpeg ebur128 cross-check:
@@ -42,8 +42,8 @@ bed = music + sfx. margin = voice - bed (integrated over the section). speech me
 | F forgotten stones | 28.40-33.10 | -19.1 | - | -47.3 | -47.3 | 28.2 | 28.0 | 25.1 |
 | G eleven families | 33.10-37.80 | -20.6 | - | -47.0 | -47.0 | 26.4 | 26.2 | 22.3 |
 | H 2011 | 37.80-46.40 | -17.9 | - | -33.1 | -33.1 | 15.2 | 23.1 | 12.9 |
-| I the valley | 46.40-49.10 | -14.1 | - | -32.5 | -32.5 | 18.4 | 17.4 | 10.7 |
-| J below the stone | 49.10-51.90 | -22.3 | - | -39.6 | -39.6 | 17.3 | 22.0 | 14.0 |
+| I the valley | 46.40-49.10 | -14.1 | - | -32.4 | -32.4 | 18.3 | 17.1 | 10.7 |
+| J below the stone | 49.10-51.90 | -22.3 | - | -37.5 | -37.5 | 15.2 | 21.2 | 10.1 |
 | K still standing | 51.90-54.19 | -21.6 | - | -48.4 | -48.4 | 26.8 | 29.2 | 22.4 |
 
 ## Music map (original score, sections cut to the story beats)

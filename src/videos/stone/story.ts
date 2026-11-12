@@ -166,8 +166,9 @@ export const layersAt = (f: number): { id: number; alpha: number }[] => {
 export const floodAt = (id: number, f: number): number | null => {
   if (id === 3 || id === 4) return 0.25 + 0.12 * Math.sin(f * 0.11);
   if (id === 6) return -0.5 + 4.2 * smooth((f - 452) / 46);
-  if (id === 20) return 9 + 13.5 * ((f - 1396) / 76);
-  if (id === 21) { const u = clamp01((f - 1462) / 36); return 21.6 + (STOP_LEVEL - 21.6) * (1 - (1 - u) ** 3) + 0.06 * Math.sin(f * 0.21) * clamp01((f - 1500) / 20); }
+  if (id === 20) return 9 + 7 * ((f - 1396) / 73);
+  // shot 21: the water races up the valley (the edge climbs ~55 m up the path), slows, foams and stops at the 300 ft post
+  if (id === 21) { const u = clamp01((f - 1462) / 46); return 16 + (STOP_LEVEL - 16) * (1 - (1 - u) ** 2.6) + 0.06 * Math.sin(f * 0.21) * clamp01((f - 1508) / 20); }
   return null;
 };
 /** the 1896 swell: height and distance from the shore (m) */

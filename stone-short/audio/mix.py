@@ -193,7 +193,7 @@ def main():
         out, C = sfx.render(v_ref)
         C_holder["C"] = C
         return out
-    s_st = cached("sfx", _s)
+    s_st = cached("sfx_rebuild3", _s)   # new key: the stop re-timed (no cache file deleted)
     if "C" not in C_holder:                      # cache hit: rebuild the cue list (levels are deterministic)
         C_holder["C"] = sfx.cues()
         for c in C_holder["C"]:
