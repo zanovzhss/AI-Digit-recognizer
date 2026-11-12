@@ -1,3 +1,34 @@
+# StoneShort: rebuild (2026-11-12, second brief)
+
+The film was rebuilt to fix every known bug; the list, with before / after stills from the final render, is
+`src/videos/stone/BUGS.md` (sheets in `out/stone/bugs/`). In short:
+- **One stone** (`stonemodel.ts`): a rough upright natural slab ~1.2 m, irregular edges, moss at the base, carved face. It
+  is used everywhere: the hill, the yard, the haul, the diorama marker and the forgotten stone in town.
+- **Collision rule** (0.6 m from the stone and props) and **near-clip rule** (nothing within 0.5 m of the lens), both
+  enforced in code.
+- **Toon wave walls** (`wave.ts`) for 1896, 1933 and 2011. The 2011 wall fills 40-65 % of the frame height.
+- **A real run cycle**; walkers and runners travel through the set.
+- **Rebuilt shots:**
+  - the opening: the whole stone from a low angle, then a crane up;
+  - a clean 1896 crossfade and the 1896 wave;
+  - a wrecked shore;
+  - 1933 from a new angle, with the surge between tiled-roof houses;
+  - the haul by lantern light;
+  - the 3D town time-lapse;
+  - the working quay and the clean market;
+  - the lunch bench beside the stone;
+  - the 3D diorama with glowing bands and big labels;
+  - the dense crowd running uphill;
+  - the water racing up and stopping at the measuring post;
+  - the ending.
+- **Sound:** no music, SFX -10 dB, beds -4 dB, voice unchanged.
+
+The final (`out/stone/final.mp4`) is 1440x2560, 30 fps, rendered on the RTX 3070 Ti through ANGLE / D3D11. Its audio is
+exactly the voice length (54.187 s) and carries voice and SFX only, with no captions. The sections below describe the
+first version and are kept for the record.
+
+---
+
 # StoneShort: "The Stone That Saved a Village": build report
 
 Final video: `out/stone/final.mp4`, 1440x2560, 30 fps, H.264 (CRF 16) + AAC 320k 48 kHz. Voice and sound are mixed in. No captions,
