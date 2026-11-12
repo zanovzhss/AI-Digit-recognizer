@@ -54,7 +54,7 @@ export const buildRoom = (root: THREE.Object3D): { parts: RoomParts; lights: Pra
   lbox(b, wood, m0, O + X0 + 0.02, O + X0 + 0.32, 1.4, 1.44, -1.6, -0.2); lbox(b, wood, m0, O + X0 + 0.02, O + X0 + 0.32, 1.78, 1.82, -1.6, -0.2);
   const bookC = ["#7a2a2a", "#2a4a7a", "#3a6a3a", "#c9a46a", "#5a4a6a"];
   for (let k = 0; k < 10; k++) lbox(b, col("rBook" + (k % 5), bookC[k % 5]), m0, O + X0 + 0.04, O + X0 + 0.28, 1.44, 1.62 + 0.04 * (k % 3), -1.58 + k * 0.13, -1.48 + k * 0.13);
-  b.add(new THREE.SphereGeometry(0.07, 12, 10), col("daruma", "#c8352a"), tr(O + X0 + 0.16, 1.88, -0.5));
+  b.add(new THREE.SphereGeometry(0.07, 12, 10), col("redOrnament", "#c8352a"), tr(O + X0 + 0.16, 1.88, -0.5));
   b.add(new THREE.CylinderGeometry(0.17, 0.17, 0.04, 24).rotateX(Math.PI / 2), col("clockRimR", "#5a3a26"), tr(O + 0.9, 2.2, Z0 + 0.03));
   const clock = new THREE.Mesh(new THREE.CircleGeometry(0.145, 24), twoTone(new THREE.MeshLambertMaterial({ color: "#f4efe4" }))); clock.position.set(O + 0.9, 2.2, Z0 + 0.06); root.add(clock);
   for (const [len, a] of [[0.09, 0.9], [0.12, 3.6]] as const) { const h = new THREE.Mesh(new THREE.BoxGeometry(0.012, len, 0.004).translate(0, len / 2, 0), col("clockHand", "#2a2a2a")); h.position.set(O + 0.9, 2.2, Z0 + 0.07); h.rotation.z = a; root.add(h); }
