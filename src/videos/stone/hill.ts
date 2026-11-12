@@ -363,7 +363,7 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
   void ringMarkTex;
   { const big = makeStone(); big.scale.setScalar(22); big.position.set(STONE.x, STONE.y - 0.3, STONE.z); big.lookAt(mapEye.x, STONE.y, mapEye.z); groups.map.add(big);
     const halo = new THREE.Mesh(new THREE.CircleGeometry(17, 40), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 1.35, 0.9), transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending }));
-    void halo;
+    void halo; }
 
   // ---- water: the sea and the valley flood share one material ----
   const water = waterUniforms();
