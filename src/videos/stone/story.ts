@@ -257,7 +257,7 @@ const KEYS: Record<number, Key[]> = {
   // 4 OTS behind the two survivors on the slope, looking down at the empty shore
   4: [
     { f: SA(4), cam: cam(add3(SURV2, [-0.1, 2.4, -0.4]), add3(villageAt(7), [2, -1, 4]), 46) },
-    { f: SA(4), dur: 24, cam: cam(add3(SURV2, [0, 2.35, 0]), add3(villageAt(7), [2, -1, 4]), 46) },
+    { f: SA(4), dur: 24, cam: cam(add3(SURV2, [0, 2.35, 0]), add3(villageAt(7), [2, -1, 4]), 46), creep: 0.00025 }, // far look point, near survivors: barely creep
   ],
   // 5 the 1933 plaque on a rebuilt house, pull back to the rebuilt shoreline
   5: [
@@ -269,7 +269,7 @@ const KEYS: Record<number, Key[]> = {
   6: [
     { f: SA(6), cam: cam(add3(SURV6, [0.8, 4.2, -1.2]), PP(8, 6, 0), 50) },
     { f: SA(6), dur: 24, cam: cam(add3(SURV6, [0.6, 4.0, -1.0]), PP(8, 6, 0), 50) },
-    { f: cue(W.four), dur: 22, cam: cam(add3(SURV6, [0.4, 2.7, -1.0]), PP(14, 6, -8), 50) },
+    { f: cue(W.four), dur: 22, cam: cam(add3(SURV6, [0.4, 2.7, -1.0]), PP(14, 6, -8), 50), creep: 0.00025 },
   ],
   // 7 OTS from a carver onto the other carver chiselling the stone (lantern night)
   7: [
