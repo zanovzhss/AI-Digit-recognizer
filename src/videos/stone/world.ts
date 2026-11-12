@@ -9,7 +9,8 @@ import { V, Kit } from "./build";
 import { LIGHTS, LOOK, LightPreset } from "./lights";
 import { TONE, CHAR, untone } from "./shade";
 import { NOINK, TWIN_LAYER } from "./ink";
-import { Pool, Actor, Fx, stage } from "./cast";
+import { Pool, Actor, Fx, stage, footprints } from "./cast";
+import { setFootprints } from "./lens";
 import { waveAt, W2011_H } from "./story";
 import { FPS, SHOTS, camAt, camRig, ShotDef, OFF, floodAt, swellAt, townFrontAt, ringAt, growAt, SHAKE_F, smooth, clamp01, onPath, HAUL_U, cue, W } from "./story";
 import { pathX, H } from "./terrain";
@@ -34,7 +35,7 @@ export class World {
   private sunCache = new Map<number, THREE.Vector3>();
   private hill: HillParts; private town: TownParts; private room: RoomParts;
   private practicals: { spec: Practical; light: THREE.PointLight }[] = [];
-  private clouds: { mesh: THREE.Mesh; place: string; k: number }[] = [];
+  private clouds: { mesh: THREE.Mesh; place: string; k: number; cx: number; cz: number; a: number; d: number; y: number }[] = [];
   private cloudMat: THREE.MeshBasicMaterial[] = [];
   private stars: THREE.Points; private disc: THREE.Mesh; private rays: THREE.Mesh;
   private frustum = new THREE.Frustum();
@@ -84,6 +85,7 @@ export class World {
     this.stars = new THREE.Points(sg, new THREE.PointsMaterial({ color: new THREE.Color(1.3, 1.3, 1.4), size: 2.2, sizeAttenuation: false, fog: false, depthWrite: false }));
     this.stars.layers.set(NOINK); this.stars.frustumCulled = false; R.add(this.stars);
     // ---- places ----
+    setFootprints(footprints()); // plants are kept off every character's feet
     const hill = buildHill(R), town = buildTown(R), room = buildRoom(R);
     this.hill = hill.parts; this.town = town.parts; this.room = room.parts;
     for (const spec of [...hill.lights, ...room.lights]) {
@@ -98,7 +100,7 @@ export class World {
         const a = (i / n) * Math.PI * 2 + 0.3 * Math.sin(i * 7.1), d = 700 + 260 * ((i * 0.37) % 1), y = 90 + 170 * ((i * 0.53) % 1), s = 260 + 200 * ((i * 0.71) % 1);
         const m = new THREE.Mesh(new THREE.PlaneGeometry(1, 0.5), this.cloudMat[i % 4]);
         m.position.set(cx + Math.cos(a) * d, y, cz + Math.sin(a) * d); m.scale.set(s, s, 1); m.lookAt(cx, y, cz);
-        m.layers.set(NOINK); m.renderOrder = -0.8; R.add(m); this.clouds.push({ mesh: m, place, k: (i * 0.618) % 1 });
+        m.layers.set(NOINK); m.renderOrder = -0.8; R.add(m); this.clouds.push({ mesh: m, place, k: (i * 0.618) % 1, cx, cz, a, d, y });
       }
     };
     ring("hill", 0, -60, 30); ring("town", OFF.town, -150, 30); ring("room", OFF.room, -40, 16);
@@ -218,7 +220,7 @@ export class World {
 
   update(id: number, f: number, cam: THREE.PerspectiveCamera, scene: THREE.Scene) {
     const t = f / FPS, s = SHOTS[id - 1], L = LIGHTS[s.light], K = LOOK[s.light];
-    WIND.uWindT.value = t; WIND.uWindK.value = s.light === "storm" || s.light === "dark" ? 2.2 : s.light === "lantern" ? 0.6 : 1.0;
+    WIND.uWindT.value = t; WIND.uWindK.value = id === 1 ? 3.2 : s.light === "storm" || s.light === "dark" ? 2.4 : s.light === "lantern" ? 0.9 : 1.6;
     // ---- camera ----
     const c = camAt(id, f);
     cam.position.set(...c.pos); cam.up.set(0, 1, 0); cam.lookAt(...c.look); cam.rotateZ(c.roll);
@@ -251,7 +253,12 @@ export class World {
     scene.fog = this.fog; scene.background = null;
     const cm = new THREE.Color(K.cloud.mid), cl = new THREE.Color(K.cloud.lit);
     for (const m of this.cloudMat) m.color.copy(cl).lerp(cm, 0.5).multiplyScalar(1.05);
-    for (const cd of this.clouds) cd.mesh.visible = cd.place === s.place && cd.k < K.clouds;
+    for (const cd of this.clouds) {
+      cd.mesh.visible = cd.place === s.place && cd.k < K.clouds;
+      if (!cd.mesh.visible) continue;
+      const a = cd.a + t * 0.011; // the clouds drift (about 9 m/s at their distance)
+      cd.mesh.position.set(cd.cx + Math.cos(a) * cd.d, cd.y, cd.cz + Math.sin(a) * cd.d); cd.mesh.lookAt(cd.cx, cd.y, cd.cz);
+    }
     this.stars.visible = K.stars; this.stars.position.copy(cam.position);
     const discOn = L.sunDisc !== "#000000" && sunDir.y > -0.02;
     this.disc.visible = discOn;

@@ -37,12 +37,12 @@ const stoneOutline = (g: CanvasRenderingContext2D) => { // a rough slab silhouet
 /** colour of the face: weathered granite, moss on the edges and the foot, carved characters with a dark floor and a
  *  sunlit lip (the golden key comes low from the left of the face) */
 export const stoneFaceTex = () => ctex("stoneFace", SW, SH, (g, r) => {
-  g.fillStyle = "#9c9488"; g.fillRect(0, 0, SW, SH);
+  g.fillStyle = "#79716a"; g.fillRect(0, 0, SW, SH); // THE stone: weathered grey-brown rock (the same base as its sides)
   const gr = g.createLinearGradient(0, 0, 0, SH); gr.addColorStop(0, "rgba(255,248,235,0.12)"); gr.addColorStop(1, "rgba(40,36,30,0.18)");
   g.fillStyle = gr; g.fillRect(0, 0, SW, SH);
   for (let i = 0; i < 26000; i++) { // granite speckle
     const x = r() * SW, y = r() * SH, s = 1 + r() * 3.2, k = r();
-    g.fillStyle = k < 0.45 ? `rgba(60,54,48,${0.1 + 0.25 * r()})` : k < 0.8 ? `rgba(225,218,205,${0.1 + 0.25 * r()})` : `rgba(150,120,95,${0.15 + 0.2 * r()})`;
+    g.fillStyle = k < 0.45 ? `rgba(60,54,48,${0.1 + 0.25 * r()})` : k < 0.8 ? `rgba(200,192,180,${0.08 + 0.16 * r()})` : `rgba(130,108,88,${0.15 + 0.2 * r()})`;
     g.fillRect(x, y, s, s);
   }
   for (let i = 0; i < 70; i++) { // weathering streaks running down
@@ -66,10 +66,9 @@ export const stoneFaceTex = () => ctex("stoneFace", SW, SH, (g, r) => {
   for (let i = 0; i < 5200; i++) {
     const side = r(), t = r();
     let x: number, y: number;
-    if (side < 0.3) { x = r() ** 2.4 * SW * 0.08; y = SH * (0.5 + 0.5 * t); }
-    else if (side < 0.6) { x = SW - r() ** 2.4 * SW * 0.08; y = SH * (0.5 + 0.5 * t); }
-    else if (side < 0.85) { x = SW * t; y = SH - r() ** 2.2 * SH * 0.1; }
-    else { x = SW * t; y = r() ** 2.4 * SH * 0.05; }
+    // moss only at the foot of the stone
+    if (side < 0.85) { x = SW * t; y = SH - r() ** 2.2 * SH * 0.11; }
+    else { x = SW * t; y = SH - r() ** 1.6 * SH * 0.06; }
     const rad = 3 + r() * 12;
     g.fillStyle = moss[Math.floor(r() * moss.length)]; g.globalAlpha = 0.5 + 0.45 * r();
     g.beginPath(); g.ellipse(x, y, rad, rad * (0.5 + 0.6 * r()), r() * 3, 0, TAU); g.fill();
@@ -77,9 +76,24 @@ export const stoneFaceTex = () => ctex("stoneFace", SW, SH, (g, r) => {
   g.globalAlpha = 1;
   void stoneOutline;
 });
+/** the valley road: packed gravel (12 m of it per repeat), cracks, tyre ruts, puddles */
+export const gravelTex = () => ctex("gravelRoad", 512, 1920, (g, r) => {
+  g.fillStyle = "#857a68"; g.fillRect(0, 0, 512, 1920);
+  for (let i = 0; i < 30000; i++) { const k = r(); g.fillStyle = k < 0.4 ? `rgba(60,54,46,${0.25 + 0.3 * r()})` : k < 0.8 ? `rgba(186,176,156,${0.25 + 0.3 * r()})` : `rgba(120,100,80,${0.3 + 0.3 * r()})`; const s = 1.5 + r() * 4; g.fillRect(r() * 512, r() * 1920, s, s); }
+  for (const x of [150, 362]) { g.fillStyle = "rgba(70,62,52,0.28)"; g.fillRect(x - 22, 0, 44, 1920); } // ruts
+  for (let i = 0; i < 16; i++) { // cracks
+    let x = r() * 512, y = r() * 1920; g.strokeStyle = `rgba(40,34,28,${0.5 + 0.3 * r()})`; g.lineWidth = 1.5 + r() * 2; g.beginPath(); g.moveTo(x, y);
+    for (let k = 0; k < 7; k++) { x += (r() - 0.5) * 60; y += 10 + r() * 34; g.lineTo(x, y); } g.stroke();
+  }
+  for (const [x, y, rx, ry] of [[150, 420, 60, 120], [380, 1180, 75, 140], [170, 1620, 50, 90]] as const) { // puddles
+    g.fillStyle = "rgba(170,190,205,0.55)"; g.beginPath(); g.ellipse(x, y, rx + 6, ry + 8, 0.1, 0, TAU); g.fill();
+    g.fillStyle = "rgba(70,86,104,0.9)"; g.beginPath(); g.ellipse(x, y, rx, ry, 0.1, 0, TAU); g.fill();
+    g.fillStyle = "rgba(200,215,230,0.35)"; g.beginPath(); g.ellipse(x - rx * 0.3, y - ry * 0.3, rx * 0.35, ry * 0.12, 0.1, 0, TAU); g.fill();
+  }
+});
 /** rough sides and back of the stone: weathered granite with cracks, chips and lichen */
 export const rockSideTex = () => ctex("rockSide", 512, 768, (g, r) => {
-  g.fillStyle = "#8c857a"; g.fillRect(0, 0, 512, 768);
+  g.fillStyle = "#79716a"; g.fillRect(0, 0, 512, 768);
   for (let i = 0; i < 9000; i++) { const k = r(); g.fillStyle = k < 0.45 ? `rgba(58,52,46,${0.12 + 0.25 * r()})` : k < 0.85 ? `rgba(214,206,192,${0.1 + 0.22 * r()})` : `rgba(140,112,88,${0.15 + 0.2 * r()})`; g.fillRect(r() * 512, r() * 768, 1 + r() * 4, 1 + r() * 4); }
   for (let i = 0; i < 26; i++) { // cracks
     let x = r() * 512, y = r() * 768; g.strokeStyle = `rgba(40,36,32,${0.35 + 0.3 * r()})`; g.lineWidth = 1.5 + r() * 2.5; g.beginPath(); g.moveTo(x, y);

@@ -90,7 +90,7 @@ export const LIGHTS: Record<LightName, LightPreset> = {
   // warm sunset (the end): the low sun behind the lens on the houses, plum shade, peach sky, lit windows
   sunset: {
     ...base, az: 175, el: 10,
-    lit: [1.62, 1.28, 0.95], shade: [0.44, 0.31, 0.33], lift: [0.06, 0.04, 0.05], term: 0.14,
+    lit: [1.62, 1.28, 0.95], shade: [0.42, 0.34, 0.31], lift: [0.06, 0.045, 0.04], term: 0.14, // warm shade, no magenta
     charTint: [1.0, 0.88, 0.76], charShade: 0.86, charGrad: 0.1, bodyGrad: 0.26, sideTint: [0.9, 0.84, 0.9],
     blob: [0.75, 0.68, 0.76], top: "#8a6e86", hor: "#ffc98a", fog: "#e8b08e", fogNear: 70, fogFar: 1000, sunDisc: "#ffcf9e",
     sunCol: "#ffb066", sunI: 4.4, sky: "#e8b0a8", ground: "#8a6a60", hemiI: 0.5, practical: 0.8, windows: 0.9,

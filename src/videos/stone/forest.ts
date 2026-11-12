@@ -3,7 +3,7 @@
 // Each kind = canopy InstancedMesh (two-tone, smooth lobes so the ink draws clean silhouettes) + trunk InstancedMesh.
 // Per-instance colour varies the green. Placement is the caller's (hill.ts / town.ts), with its own camera-clearance test.
 import * as THREE from "three";
-import { clearOfLens } from "./lens";
+import { clearOfLens, clearOfFeet } from "./lens";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import { twoTone } from "./shade";
 import { ctex } from "./paint";
@@ -58,11 +58,12 @@ const sway = (m: THREE.MeshLambertMaterial, amp: number, key: string) => {
 };
 /** build the instanced meshes of one kind; returns the group (call once per kind per set) */
 /** horizontal radius of each kind's unit canopy (times the instance width) */
+const LOW = new Set<TreeKind>(["tuft", "blades", "bush", "rock"]); // low plants that could hide feet
 const RADIUS: Record<TreeKind, number> = { sugi: 0.22, round: 0.45, pine: 0.32, bush: 0.85, tuft: 0.55, blades: 0.45, rock: 0.55, bamboo: 0.3 };
 export const plant = (root: THREE.Object3D, kind: TreeKind, list0: Inst[], opts: { shadow?: boolean; tint?: string[] } = {}) => {
   const g = new THREE.Group();
   // near-clip rule: drop every instance that comes within 0.5 m of any lens position of the film
-  const list = list0.filter((t) => clearOfLens(t.x, t.y - 0.05 * t.h, t.z, t.h, RADIUS[kind] * (t.w ?? t.h)));
+  const list = list0.filter((t) => clearOfLens(t.x, t.y - 0.05 * t.h, t.z, t.h, RADIUS[kind] * (t.w ?? t.h)) && (!LOW.has(kind) || clearOfFeet(t.x, t.z, RADIUS[kind] * (t.w ?? t.h))));
   if (!list.length) return g;
   const cols = opts.tint ?? COLS[kind];
   const leafMat0 = twoTone(new THREE.MeshLambertMaterial({ map: kind === "rock" ? null : leafTex(), color: "#ffffff" }));

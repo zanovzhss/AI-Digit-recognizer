@@ -7,6 +7,7 @@ import { Batch, V, lam, quad } from "./build";
 import { OFF, MARKET, OLDSTONE, growAt, STONE, WAVE_DEF, W2011_H } from "./story";
 import { makeStone, stoneTopAt } from "./stonemodel";
 import { addObst } from "./obstacles";
+import { addGround } from "./ground";
 import { modernBoat, utilityPole, wires, tr, lbox, col, bicycle, vendingMachine, jHouse, netHeap } from "./jhouse";
 import { kawaraTex, marketSignTex, fishTex, groundDetailTex, boatNumTex } from "./jpaint";
 import { plant, Inst } from "./forest";
@@ -20,7 +21,7 @@ import { makeWave, Wave } from "./wave";
 export const SEA_Y_TOWN = -1.6;
 export type TownParts = {
   bodies: THREE.InstancedMesh; roofs: THREE.InstancedMesh; poles: THREE.InstancedMesh; keys: Float32Array; mats: THREE.Matrix4[]; roofMats: THREE.Matrix4[];
-  fields: { mesh: THREE.Mesh; key: number }[]; lots: { mesh: THREE.Mesh; key: number }[]; poleKeys: Float32Array; poleMats: THREE.Matrix4[];
+  fields: { mesh: THREE.Object3D; key: number }[]; lots: { mesh: THREE.Mesh; key: number }[]; poleKeys: Float32Array; poleMats: THREE.Matrix4[];
   harbour: THREE.Group; boats: THREE.Group; boatList: THREE.Group[]; roads: { mesh: THREE.Object3D; key: number }[]; water: WaterU; win: THREE.Mesh[]; fish: THREE.Mesh; man: THREE.Vector3;
   trees: THREE.InstancedMesh[]; treeKeys: Float32Array; cloudShadow: THREE.Mesh; w2011: Wave;
 };
@@ -35,6 +36,15 @@ const paddyTex = () => ctex("paddy", 512, 512, (g, r) => {
   g.fillStyle = "#8aa45e"; g.fillRect(0, 0, 512, 512);
   for (let y = 0; y < 512; y += 8) { g.fillStyle = `rgba(${r() < 0.5 ? "60,110,40" : "150,190,90"},0.35)`; g.fillRect(0, y, 512, 3); }
   g.strokeStyle = "#9a8a5a"; g.lineWidth = 10; g.strokeRect(5, 5, 502, 502); g.beginPath(); g.moveTo(256, 0); g.lineTo(256, 512); g.stroke();
+});
+/** a flooded rice paddy: grey-blue water catching the sky, rows of young rice, a few glints */
+const paddyWaterTex = () => ctex("paddyWater", 256, 256, (g, r) => {
+  const gr = g.createLinearGradient(0, 0, 256, 256); gr.addColorStop(0, "#7d9ca2"); gr.addColorStop(1, "#5f7f88"); g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+  for (let y = 6; y < 256; y += 13) for (let x = 3 + (y % 2) * 4; x < 256; x += 9) {
+    g.strokeStyle = r() < 0.5 ? "#6f9a44" : "#86b052"; g.lineWidth = 2;
+    for (let k = -1; k <= 1; k++) { g.beginPath(); g.moveTo(x, y + 3); g.lineTo(x + k * 2.5, y - 3 - r() * 2); g.stroke(); }
+  }
+  for (let i = 0; i < 40; i++) { g.fillStyle = "rgba(235,245,250,0.22)"; g.fillRect(r() * 256, r() * 256, 6 + r() * 14, 1.5); }
 });
 const lotTex = () => ctex("lot", 256, 256, (g, r) => {
   g.fillStyle = "#b8b2a2"; g.fillRect(0, 0, 256, 256);
@@ -65,12 +75,12 @@ export const buildTown = (root: THREE.Object3D): { parts: TownParts } => {
     const rb2 = new Batch(), g = new THREE.Group();
     rb2.add(quad(P(-760, 0.03, z + 4), P(760, 0.03, z + 4), P(760, 0.03, z - 4), P(-760, 0.03, z - 4)), asphalt);
     for (let x = -740; x < 740; x += 12) rb2.add(quad(P(x, 0.05, z + 0.15), P(x + 6, 0.05, z + 0.15), P(x + 6, 0.05, z - 0.15), P(x, 0.05, z - 0.15)), line);
-    rb2.build(g, true); root.add(g); roads.push({ mesh: g, key: roadKey(i) });
+    rb2.build(g, true); root.add(g); roads.push({ mesh: g, key: roadKey(i) }); addGround(g);
   });
   for (const x of ROADS_X) for (let bz = 0; bz <= NB; bz++) {
     const z0 = bz === 0 ? 0 : ROADS_Z[bz], z1 = ROADS_Z[bz + 1] ?? -480, rb2 = new Batch(), g = new THREE.Group();
     rb2.add(quad(P(x - 3, 0.025, z0), P(x + 3, 0.025, z0), P(x + 3, 0.025, z1), P(x - 3, 0.025, z1)), asphalt);
-    rb2.build(g, true); root.add(g); roads.push({ mesh: g, key: roadKey(bz) });
+    rb2.build(g, true); root.add(g); roads.push({ mesh: g, key: roadKey(bz) }); addGround(g);
   }
   lbox(b, lam("seawall", () => ({ map: rep(groundDetailTex(), 60, 1), color: "#b8b4aa" })), new THREE.Matrix4(), O - 760, O + 760, -3, 0.6, -1.5, 1.2);
   const hills: [number, number, number, number, number][] = [[-500, -620, 420, 150, 200], [-80, -640, 380, 120, 190], [330, -610, 420, 160, 200], [720, -560, 300, 140, 180], [-860, -480, 300, 120, 220], [960, -420, 260, 100, 200]];
@@ -89,13 +99,34 @@ export const buildTown = (root: THREE.Object3D): { parts: TownParts } => {
   const houses: House[] = [], fields: TownParts["fields"] = [], lots: TownParts["lots"] = [], poleSpots: { x: number; z: number; key: number }[] = [];
   const WALLC = ["#e8e0d0", "#d8cdb8", "#f0ece4", "#c8b89a", "#dcd4c8", "#b8c4c8", "#e0d0b8"], ROOFC = ["#4a5462", "#3e4a5c", "#6a4a40", "#56606e", "#3a4048", "#8a5a48"];
   const paddyM = lam("paddyM", () => ({ map: paddyTex() })), lotM = lam("lotM", () => ({ map: rep(lotTex(), 4, 4) }));
+  void paddyM;
+  const paddyWaterM = lam("paddyWaterM", () => ({ map: paddyWaterTex() })), leveeM = lam("leveeM", () => ({ map: rep(groundDetailTex(), 12, 1), color: "#7f8a4e" }));
+  const trackM = lam("farmTrack", () => ({ map: rep(groundDetailTex(), 20, 1), color: "#a8946a" })), fr = rng(91);
   for (let bz = 0; bz < ROADS_Z.length - 1; bz++) for (let bx = 0; bx < ROADS_X.length - 1; bx++) {
     const z0 = ROADS_Z[bz + 1] + 5, z1 = ROADS_Z[bz] - 5, x0 = ROADS_X[bx] + 4, x1 = ROADS_X[bx + 1] - 4;
     const key = 1 - (bz + 0.5) / (ROADS_Z.length - 1) * 0.0 - (ROADS_Z.length - 2 - bz) / (ROADS_Z.length - 1) - 0.06 + 0.08 * r(); // inland blocks first
     const rk = r();
     void key;
     const blockKey = Math.min(0.97, ((ROADS_Z.length - 2 - bz) / (ROADS_Z.length - 2)) * 0.85 + 0.1 * rk); // 0 = earliest (inland), 1 = last (by the water)
-    const fm = new THREE.Mesh(quad(P(x0, 0.02, z1), P(x1, 0.02, z1), P(x1, 0.02, z0), P(x0, 0.02, z0)), paddyM); fm.receiveShadow = true; root.add(fm);
+    // farmland before the town: flooded rice paddies between raised earth levees, a farm track, a farmhouse among trees
+    const fm = new THREE.Group(); root.add(fm);
+    {
+      const fb = new Batch(), NX = 3, NZ = 3, lw = 1.3, X = (k: number) => x0 + ((x1 - x0) * k) / NX, Z = (k: number) => z0 + ((z1 - z0) * k) / NZ;
+      for (let i = 0; i < NX; i++) for (let j = 0; j < NZ; j++)
+        fb.add(quad(P(X(i) + lw / 2, 0.1, Z(j + 1) - lw / 2), P(X(i + 1) - lw / 2, 0.1, Z(j + 1) - lw / 2), P(X(i + 1) - lw / 2, 0.1, Z(j) + lw / 2), P(X(i) + lw / 2, 0.1, Z(j) + lw / 2), 1.6, 1.6), paddyWaterM);
+      for (let i = 0; i <= NX; i++) lbox(fb, leveeM, new THREE.Matrix4(), O + X(i) - lw / 2, O + X(i) + lw / 2, 0, 0.32, z0, z1);
+      for (let j = 0; j <= NZ; j++) lbox(fb, j === 1 ? trackM : leveeM, new THREE.Matrix4(), O + x0, O + x1, 0, j === 1 ? 0.34 : 0.32, Z(j) - (j === 1 ? 1.4 : lw / 2), Z(j) + (j === 1 ? 1.4 : lw / 2));
+      const trees: Inst[] = [];
+      if (fr() < 0.6) { // a farmhouse on its own raised plot, trees round it
+        const hx = X(fr() < 0.5 ? 0 : 2) + (x1 - x0) / NX / 2, hz = Z(fr() < 0.5 ? 0 : 2) + (z1 - z0) / NZ / 2;
+        lbox(fb, leveeM, new THREE.Matrix4(), O + hx - 9, O + hx + 9, 0, 0.36, hz - 8, hz + 8);
+        jHouse(fb, fb, O + hx, 0.36, hz, fr() * 0.4 - 0.2, { w: 8, d: 6, style: fr() < 0.5 ? "thatch" : "rebuilt", seed: 300 + bx * 7 + bz });
+        for (let k = 0; k < 5; k++) { const a = fr() * 6.283, d = 6 + fr() * 3; trees.push({ x: O + hx + Math.cos(a) * d, y: 0.36, z: hz + Math.sin(a) * d, h: 6 + 3 * fr(), c: Math.floor(fr() * 4) }); }
+      }
+      for (let k = 0; k < 4; k++) if (fr() < 0.5) trees.push({ x: O + X(Math.floor(fr() * (NX + 1))), y: 0.3, z: z0 + fr() * (z1 - z0), h: 5 + 3 * fr(), c: Math.floor(fr() * 4) }); // trees on the levees
+      fb.build(fm, true);
+      if (trees.length) plant(fm, "round", trees, { shadow: true });
+    }
     const lm = new THREE.Mesh(quad(P(x0, 0.015, z1), P(x1, 0.015, z1), P(x1, 0.015, z0), P(x0, 0.015, z0)), lotM); lm.receiveShadow = true; root.add(lm);
     const inner = bz === 0 ? 0.5 : 1; // the block by the water is half harbour front
     fields.push({ mesh: fm, key: (bz === ROADS_Z.length - 2 ? 0 : blockKey) }); lots.push({ mesh: lm, key: (bz === ROADS_Z.length - 2 ? 0 : blockKey) });
@@ -150,8 +181,10 @@ export const buildTown = (root: THREE.Object3D): { parts: TownParts } => {
     const g = new THREE.Group(), b1 = new Batch(); g.position.set(O + x, SEA_Y_TOWN + 0.55, z);
     modernBoat(b1, b1, 0, 0, 0, yaw, 8 + (x % 3), s); b1.build(g, true); boats.add(g); boatList.push(g);
   }
-  // the working quay (shot 10): bollards with mooring lines, fish boxes, crates, net heaps, a hand cart, coiled ropes
+  // the working quay (shot 10): a concrete apron the height of the sea wall (0.6 m), bollards with mooring lines, fish
+  // boxes, crates, net heaps, a hand cart, coiled ropes
   const qb = new Batch();
+  { const ap = new Batch(), apG = new THREE.Group(); lbox(ap, lam("quayApron", () => ({ map: rep(groundDetailTex(), 30, 3), color: "#b8b4aa" })), new THREE.Matrix4(), O - 72, O + 52, 0, 0.6, -10, -1.4); ap.build(apG, true); root.add(apG); addGround(apG); }
   for (let x = -60; x <= 40; x += 8) { qb.add(new THREE.CylinderGeometry(0.2, 0.26, 0.6, 12).translate(0, 0.3, 0), col("bollard", "#3a3e44"), tr(O + x, 0.6, -0.6)); }
   for (const [x, z, yaw, s] of BOATS.slice(0, 7)) { const bx = Math.round(x / 8) * 8; const pts = [V(O + bx, 1.1, -0.6), V(O + (bx + x) / 2, 0.2, (z - 0.6) / 2), V(O + x - 0.5, SEA_Y_TOWN + 1.6, z - 2.6)]; qb.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 12, 0.035, 5), col("mooring", "#d8c8a0"), new THREE.Matrix4()); void yaw; void s; }
   for (let k = 0; k < 14; k++) { const x = -46 + k * 4.6 + (r() - 0.5) * 1.5, z = -3.2 - r() * 3.5; crateY(qb, O + x, 0.6, z, 0.5 + 0.15 * r(), r() * 3); if (k % 3 === 0) crateY(qb, O + x + 0.1, 1.15, z, 0.45, r()); addObst("crate", O + x, z, 0.35, 0.35); }

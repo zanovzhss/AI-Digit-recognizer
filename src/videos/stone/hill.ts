@@ -11,7 +11,8 @@ import { STONE, HOUSES, VILLAGE, houseAt, villageAt, BOARD_1896, PLAQUE_1933, PL
 import { jHouse, woodBoat, modernBoat, dryingRack, netOnPosts, netHeap, chochin, andon, utilityPole, wires, terraceWall, vegRows, laundry, tr, lbox, col } from "./jhouse";
 import { makeStone } from "./stonemodel";
 import { addObst } from "./obstacles";
-import { yearBoardTex, postTex, mapLabelTex, ringMarkTex, groundDetailTex } from "./jpaint";
+import { addGround } from "./ground";
+import { gravelTex, yearBoardTex, postTex, mapLabelTex, ringMarkTex, groundDetailTex } from "./jpaint";
 import { plant, Inst } from "./forest";
 import { rep, beamHD, rng, cloudHD, CLOUD_DAY } from "./paint";
 import { twoTone } from "./shade";
@@ -204,12 +205,30 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
     let n = 0;
     for (let u = -2; u <= 320; u += 1.5) {
       const z = -u, px = pathX(z), dx = (pathX(z - 0.5) - pathX(z + 0.5)), l = Math.hypot(dx, 1), nxx = 1 / l, nzz = dx / l;
-      for (const s of [-1, 1]) { const x = px + s * 1.6 * nxx, zz = z + s * 1.6 * nzz * 0.0; pts.push(x, H(x, zz) + 0.07, zz); uvs.push(s > 0 ? 1 : 0, u / 3); }
+      for (const s of [-1, 1]) { const x = px + s * 1.6 * nxx, zz = z + s * 1.6 * nzz * 0.0; pts.push(x, H(x, zz) + 0.07, zz); uvs.push(s > 0 ? 1 : 0, u / 12); }
       if (n) { const a = (n - 1) * 2; ix.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
       n++;
     }
     const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2)); g.setIndex(ix); g.computeVertexNormals();
-    const road = new THREE.Mesh(g, lam("roadAsphalt", () => ({ color: "#b2a48a", side: THREE.DoubleSide }))); road.receiveShadow = true; groups.now.add(road);
+    const road = new THREE.Mesh(g, lam("roadGravel", () => ({ map: rep(gravelTex(), 1, 1), side: THREE.DoubleSide }))); road.receiveShadow = true; groups.now.add(road);
+    // the road up from the 300 ft post (shots 20-21): bushes and rocks on its left, a fence on its right, things dropped
+    const rb3 = new Batch(), rr3 = rng(57), bushes: Inst[] = [], rocks: Inst[] = [];
+    for (let u = POSTS_U[2] - 14; u < POSTS_U[2] + 44; u += 1.6 + rr3() * 1.4) {
+      const p = onPath(u, -2.7 - rr3() * 2.2, 0); bushes.push({ x: p[0], y: p[1], z: p[2], h: 0.9 + rr3() * 0.8, w: 1.0 + rr3() * 0.7, c: Math.floor(rr3() * 3) });
+      if (rr3() < 0.5) { const q = onPath(u + 0.7, -2.1 - rr3() * 0.6, 0); rocks.push({ x: q[0], y: q[1], z: q[2], h: 0.25 + rr3() * 0.25, w: 0.35 + rr3() * 0.3, c: Math.floor(rr3() * 3) }); }
+    }
+    for (let u = POSTS_U[2] - 10; u < POSTS_U[2] + 42; u += 2.2) { // a low wooden fence on the right
+      const a = onPath(u, 6.6, 0), b = onPath(u + 2.2, 6.6, 0);
+      rb3.add(new THREE.BoxGeometry(0.1, 1.0, 0.1).translate(0, 0.5, 0), col("fencePost", "#6a5038"), tr(a[0], a[1], a[2]));
+      for (const hgt of [0.45, 0.85]) { const m = new THREE.Vector3(b[0] - a[0], b[1] - a[1], b[2] - a[2]), l = m.length(); rb3.add(new THREE.BoxGeometry(0.05, 0.07, l).translate(0, hgt, l / 2), col("fenceRail", "#7a5c40"), new THREE.Matrix4().lookAt(new THREE.Vector3(), m, new THREE.Vector3(0, 1, 0)).setPosition(a[0], a[1], a[2]).multiply(new THREE.Matrix4().makeRotationY(Math.PI))); }
+    }
+    for (const [u, dx, kind] of [[POSTS_U[2] + 8, -1.95, 0], [POSTS_U[2] + 15, 5.6, 1], [POSTS_U[2] + 20, -2.2, 2], [POSTS_U[2] + 3, 5.4, 0]] as const) {
+      const p = onPath(u, dx, 0);
+      if (kind === 0) crateY(rb3, p[0], p[1] - 0.05, p[2], 0.45, u); else if (kind === 1) bucket(rb3, p[0], p[1], p[2]); else sack(rb3, p[0], p[1], p[2]);
+    }
+    rb3.build(groups.now, true);
+    plant(groups.now, "bush", bushes, { shadow: true }); plant(groups.now, "rock", rocks, { shadow: true });
+    addGround(road);
   }
   let prevPole: THREE.Vector3[] | null = null;
   for (let u = 20; u < 320; u += 38) { const x = pathX(-u) + 3.2, z = -u; const pts = utilityPole(b, x, H(x, z) - 0.2, z, 0.1, 8); if (prevPole) wires(b, prevPole, pts, 0.7); prevPole = pts; }
@@ -294,8 +313,7 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
   // ---- the carving yard (1933, night): the stone on logs, tools, mats, lanterns ----
   const yb = new Batch(), [yx, yy, yz] = YARD;
   const yardStone = makeStone();
-  const yardSide = twoTone(new THREE.MeshLambertMaterial({ color: "#5f5952", map: rep(groundDetailTex(), 2, 3) })); // fresh-cut sides, not lit up like cake
-  yardStone.material = (yardStone.material as THREE.MeshLambertMaterial[]).map((m, i) => (i === 4 ? m : (yardSide as THREE.MeshLambertMaterial)));
+  // (one stone material: no separate side colour for the yard)
   yardStone.rotation.set(-Math.PI / 2, 0, 0.25, "YXZ"); yardStone.rotation.y = 0.25; yardStone.position.set(yx, yy + 0.52, yz + STONE.h / 2 - 0.1); groups.yard.add(yardStone);
   addObst("stone:yard", yx - 0.29, yz - 0.03, STONE.w / 2 + 0.05, STONE.h / 2 + 0.04, 0.5);
   for (const dz of [-0.6, 0.6]) yb.add(new THREE.CylinderGeometry(0.13, 0.13, 1.3, 12).rotateZ(Math.PI / 2), lam("log", () => ({ map: rep(beamHD(), 1, 0.3), color: "#5e5044" })), tr(yx, yy + 0.24, yz + dz, 0.25));

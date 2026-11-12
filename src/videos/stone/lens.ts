@@ -36,5 +36,22 @@ export const lensDist = (x: number, y0: number, z: number, h: number, r: number)
   return best;
 };
 
+// ---- footprints: every place a character stands in the film (filled by world.ts before the sets are built) ----
+let FOOT: Map<string, [number, number][]> | null = null;
+export const setFootprints = (pts: [number, number][]) => {
+  FOOT = new Map();
+  for (const p of pts) { const k = key(p[0], p[1]); if (!FOOT.has(k)) FOOT.set(k, []); FOOT.get(k)!.push(p); }
+};
+/** no plant within 0.45 m (plus its own radius) of a footprint, so no tuft, rock or bush hides a character's feet */
+export const clearOfFeet = (x: number, z: number, r: number) => {
+  if (!FOOT) return true;
+  const cx = Math.floor(x / CELL), cz = Math.floor(z / CELL), reach = Math.ceil((r + 1) / CELL);
+  for (let i = -reach; i <= reach; i++) for (let j = -reach; j <= reach; j++) {
+    const list = FOOT.get(`${cx + i},${cz + j}`);
+    if (list) for (const p of list) if (Math.hypot(p[0] - x, p[1] - z) < 0.45 + r) return false;
+  }
+  return true;
+};
+
 /** true when a capsule keeps the 0.5 m lens clearance (plus an optional margin) everywhere in the film */
 export const clearOfLens = (x: number, y0: number, z: number, h: number, r: number, margin = 0) => lensDist(x, y0, z, h, r) > LENS_CLEAR + margin;

@@ -609,7 +609,7 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
   const torsoBot = (mode === "sit" ? sole - 0.2 * HH : sole - Bd.legs * HH + bob) + crouch * 0.26 * HH;
   const chin = torsoBot - Bd.torso * HH, hc = chin - H.b, crown = hc - H.b, hipY = torsoBot - 0.12 * HH;
   const thick = thickAngle(light), ow = 5 * u;
-  const legCol = mix(o.pants, INK, 0.55), armCol = mix(o.jacket, INK, 0.5), footCol = o.boots;
+  const legCol = mix(o.pants, INK, 0.55), armCol = mix(o.jacket, INK, 0.5), footCol = INK; // feet: small black ink strokes
   const legW = 5.8 * u, footW = 7.5 * u;
   // ---- legs + feet (not rotated) ----
   p.rot = null;
@@ -632,7 +632,7 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
     for (const side of [-1, 1]) {
       const fx = 300 + side * 12 * u, fy = sole - 4 * u;
       p.stroke([[fx, sole - 0.4 * HH], [fx + side * u, fy]], legW, legCol);
-      footStroke(p, [fx - side * 3 * u, fy], [fx + side * 12 * u, fy + u], footW, footCol);
+      footStroke(p, [fx - side * 4 * u, fy], [fx + side * 12 * u, fy], footW, footCol);
     }
   } else {
     const L = mode === "march" ? lift * 1.25 : mode === "stroll" ? lift * 0.55 : 0;
@@ -641,7 +641,7 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
       const hx = 300 + side * 15 * u, fx = 300 + side * 22 * u, fy = sole - 4 * u - up;
       const k: P2 = [(hx + fx) / 2 + side * (1.5 * u + up * 0.16 + crouch * 13 * u), (hipY + fy) / 2 - up * 0.08 - crouch * 6 * u];
       p.stroke(curve([hx, hipY], k, [fx, fy]), legW, legCol);
-      footStroke(p, [fx - side * 3 * u, fy], [fx + side * 13 * u, fy + 0.5 * u], footW, footCol);
+      footStroke(p, [fx - side * 4 * u, fy], [fx + side * 13 * u, fy], footW, footCol);
     }
   }
   // ---- upper body: rotates about the hips (tilt + a small weight-shift sway on every step) ----
@@ -896,7 +896,7 @@ export const bodySide = (p: Pen, o: Outfit, opts: SideOpts) => {
   const W = 2 * H.a, HH = 2 * H.b, u = W / 100, sole = 975, ankY = sole - 4 * u;
   const thick = thickAngle(light), ow = 5 * u;
   const legLen = (Bd.legs + 0.12) * HH - 4 * u, l1 = legLen / 2, l2 = legLen / 2;
-  const nearCol = mix(o.pants, INK, 0.55), farCol = mix(o.pants, INK, 0.75), footCol = o.boots;
+  const nearCol = mix(o.pants, INK, 0.55), farCol = mix(o.pants, INK, 0.75), footCol = INK; // feet: small black ink strokes
   type LegS = { ank: P2; pitch: number; near: boolean };
   const legs: LegS[] = [];
   let hipY = ankY - legLen * 0.995, lean = 0, nearFwd = 0;

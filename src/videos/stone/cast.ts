@@ -6,9 +6,10 @@
 // world ink pass never outlines their quads. Infrastructure (pool, cards, tiers, blinks, blobs) is the template's.
 import * as THREE from "three";
 import { keepClear } from "./obstacles";
+import { feetY } from "./ground";
 import { crestPoint, toePoint, WaveDef } from "./wave";
 import { Pen, bodyFront, bodySide, fxShadow, fxContact, Outfit, FrontOpts, SideOpts, fisher, villager, modern, VENDOR, LUNCH, GRANDPA, GRANDMA } from "./toon";
-import { FPS, SHOTS, V3, W, clamp01, cue, smooth, STONE, onStone, houseAt, villageAt, SURV2, SURV4, SURV6, survivorAt, BOAT_OVER, YARD, HAUL_U, STOP_U, STONE_U, MARKET, OLDSTONE, GULL_F, SHAKE_F, onPath, at, lerp3, OFF, townFrontAt, waveAt, WaveSpec, WAVE_DEF } from "./story";
+import { FPS, SHOTS, V3, W, clamp01, cue, smooth, STONE, onStone, houseAt, villageAt, SURV2, SURV4, SURV6, survivorAt, BOAT_OVER, YARD, HAUL_U, STOP_U, STONE_U, MARKET, OLDSTONE, GULL_F, SHAKE_F, onPath, at, lerp3, OFF, townFrontAt, waveAt, WaveSpec, WAVE_DEF, camAt } from "./story";
 import { H } from "./terrain";
 import { SEA_Y_TOWN as SEA_TOWN } from "./town";
 import { LIGHTS, LightName, LOOK } from "./lights";
@@ -227,22 +228,24 @@ const mk = (i: number, o: Outfit, okey: string): Who => ({ i, o, okey });
 
 /** a front-facing figure standing (or sitting) at p */
 const fig = (out: Stage, cam: CamInfo, who: Who, p0: V3, f: number, fo: FrontOpts, o: { flip?: boolean; shadow?: boolean; scale?: number; roll?: number; pitch?: number; seat?: string } = {}) => {
-  const p = keepClear(p0, who.okey, o.seat); // collision rule: 0.6 m from the stone and every prop
+  const pc = keepClear(p0, who.okey, o.seat); // collision rule: 0.6 m from the stone and every prop
+  // feet on the ground: standing figures stand on the highest ground drawn under their two feet (sitters keep their seat)
+  const p: V3 = fo.mode === "sit" ? pc : [pc[0], feetY(pc[0], pc[2]), pc[2]];
   const t = f / FPS, fo2: FrontOpts = { blink: lidAt(t, who.i, SWAPS[SHOTS.findIndex((s) => f >= s.a && f < s.b) + 1]), ...fo };
   const pl = person(cam, who, p[0], p[1], p[2], { side: false, mirror: false, flip: o.flip }, fo2, {}, o.scale ?? 1);
   pl.roll = o.roll ?? (fo.mode === "march" ? 0 : 0.018 * Math.sin(t * 1.6 + who.i * 1.37) + 0.008 * Math.sin(t * 3.1 + who.i));
   if (o.pitch) pl.pitch = o.pitch;
   out.places.push(pl);
-  if (o.shadow !== false) blob(out, p[0], p[1], p[2], o.scale ?? 1);
+  if (o.shadow !== false || fo.mode === "sit") blob(out, p[0], fo.mode === "sit" ? feetY(p[0], p[2]) : p[1], p[2], o.scale ?? 1);
   return fo2;
 };
 /** a side-view figure walking along (dx, dz): faces the way it walks on screen */
 const walker = (out: Stage, cam: CamInfo, who: Who, p0: V3, f: number, dir: [number, number], so: SideOpts, o: { scale?: number; shadow?: boolean; seat?: string } = {}) => {
-  const p = keepClear(p0, who.okey, o.seat);
+  const pc = keepClear(p0, who.okey, o.seat), p: V3 = [pc[0], feetY(pc[0], pc[2]), pc[2]]; // feet on the ground, every frame
   const t = f / FPS, so2: SideOpts = { blink: lidAt(t, who.i), ...so };
   const left = dir[0] * cam.right.x + dir[1] * cam.right.z < 0;
   out.places.push(person(cam, who, p[0], p[1], p[2], { side: true, mirror: left }, {}, so2, o.scale ?? 1));
-  if (o.shadow !== false) blob(out, p[0], p[1], p[2], o.scale ?? 1);
+  blob(out, p[0], p[1], p[2], o.scale ?? 1); // every walker / runner gets its contact shadow
 };
 const G = (p: V3): V3 => [p[0], H(p[0], p[2]), p[2]];
 const off = (p: V3, dx: number, dz: number): V3 => G([p[0] + dx, 0, p[2] + dz]);
@@ -324,6 +327,16 @@ const birds = (out: Stage, cam: CamInfo, t: number, n: number, seed: number) => 
     const k = q(((t * (2.2 + hh(i, seed + 4))) + hh(i, seed + 5)) % 1, 8);
     out.fx.push({ key: `bird${k}`, cw: 128, ch: 64, draw: birdDraw(k), x, y, z, w: 1.5, h: 0.75, rot: 0.15 * Math.sin(ph) });
   }
+};
+
+/** every place a character stands in the film (x, z every 2 frames), for clearing plants off their feet */
+export const footprints = (): [number, number][] => {
+  const pts: [number, number][] = [];
+  for (const s of SHOTS) for (let f = s.a; f < s.b; f += 2) {
+    const c = camAt(s.id, f), cam: CamInfo = { pos: new THREE.Vector3(...c.pos), right: new THREE.Vector3(1, 0, 0), sun: new THREE.Vector3(0, 1, 0) };
+    for (const p of stage(s.id, f / FPS, cam).places) pts.push([p.x, p.z]);
+  }
+  return pts;
 };
 
 /** everything with a face (and the effects) in shot `id` at frame f */
@@ -433,9 +446,9 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
     }
     case 20: { // people run uphill past the lens; far below the foaming water climbs
       // a crowd running uphill on the path and the grass beside it, travelling 3.6-5.2 m/s, passing the lens on both sides
-      for (let i = 0; i < 30; i++) {
+      for (let i = 0; i < 42; i++) {
         const kid = i % 6 === 2, elder = i % 7 === 5, sp = elder ? 2.8 : 3.6 + 1.6 * hh(i, 31);
-        const u = STOP_U - 6 + 30 * hh(i, 32) + sp * (f - 1396) / 30;
+        const u = STOP_U + 1 + 24 * hh(i, 32) + sp * (f - 1396) / 30;
         // on the path and the verge in front of the lens; the near ones pass it at 1-3 m and leave the frame at its sides
         // on the path and the verge ahead of the lens (it stands on the path at dx 1.5); near it they part to either side
         let dx = -1.2 + 5.0 * hh(i, 33); const off = dx - 1.5, near = clamp01((u - STOP_U - 14) / 8);

@@ -49,7 +49,7 @@ export const stoneGeometry = () => {
     p.setXYZ(i, X, Y, Z);
     // moss: thick at the foot, thinning upward in ragged tongues; a few lichen patches on the crown
     const mn = fbm(x * 5 + 3, y * 5, z * 5);
-    const moss = Math.max(sstep(0.3, 0.0, v + (mn - 0.5) * 0.32), v > 0.82 && mn > 0.6 ? 0.45 : 0);
+    const moss = sstep(0.2, 0.0, v + (mn - 0.5) * 0.22); // green moss at the base only
     cols.push(1 - 0.42 * moss, 1 - 0.16 * moss, 1 - 0.55 * moss);
   }
   g.setAttribute("color", new THREE.Float32BufferAttribute(cols, 3));
