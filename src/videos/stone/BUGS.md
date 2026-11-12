@@ -73,3 +73,25 @@ How the list was made: the previous final (`out/stone/final.mp4`) watched as one
   `music_raw.npy`). That breaks the "no deletions outside out/" rule. The later remix uses a new cache key instead.
 - Calmer than the style-reference numbers (not part of this brief): medDiff ~2.2 and staticPct ~26 %. The longest
   static span is the opening hold on the whole stone.
+
+## Round 3 (fix list of the third brief)
+
+Before = the previous final (`out/stone/final_round2_before.mp4`), after = the new final, same times. Sheets made by
+`stone-short/tools/fixsheets.py`; each was looked at before marking the fix done. Static frames counted by
+`stone-short/tools/static_by_shot.py` (measure.py's rule: mean luma difference < 1 at 54x96).
+
+| ID | Fix | What changed | Before / after | Status |
+|---|---|---|---|---|
+| F01 | Feet sink into the ground | `ground.ts`: every standing / walking / running character stands on the highest ground under its two feet, every frame. That ground is the exact terrain-mesh triangle under the point (the same as a ray cast down onto the mesh), or a ray-cast hit on a visible surface lying on it (the gravel road, the quay apron, the town roads). Feet are now small black ink strokes. Everyone gets a contact shadow. Low plants (tufts, grass, bushes, rocks) are cleared from every footprint of the film. Sitters keep their seats | [F01.jpg](../../../out/stone/fixes/F01.jpg) | **fixed** |
+| F02 | 0–4 s frozen | A steady push-in on the stone from frame 0, a breeze in the trees and grass (wind ×3.2), clouds drifting in every shot. On "do (not build your home)" the crane ramps in without a jolt. **0 static frames in the first 5 s** (was 77) | [F02.jpg](../../../out/stone/fixes/F02.jpg) | **fixed** |
+| F03 | The stone changes colour | ONE material: weathered grey-brown rock, the same base on the face and the sides, moss only at the base. The yard's separate side colour is gone. The sunset shade lost its magenta, so the last stone is grey-brown, not pink | [F03.jpg](../../../out/stone/fixes/F03.jpg) | **fixed** |
+| F04 | 6 s ghost "1896" | The (8-frame) crossfade lands on a thatched house with no text in frame. The camera then turns onto the painted 1896 board standing in the scene | [F04.jpg](../../../out/stone/fixes/F04.jpg) | **fixed** |
+| F05 | 13–14 s static "1933" plaque | One lateral glide along the 1933 street: tiled roofs, the telegraph pole sweeping past in front, the plaque on a house in the background | [F05.jpg](../../../out/stone/fixes/F05.jpg) | **fixed** |
+| F06 | 21–23 s flat green fields | The time-lapse starts on farmland: flooded rice paddies between raised earth levees, farm tracks, farmhouses among trees. Then houses, roads, the breakwater and boats pop in toward the water | [F06.jpg](../../../out/stone/fixes/F06.jpg) | **fixed** |
+| F07 | 28 s two scenes mixed | Both market crossfades cut to 8 frames, then a single scene | [F07.jpg](../../../out/stone/fixes/F07.jpg) | **fixed** |
+| F08 | 47–48 s empty white road | The road is gravel with ruts, cracks and puddles. Bushes and rocks line its left side, a wooden fence its right, with a dropped crate, bucket and sack. The lens is lower and longer and the crowd is bigger (42 runners) and fills the frame | [F08.jpg](../../../out/stone/fixes/F08.jpg) | **fixed** |
+| F09 | Final "Every single house is still standing" | The hamlet is drawn more compactly (two staggered columns of terraced houses each side of the path) so all eleven fit one vertical frame. The last shot settles by frame 1581 and holds 1.5 s: all eleven houses lit in the sunset, the stone in the foreground (small: about 5 % of the frame height is the most a tall frame allows with all eleven houses in it) | [F09.jpg](../../../out/stone/fixes/F09.jpg) | **fixed** |
+| F10 | Pacing | A gentle sideways drift through the long holds (shots 3, 4, 6, 7, 9, 10, 12, 16, 18, 21), the wind and drifting clouds; no extra whips. **Static frames 8.9 %** (was ~28 %, target ≤ 15 %) | (numbers: static_by_shot.py) | **fixed** |
+
+Final (`out/stone/final.mp4`): 1440x2560, 30 fps, audio = voice.wav (54.187 s), voice + SFX, no music, no captions;
+sharpness mean 11.25 / p10 5.17; copied to `C:\cartoon-shorts\out\stone\final.mp4`.
