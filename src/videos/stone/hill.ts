@@ -7,7 +7,7 @@ import { Batch, V, lam, quad } from "./build";
 import { H, GRID, heightGrid, heightTexture, pathX, sideDist, floorY } from "./terrain";
 import { MAP_1896, MAP_1933, MAP_EYE } from "./story";
 import { STONE, HOUSES, VILLAGE, houseAt, villageAt, BOARD_1896, PLAQUE_1933, PLAQUE_POS, REBUILT_D, BOAT_OVER, YARD, HAUL_U, POSTS_U, STONE_U,
-  SHOTS, camRig, gnd, onPath, V3, WAVE_DEF } from "./story";
+  SHOTS, camRig, gnd, onPath, V3, WAVE_DEF, END_CAM } from "./story";
 import { jHouse, woodBoat, modernBoat, dryingRack, netOnPosts, netHeap, chochin, andon, utilityPole, wires, terraceWall, vegRows, laundry, tr, lbox, col } from "./jhouse";
 import { makeStone } from "./stonemodel";
 import { addObst } from "./obstacles";
@@ -38,6 +38,8 @@ const segs = () => {
     const c = camRig(s.id, f), a = V(...c.pos), look = V(...c.look), d = look.clone().sub(a), L = d.length();
     SEGS.push({ a, b: a.clone().add(d.multiplyScalar(Math.min(1, 70 / L))) });
   }
+  // the last shot looks from END_CAM at every house: nothing tall grows on those lines either
+  for (let i = 0; i < HOUSES.length; i++) { const p = houseAt(i); SEGS.push({ a: V(...END_CAM), b: V(p[0], p[1] + 4, p[2]) }); }
   return SEGS;
 };
 const tmp = new THREE.Vector3(), cl = new THREE.Vector3();
@@ -231,7 +233,9 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
     addGround(road);
   }
   let prevPole: THREE.Vector3[] | null = null;
-  for (let u = 20; u < 320; u += 38) { const x = pathX(-u) + 3.2, z = -u; const pts = utilityPole(b, x, H(x, z) - 0.2, z, 0.1, 8); if (prevPole) wires(b, prevPole, pts, 0.7); prevPole = pts; }
+  // no pole in front of the 300 ft post seen from the stone: none at 134, and the poles at 172 and 96 stand back off the road
+  for (let u = 20; u < 320; u += 38) { if (u === 134) continue;
+    const x = pathX(-u) + (u === 172 ? 10 : u === 96 ? -5.5 : 3.2), z = -u; const pts = utilityPole(b, x, H(x, z) - 0.2, z, 0.1, 8); if (prevPole) wires(b, prevPole, pts, 0.7); prevPole = pts; }
   // the harbour: a concrete quay, a breakwater arm, modern boats, buoys, crates
   const conc = lam("quayConcrete", () => ({ map: rep(groundDetailTex(), 8, 2), color: "#b4b0a6" }));
   lbox(b, conc, new THREE.Matrix4(), -46, -6, -3, 1.3, -6, 4);
@@ -294,7 +298,7 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
 
   // ---- the 1933 rebuild: timber-and-plaster houses with tile roofs, the plaque, a telegraph line ----
   { // a telegraph pole with its wires by the plaque house, so the plaque shot reveals it
-    const qp = new Batch(), px = PLAQUE_POS[0] - 1.8, pz = PLAQUE_POS[2] + 5.5, a = utilityPole(qp, px, H(px, pz) - 0.2, pz, 0.2, 7.5, false), b2 = utilityPole(qp, px - 26, H(px - 26, pz - 6) - 0.2, pz - 6, 0.25, 7.5, false);
+    const qp = new Batch(), px = PLAQUE_POS[0] - 5.0, pz = PLAQUE_POS[2] - 5.0, a = utilityPole(qp, px, H(px, pz) - 0.2, pz, 0.2, 7.5, false), b2 = utilityPole(qp, px - 26, H(px - 26, pz - 6) - 0.2, pz - 6, 0.25, 7.5, false);
     wires(qp, a.slice(1, 3), b2.slice(1, 3), 0.6); qp.build(groups.v1933, true);
   }
   const qb = new Batch(), qw = new Batch();
@@ -365,12 +369,12 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
     const u = POSTS_U[i], x = pathX(-u) + 2.3, z = -u, y = H(x, z);
     // the 300 ft post where the water stops is a tall wooden measuring post (red bands every half metre, readable from
     // the stone far above); the 100 / 200 ft posts stay small
-    const tall = i === 2, ph = tall ? 6.0 : 2.2, pr = tall ? 0.16 : 0.06;
+    const tall = i === 2, ph = tall ? 8.0 : 2.2, pr = tall ? 0.32 : 0.06;
     ptb.add(new THREE.BoxGeometry(pr * 2, ph, pr * 2).translate(0, ph / 2, 0), lam("postWood", () => ({ map: rep(beamHD(), 1, 2), color: "#b08a5a" })), tr(x, y - 0.3, z));
-    for (let k = 0; k < (tall ? 11 : 4); k++) ptb.add(new THREE.BoxGeometry(pr * 2 + 0.02, tall ? 0.22 : 0.18, pr * 2 + 0.02).translate(0, 0.25 + k * (tall ? 0.5 : 0.42), 0), col("postRed", "#c8352a"), tr(x, y - 0.3, z));
-    if (tall) for (let k = 0; k < 11; k++) ptb.add(new THREE.BoxGeometry(pr * 2 + 0.03, 0.03, pr * 2 + 0.03).translate(0, 0.5 + k * 0.5, 0), col("postTick", "#f4f0e6"), tr(x, y - 0.3, z));
-    const bm = new THREE.Mesh(new THREE.PlaneGeometry(tall ? 1.9 : 0.95, tall ? 1.2 : 0.6), new THREE.MeshBasicMaterial({ map: postTex(lab), color: new THREE.Color(0.92, 0.92, 0.92) }));
-    bm.position.set(x, y + (tall ? 4.6 : 1.8), z - (tall ? 0.2 : 0.09)); bm.rotation.y = Math.PI + 0.25; groups.posts.add(bm);
+    for (let k = 0; k < (tall ? 15 : 4); k++) ptb.add(new THREE.BoxGeometry(pr * 2 + 0.02, tall ? 0.26 : 0.18, pr * 2 + 0.02).translate(0, 0.25 + k * (tall ? 0.52 : 0.42), 0), col("postRed", "#d8302a"), tr(x, y - 0.3, z));
+    if (tall) for (let k = 0; k < 15; k++) ptb.add(new THREE.BoxGeometry(pr * 2 + 0.03, 0.03, pr * 2 + 0.03).translate(0, 0.5 + k * 0.5, 0), col("postTick", "#f4f0e6"), tr(x, y - 0.3, z));
+    const bm = new THREE.Mesh(new THREE.PlaneGeometry(tall ? 3.0 : 0.95, tall ? 1.9 : 0.6), new THREE.MeshBasicMaterial({ map: postTex(lab), color: new THREE.Color(0.92, 0.92, 0.92) }));
+    bm.position.set(x, y + (tall ? 6.4 : 1.8), z - (tall ? pr + 0.12 : 0.09)); bm.rotation.y = Math.PI + 0.25; groups.posts.add(bm);
   });
   ptb.build(groups.posts, true);
 

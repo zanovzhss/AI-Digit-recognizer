@@ -462,7 +462,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       break;
     }
     case 21: { // a villager by the stone watches the water stop far below (backs to the lens); two more further up
-      fig(out, cam, mk(110, modern(6), "watcherStone"), G(onStone(1.15, 0, 0.9)), f, { mode: "stand", back: true, nod: f > cue(W.stops) + 20 ? 0.2 : 0.5 });
+      fig(out, cam, mk(110, modern(6), "watcherStone"), G(onStone(1.25, 0, -1.25)), f, { mode: "stand", back: true, nod: f > cue(W.stops) + 20 ? 0.2 : 0.5 });
       fig(out, cam, mk(111, modern(1), "watcher2"), onPath(STONE_U + 6, 1.2, 0), f, { mode: "stand", back: true, nod: 0.4 });
       fig(out, cam, mk(112, modern(8), "watcher3"), onPath(STONE_U + 7, 2.2, 0), f, { mode: "stand", back: true, prop: "shoulder" });
       break;
