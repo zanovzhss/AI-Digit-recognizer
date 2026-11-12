@@ -10,7 +10,7 @@ Voice = `voice/voice.wav` unchanged (resampled to 48 kHz only: no gain, EQ, comp
 | `stem_voice.wav` / `stem_music.wav` / `stem_sfx.wav` | stems at mix gain (they sum to the mix before the master limiter) |
 
 ## Master loudness (own BS.1770-4 meter)
-- Integrated **-18.8 LUFS**, true peak **-1.2 dBTP**, LRA 7.0 LU, max momentary -9.6 LUFS, max short-term -14.3 LUFS
+- Integrated **-18.8 LUFS**, true peak **-1.2 dBTP**, LRA 7.1 LU, max momentary -9.6 LUFS, max short-term -14.3 LUFS
 - Stems: voice -19.1 LUFS, music -29.1 LUFS, sfx -33.0 LUFS (voice gain +0.00 dB, same gain on every stem)
 - Master limiter (4x oversampled look-ahead, ceiling -0.5 dBTP): max gain reduction -0.00 dB, active (>0.1 dB) on 0.00 % of samples, >0.5 dB on 0.00 %
 
@@ -21,9 +21,9 @@ Summary:
     I:         -18.8 LUFS
     Threshold: -29.0 LUFS
   Loudness range:
-    LRA:         7.1 LU
+    LRA:         7.2 LU
     Threshold: -39.0 LUFS
-    LRA low:   -22.1 LUFS
+    LRA low:   -22.2 LUFS
     LRA high:  -15.0 LUFS
   True peak:
     Peak:       -1.2 dBFS
@@ -34,17 +34,17 @@ bed = music + sfx. margin = voice - bed (integrated over the section). speech me
 
 | section (shots) | time s | voice | music | sfx | bed | margin LU | speech median LU | speech p10 LU |
 |---|---|---|---|---|---|---|---|---|
-| A the stone | 0.00-5.90 | -18.5 | -28.6 | -43.6 | -28.5 | 9.9 | 9.2 | 3.4 |
-| B 1896 | 5.90-13.30 | -20.7 | -29.9 | -32.0 | -27.9 | 7.2 | 7.1 | 2.7 |
-| C 1933 | 13.30-17.80 | -22.3 | -30.6 | -33.5 | -28.8 | 6.6 | 8.5 | 4.5 |
-| D the carving | 17.80-21.20 | -18.1 | -29.4 | -34.8 | -28.3 | 10.2 | 9.2 | 3.5 |
-| E eighty years | 21.20-28.40 | -20.4 | -27.7 | -40.6 | -27.5 | 7.0 | 7.4 | 3.8 |
+| A the stone | 0.00-5.90 | -18.5 | -28.4 | -43.6 | -28.3 | 9.8 | 9.0 | 3.2 |
+| B 1896 | 5.90-13.30 | -20.7 | -29.8 | -32.0 | -27.8 | 7.1 | 6.9 | 2.6 |
+| C 1933 | 13.30-17.80 | -22.3 | -30.5 | -33.5 | -28.8 | 6.5 | 8.4 | 4.4 |
+| D the carving | 17.80-21.20 | -18.1 | -29.3 | -34.8 | -28.1 | 10.1 | 9.0 | 3.4 |
+| E eighty years | 21.20-28.40 | -20.4 | -27.5 | -40.6 | -27.3 | 6.9 | 7.3 | 3.6 |
 | F forgotten stones | 28.40-33.10 | -19.1 | -31.5 | -44.1 | -31.3 | 12.2 | 12.4 | 8.9 |
-| G eleven families | 33.10-37.80 | -20.6 | -28.6 | -43.0 | -28.4 | 7.8 | 7.9 | 3.4 |
-| H 2011 | 37.80-46.40 | -17.9 | -29.4 | -29.5 | -27.1 | 9.1 | 9.1 | 6.8 |
+| G eleven families | 33.10-37.80 | -20.6 | -28.4 | -43.0 | -28.2 | 7.6 | 7.8 | 3.3 |
+| H 2011 | 37.80-46.40 | -17.9 | -29.3 | -29.5 | -27.0 | 9.1 | 9.1 | 6.7 |
 | I the valley | 46.40-49.10 | -14.1 | -29.5 | -27.5 | -25.4 | 11.3 | 10.7 | 3.7 |
-| J below the stone | 49.10-51.90 | -22.3 | -40.4 | -34.6 | -33.6 | 11.3 | 15.7 | 8.0 |
-| K still standing | 51.90-54.19 | -21.6 | -25.1 | -45.1 | -25.4 | 3.8 | 10.8 | -0.3 |
+| J below the stone | 49.10-51.90 | -22.3 | -40.4 | -34.6 | -33.6 | 11.3 | 15.8 | 8.0 |
+| K still standing | 51.90-54.19 | -21.6 | -27.4 | -45.1 | -28.6 | 7.0 | 14.8 | 2.5 |
 
 ## Music map (original score, sections cut to the story beats)
 Music target per section, LU under the voice (after a -3 dB speech duck keyed from words.json): all -10.0. Applied section gains (dB): all -3.8.
@@ -99,7 +99,7 @@ Level convention: every EVENT has a naive level (LU vs the voice stem, as the ev
 | 26 | 27.767 | 833.0 | gull squawk | the gull's cry as it grabs the fish | -11 | -17.0 | -36.1 | +0.30 |
 | 27 | 27.833 | 835.0 | wings | wing flaps as it flies off | -14 | -20.0 | -39.1 | -0.20 |
 | 28 | 28.267 | 848.0 | bed: corner (bed, integrated) | shot 12 ambience | -25 | -25.0 | -44.1 | +0.00 |
-| 29 | 30.167 | 905.0 | sparrow | a sparrow chirps near his crumbs | -16 | -22.0 | -300.7 | +0.30 |
+| 29 | 30.167 | 905.0 | sparrow | a sparrow chirps near his crumbs | -16 | -22.0 | -41.1 | +0.30 |
 | 30 | 31.133 | 934.0 | bed: corner (bed, integrated) | shot 13 ambience | -25 | -25.0 | -44.1 | +0.00 |
 | 31 | 32.867 | 986.0 | bed: dawn (bed, integrated) | shot 14 ambience | -24 | -24.0 | -43.1 | +0.00 |
 | 32 | 36.133 | 1084.0 | bed: dawn (bed, integrated) | shot 15 ambience | -24 | -24.0 | -43.1 | +0.00 |

@@ -132,17 +132,17 @@ def build():
     # ---------------- J below the stone: near-silence, one high held note
     pad(b, w["stops"] + 0.25, [81], 2.5, 0.12, att=1.2, rel=0.9, warm=2200, name="air")
     # ---------------- K still standing: a warm D major chord, a koto arpeggio and glock on "still standing"
-    pad(b, w["every"] - 0.05, [50, 57, 62, 66, 69], T.DUR - w["every"] + 0.3, 0.5, att=1.2, rel=0.2, warm=1300)
-    pad(b, w["still"] - 0.05, [38, 45, 54, 62, 66, 69, 74], T.DUR - w["still"] + 0.3, 0.55, att=0.25, rel=0.2, warm=1500, name="final")
+    pad(b, w["every"] - 0.05, [50, 57, 62, 66, 69], T.DUR - w["every"] + 0.3, 0.3, att=1.2, rel=0.2, warm=1300)
+    pad(b, w["still"] - 0.05, [38, 45, 54, 62, 66, 69, 74], T.DUR - w["still"] + 0.3, 0.55, att=0.6, rel=0.2, warm=1500, name="final")
     for k, m in enumerate([62, 66, 69, 74, 78]):
-        koto(b, w["still"] + 0.06 * k, m, 0.6, -0.3 + 0.15 * k, 2.4, bright=0.6)
+        koto(b, w["still"] + 0.06 * k, m, 0.42, -0.3 + 0.15 * k, 2.4, bright=0.6)
     for k, m in enumerate([86, 90, 93]):
         b.add("glock", I.glock(F(m), 0.38, _r(), 2.0), w["standing"] + 0.05 + 0.12 * k, 0.2)
     return b
 
 
 TARGET = {"koto": -4.0, "pad": -8.0, "drone": -9.0, "air": -16.0, "glock": -9.0, "timp": -8.0, "brush": -15.0, "musicbox": -6.0,
-          "cluster": -9.0, "final": -9.0}
+          "cluster": -9.0, "final": -13.0}
 
 
 def render(b, ref=-20.0):
