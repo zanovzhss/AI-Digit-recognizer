@@ -6,20 +6,23 @@ import * as THREE from "three";
 import { Batch, V, lam, quad } from "./build";
 import { H, GRID, heightGrid, heightTexture, pathX, sideDist, floorY } from "./terrain";
 import { STONE, HOUSES, VILLAGE, houseAt, villageAt, BOARD_1896, PLAQUE_1933, PLAQUE_POS, REBUILT_D, BOAT_OVER, YARD, HAUL_U, POSTS_U, STONE_U,
-  SHOTS, camRig, gnd, onPath, V3 } from "./story";
+  SHOTS, camRig, gnd, onPath, V3, WAVE_DEF } from "./story";
 import { jHouse, woodBoat, modernBoat, dryingRack, netOnPosts, netHeap, chochin, andon, utilityPole, wires, terraceWall, vegRows, laundry, tr, lbox, col } from "./jhouse";
-import { stoneFaceTex, stoneBumpTex, yearBoardTex, postTex, mapLabelTex, ringMarkTex, groundDetailTex } from "./jpaint";
+import { makeStone } from "./stonemodel";
+import { addObst } from "./obstacles";
+import { yearBoardTex, postTex, mapLabelTex, ringMarkTex, groundDetailTex } from "./jpaint";
 import { plant, Inst } from "./forest";
 import { rep, beamHD, rng, cloudHD, CLOUD_DAY } from "./paint";
 import { twoTone } from "./shade";
 import { NOINK, TWIN_LAYER, inkTwins } from "./ink";
 import { waterUniforms, waterMaterial, waterInkMaterial, waterGrid, WaterU } from "./water";
 import { pool, Practical, crateY, barrelY } from "./common";
+import { makeWave, Wave } from "./wave";
 import { bucket, ropeCoil, sack } from "./build";
 
 export type HillParts = {
   groups: Record<"now" | "v1896" | "ruins" | "v1933" | "yard" | "haul" | "posts" | "map", THREE.Group>;
-  stone: THREE.Mesh; sledge: THREE.Group; water: WaterU; mapU: { uMap: { value: number } };
+  stone: THREE.Mesh; sledge: THREE.Group; water: WaterU; mapU: { uMap: { value: number } }; w1896: Wave; w1933: Wave;
   winOld: THREE.Mesh[]; winNow: THREE.Mesh[]; winRebuilt: THREE.Mesh[];
 };
 
@@ -147,7 +150,7 @@ const buildForest = (root: THREE.Object3D) => {
     if (!clear(x, y, z, 0.4, 0.5)) continue;
     tuft.push({ x, y, z, h: 0.3 + 0.3 * r(), w: 0.45 + 0.35 * r(), c: Math.floor(r() * 4) });
   }
-  for (let k = 0; k < 45; k++) { const a = r() * 6.283, d = 1.2 + 4 * r(), x = STONE.x + Math.cos(a) * d, z = STONE.z + Math.sin(a) * d; if ((x - STONE.x) * STONE.nx + (z - STONE.z) * STONE.nz < 0.4) continue; tuft.push({ x, y: H(x, z), z, h: 0.22 + 0.25 * r(), w: 0.4 + 0.25 * r(), c: Math.floor(r() * 4) }); }
+  for (let k = 0; k < 45; k++) { const a = r() * 6.283, d = 1.2 + 4 * r(), x = STONE.x + Math.cos(a) * d, z = STONE.z + Math.sin(a) * d; if (Math.hypot(x - STONE.x, z - STONE.z) < 1.0) continue; tuft.push({ x, y: H(x, z), z, h: 0.22 + 0.25 * r(), w: 0.4 + 0.25 * r(), c: Math.floor(r() * 4) }); }
   for (let k = 0; k < 420; k++) { const x = (r() - 0.5) * 700, z = -r() * 420 + 40, y = H(x, z); if (y < 0.5 || Math.abs(x - pathX(z)) < 3 || nearPad(x, z, 9) || Math.hypot(x - STONE.x, z - STONE.z) < 16) continue; rock.push({ x, y, z, h: 0.6 + 2.4 * r() ** 2, w: 0.9 + 3 * r() ** 2 }); }
   plant(root, "sugi", sugi); plant(root, "round", round); plant(root, "pine", pine); plant(root, "bush", bush);
   plant(root, "bamboo", bamboo); plant(root, "tuft", tuft, { shadow: false }); plant(root, "rock", rock);
@@ -155,28 +158,6 @@ const buildForest = (root: THREE.Object3D) => {
 
 // ---------------- the stone ----------------
 /** the slab: a thick rounded box with the painted, bump-carved face on +z (local), a rough back and sides */
-const stoneGeo = (w: number, h: number, t: number) => {
-  const g = new THREE.BoxGeometry(w, h, t, 12, 22, 3).translate(0, h / 2, 0), p = g.attributes.position as THREE.BufferAttribute;
-  for (let i = 0; i < p.count; i++) {
-    const x = p.getX(i), y = p.getY(i), z = p.getZ(i), u = x / w + 0.5, v = y / h;
-    const crown = v > 0.8 ? (v - 0.8) / 0.2 : 0, round = crown * crown * (0.35 + 0.25 * Math.sin(u * 5.5 + 0.6)) * h * 0.18;
-    const edge = Math.abs(u - 0.5) * 2;
-    const bump = 0.012 * Math.sin(x * 23 + y * 7) + 0.01 * Math.sin(y * 31 - x * 13);
-    p.setXYZ(i, x * (1 - 0.06 * crown * edge), y - round * (0.3 + edge * 0.9), z * (1 - 0.25 * edge ** 4) + (z > 0 ? bump * 0.3 : bump));
-  }
-  g.computeVertexNormals();
-  return g;
-};
-export const makeStone = () => {
-  const g = stoneGeo(STONE.w, STONE.h, STONE.t);
-  const face = twoTone(new THREE.MeshLambertMaterial({ map: stoneFaceTex(), bumpMap: stoneBumpTex(), bumpScale: 3.2, alphaTest: 0.5 }));
-  const side = twoTone(new THREE.MeshLambertMaterial({ color: "#8e877c", map: rep(groundDetailTex(), 2, 3) }));
-  // BoxGeometry groups: +x, -x, +y, -y, +z (front, the inscription), -z
-  const mesh = new THREE.Mesh(g, [side, side, side, side, face, side]);
-  mesh.castShadow = true; mesh.receiveShadow = false; // the carved face always takes the key (no stray cast shadow over the inscription)
-  return mesh;
-};
-
 // ---------------- the set ----------------
 export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Practical[] } => {
   const groups = { now: new THREE.Group(), v1896: new THREE.Group(), ruins: new THREE.Group(), v1933: new THREE.Group(), yard: new THREE.Group(), haul: new THREE.Group(), posts: new THREE.Group(), map: new THREE.Group() };
@@ -189,11 +170,15 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
 
   // ---- the stone (now) ----
   const stone = makeStone();
-  stone.position.set(STONE.x, STONE.y - 0.06, STONE.z); stone.rotation.y = Math.atan2(STONE.nx, STONE.nz);
+  stone.position.set(STONE.x, STONE.y - 0.04, STONE.z); stone.rotation.y = Math.atan2(STONE.nx, STONE.nz);
+  addObst("stone", STONE.x, STONE.z, STONE.w / 2 + 0.05, STONE.t / 2 + 0.06, stone.rotation.y);
   groups.now.add(stone);
+  // natural ground round it: a few small field stones half in the grass (no ring, nothing grave-like)
   const nb = new Batch();
-  for (let k = 0; k < 9; k++) { const a = k * 0.8, d = 0.55 + 0.15 * (k % 3); nb.add(new THREE.IcosahedronGeometry(0.16 + 0.06 * (k % 2), 1), lam("baseStone", () => ({ color: "#8a8478" })), tr(STONE.x + Math.cos(a) * d, STONE.y + 0.04, STONE.z + Math.sin(a) * d)); }
-  for (let k = 0; k < 7; k++) nb.add(new THREE.SphereGeometry(0.11 + 0.05 * (k % 3), 10, 7).scale(1, 0.5, 1), lam("mossLump", () => ({ color: "#5d7a34" })), tr(STONE.x + (k - 3) * 0.13 * STONE.nz, STONE.y + 0.02, STONE.z - (k - 3) * 0.13 * STONE.nx));
+  for (const [ax, az, rr] of [[0.95, -0.55, 0.13], [-1.1, 0.35, 0.1], [0.6, 1.25, 0.09], [-0.7, -1.3, 0.12]] as const) {
+    const gx = STONE.x + ax, gz = STONE.z + az;
+    nb.add(new THREE.IcosahedronGeometry(rr, 1).scale(1.3, 0.6, 1), lam("fieldStone", () => ({ color: "#8a8478" })), tr(gx, H(gx, gz) + rr * 0.15, gz, ax * 3));
+  }
   nb.build(groups.now, true);
 
   // ---- the modern hamlet: eleven houses on terraces, the road, poles and wires, gardens, the harbour ----
@@ -292,6 +277,7 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
   const yardSide = twoTone(new THREE.MeshLambertMaterial({ color: "#5f5952", map: rep(groundDetailTex(), 2, 3) })); // fresh-cut sides, not lit up like cake
   yardStone.material = (yardStone.material as THREE.MeshLambertMaterial[]).map((m, i) => (i === 4 ? m : (yardSide as THREE.MeshLambertMaterial)));
   yardStone.rotation.set(-Math.PI / 2, 0, 0.25, "YXZ"); yardStone.rotation.y = 0.25; yardStone.position.set(yx, yy + 0.52, yz + STONE.h / 2 - 0.1); groups.yard.add(yardStone);
+  addObst("stone:yard", yx - 0.29, yz - 0.03, STONE.w / 2 + 0.05, STONE.h / 2 + 0.04, 0.5);
   for (const dz of [-0.6, 0.6]) yb.add(new THREE.CylinderGeometry(0.13, 0.13, 1.3, 12).rotateZ(Math.PI / 2), lam("log", () => ({ map: rep(beamHD(), 1, 0.3), color: "#5e5044" })), tr(yx, yy + 0.24, yz + dz, 0.25));
   // straw mats under the two carvers (one each side of the slab, as seen from its foot)
   lbox(yb, lam("strawMatY", () => ({ color: "#9a8456" })), tr(yx + 0.3, yy, yz - 0.5, 0.5), -0.5, 0.5, 0, 0.03, -0.9, 0.9);
@@ -300,7 +286,8 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
   bucket(yb, yx - 0.8, yy, yz + 0.87); ropeCoil(yb, yx + 1.08, yy, yz + 0.87); sack(yb, yx - 2.0, yy, yz - 0.8); crateY(yb, yx + 1.5, yy, yz - 1.9, 0.5, 0.4); crateY(yb, yx - 1.27, yy, yz - 1.2, 0.46, 0.3); // carver A's seat
   const lanternPos: V3[] = [[yx - 0.71, yy + 1.75, yz - 1.68], [yx + 0.78, yy + 1.9, yz - 1.13]];
   for (const [lx, ly, lz] of lanternPos) { chochin(yb, groups.yard, lx, ly, lz, 1.2); yb.add(new THREE.CylinderGeometry(0.03, 0.03, 2.4, 6).translate(0, 1.2, 0), col("bambooPole", "#8a9a5a"), tr(lx + 0.25, yy, lz)); lbox(yb, col("bambooPole", "#8a9a5a"), tr(lx, ly + 0.35, lz), -0.02, 0.27, -0.02, 0.02, -0.02, 0.02); }
-  andon(yb, groups.yard, yx + 0.34, yy, yz + 1.61);
+  andon(yb, groups.yard, yx + 0.34, yy, yz + 1.61); addObst("andon", yx + 0.34, yz + 1.61, 0.2, 0.2);
+  addObst("bucket", yx - 0.8, yz + 0.87, 0.2, 0.2); addObst("rope", yx + 1.08, yz + 0.87, 0.3, 0.3); addObst("crate", yx + 1.5, yz - 1.9, 0.3, 0.3);
   yb.build(groups.yard, true);
   for (const [lx, ly, lz] of lanternPos) { lights.push({ place: "hill", pos: [lx, ly - 0.2, lz], color: "#ffa850", intensity: 3.8, distance: 4.2, shots: [7] }); const p = pool(2.8, 2.8, 0.14, 0.08, 0.03, "yardPool"); p.rotation.x = -Math.PI / 2; p.position.set(lx, yy + 0.04, lz); groups.yard.add(p); }
   lights.push({ place: "hill", pos: [yx + 0.34, yy + 0.6, yz + 1.61], color: "#ffb860", intensity: 1.6, distance: 3, shots: [7] });
@@ -375,5 +362,10 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
     plant(root, "sugi", far, { shadow: false });
   }
   void onPath; void gnd; void STONE_U; void quad; void cloudHD; void CLOUD_DAY;
-  return { parts: { groups, stone, sledge, water, mapU, winOld, winNow, winRebuilt }, lights };
+  // the toon wave walls: 1896 across the whole bay (dark storm water), the 1933 surge into the rebuilt village
+  const w1896 = makeWave(WAVE_DEF.w1896.cx, WAVE_DEF.w1896.len, WAVE_DEF.w1896.base, { back: "#1f3a58", foam: "#d6dee4", faceTop: "#3f86a8", face: "#16385a", toe: "#bcc8d0" }, 3, 220);
+  const w1933 = makeWave(WAVE_DEF.w1933.cx, WAVE_DEF.w1933.len, WAVE_DEF.w1933.base, { back: "#2a4258", foam: "#dfe6ea", faceTop: "#3a7894", face: "#16304a", toe: "#cfd8de" }, 7, 110);
+  root.add(w1896.mesh, w1933.mesh);
+  water.uFrontDrop.value = 0; water.uFrontH.value = 0.62 * 4.8;
+  return { parts: { groups, stone, sledge, water, mapU, winOld, winNow, winRebuilt, w1896, w1933 }, lights };
 };

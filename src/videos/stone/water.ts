@@ -14,7 +14,7 @@ import { twoTone } from "./shade";
 export type WaterU = {
   uTime: { value: number }; uLevel: { value: number }; uChop: { value: number };
   uSwellH: { value: number }; uSwellZ: { value: number }; uSwellW: { value: number };
-  uFrontOn: { value: number }; uFrontZ: { value: number }; uFrontH: { value: number };
+  uFrontOn: { value: number }; uFrontZ: { value: number }; uFrontH: { value: number }; uFrontDrop: { value: number };
   uGround: { value: THREE.Texture | null }; uGroundO: { value: THREE.Vector2 }; uGroundS: { value: THREE.Vector2 }; uHasGround: { value: number };
   uFoamW: { value: number }; uFlow: { value: number }; uFlowDir: { value: THREE.Vector2 };
   uNear: { value: THREE.Color }; uFar: { value: THREE.Color }; uDeep: { value: THREE.Color }; uFoam: { value: THREE.Color };
@@ -23,7 +23,7 @@ export type WaterU = {
 export const waterUniforms = (): WaterU => ({
   uTime: { value: 0 }, uLevel: { value: 0 }, uChop: { value: 1 },
   uSwellH: { value: 0 }, uSwellZ: { value: 1e5 }, uSwellW: { value: 38 },
-  uFrontOn: { value: 0 }, uFrontZ: { value: 1e5 }, uFrontH: { value: 9 },
+  uFrontOn: { value: 0 }, uFrontZ: { value: 1e5 }, uFrontH: { value: 9 }, uFrontDrop: { value: 16 },
   uGround: { value: null }, uGroundO: { value: new THREE.Vector2() }, uGroundS: { value: new THREE.Vector2(1, 1) }, uHasGround: { value: 0 },
   uFoamW: { value: 0.6 }, uFlow: { value: 0 }, uFlowDir: { value: new THREE.Vector2(0, -1) },
   uNear: { value: new THREE.Color("#2f6f86") }, uFar: { value: new THREE.Color("#8fb6cc") }, uDeep: { value: new THREE.Color("#1e4c66") }, uFoam: { value: new THREE.Color("#ffffff") },
@@ -31,7 +31,7 @@ export const waterUniforms = (): WaterU => ({
 });
 
 const DECL = /* glsl */ `
-uniform float uTime, uLevel, uChop, uSwellH, uSwellZ, uSwellW, uFrontOn, uFrontZ, uFrontH;
+uniform float uTime, uLevel, uChop, uSwellH, uSwellZ, uSwellW, uFrontOn, uFrontZ, uFrontH, uFrontDrop;
 uniform vec2 uOrigin;
 float wHash( vec2 p ) { return fract( sin( dot( p, vec2( 127.1, 311.7 ) ) ) * 43758.5453 ); }
 float wNoise( vec2 p ) {
@@ -50,7 +50,7 @@ float waterH( vec2 p, out float crest ) {
     float s = q.y - uFrontZ;                                   // < 0 ahead of the front (dry land), > 0 behind it
     float k = 1.0 / ( 1.0 + exp( -s / 1.7 ) );
     float bump = exp( -pow( ( s - 6.0 ) / 7.0, 2.0 ) );
-    h += mix( -16.0, uFrontH * ( 1.0 + 0.85 * bump ), k ) + 1.2 * sin( q.x * 0.07 + uTime * 2.2 ) * k;
+    h += mix( -uFrontDrop, uFrontH * ( 1.0 + 0.85 * bump ), k ) + 1.2 * sin( q.x * 0.07 + uTime * 2.2 ) * k;
     crest = max( crest, bump * k );
   }
   return h;

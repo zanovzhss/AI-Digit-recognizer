@@ -71,7 +71,7 @@ export const houseAt = (i: number): V3 => { const [x, u] = HOUSES[i]; const [hx,
 export const villageAt = (i: number): V3 => { const [x, u] = VILLAGE[i]; const [hx, hz] = housePos(x, u); return [hx, H(hx, hz), hz]; };
 /** the stone: base centre, face normal (the inscription faces up the hill, toward the hamlet), size */
 const SN = (() => { const x = -0.25, z = -0.97, l = Math.hypot(x, z); return [x / l, z / l] as const; })();
-export const STONE = { x: STONE_X, y: H(STONE_X, -STONE_U), z: -STONE_U, nx: SN[0], nz: SN[1], w: 0.95, h: 1.75, t: 0.3 };
+export const STONE = { x: STONE_X, y: H(STONE_X, -STONE_U), z: -STONE_U, nx: SN[0], nz: SN[1], w: 0.78, h: 1.22, t: 0.34 }; // THE stone (stonemodel.ts)
 /** a point on the stone's face: across (+ = right when facing it), up from the base, out from the face */
 export const onStone = (across: number, up: number, out = 0): V3 => {
   const rx = -STONE.nz, rz = STONE.nx; // right of the viewer facing the stone = -left of the stone
@@ -167,8 +167,30 @@ export const floodAt = (id: number, f: number): number | null => {
 };
 /** the 1896 swell: height and distance from the shore (m) */
 export const swellAt = (f: number) => ({ h: 4 + 56 * smooth((f - 224) / 60), z: 420 - 300 * smooth((f - 236) / 84) });
-/** the 2011 wave front in the town (local z, the sea is +z): it sweeps inland over the rooftops */
-export const townFrontAt = (f: number) => 160 - 440 * clamp01((f - 1318) / 100) ** 0.9;
+/** the 2011 wave in the town (local z of its toe, the sea is +z): from the waterfront it rolls inland over the rooftops */
+export const townFrontAt = (f: number) => -105 - 78 * clamp01((f - 1329) / 71) + 14 * clamp01((1329 - f) / 12);
+/** the toon wave walls (wave.ts): 1896 at sea (shot 2), the 1933 surge between the houses (shot 6), the 2011 wall over
+ *  the town (shot 19). toe = local z where the wall meets the water ahead of it (it travels toward -z, inland) */
+export type WaveSpec = { key: "w1896" | "w1933" | "w2011"; toe: number; H: number; curl: number; backLevel: number };
+export const W1933_H = 4.8, W2011_H = 48;
+/** where each wall lies (wave.ts WaveDef): centre x, length, water level it sits on, noise seed */
+export const WAVE_DEF = {
+  w1896: { cx: pathX(0), len: 1500, base: 0, seed: 3 },
+  w1933: { cx: pathX(-12), len: 240, base: 0, seed: 7 },
+  w2011: { cx: OFF.town, len: 1800, base: -1.6, seed: 11 },
+};
+export const waveAt = (id: number, f: number): WaveSpec | null => {
+  if (id === 2 && f >= 206) {
+    const u = clamp01((f - 206) / 108);
+    return { key: "w1896", toe: 760 - 720 * u ** 1.1, H: 7 + 29 * smooth((f - 212) / 84), curl: 0.12 + 0.78 * smooth((f - 240) / 70), backLevel: 0 };
+  }
+  if (id === 6 && f >= 460) {
+    const toe = 48 - 80 * clamp01((f - 460) / 58), H = W1933_H * (toe > 0 ? 1 : clamp01(1 + toe / 30));
+    return H < 0.4 ? null : { key: "w1933", toe, H, curl: 0.3, backLevel: 0.62 };
+  }
+  if (id === 19) return { key: "w2011", toe: townFrontAt(f), H: W2011_H, curl: 0.55, backLevel: 0.45 };
+  return null;
+};
 /** the map rings (shot 18): radius of the quake ripples and the wave line heading in */
 export const ringAt = (f: number) => ({ r: Math.max(0, (f - cue(W.earthquake)) * 7.5), front: 330 - 300 * smooth((f - cue(W.sends)) / 40) });
 export const SHAKE_F = cue(W.ground);
@@ -219,8 +241,8 @@ const KEYS: Record<number, Key[]> = {
   // 2 the 1896 notice board above the village, then back and up over the thatched village to the stormy sea
   2: [
     { f: SA(2), cam: cam(add3(BOARD_1896, [0.1, 1.72, -3.6]), add3(BOARD_1896, [0, 1.55, 0]), 40) },
-    { f: SA(2) + 8, dur: 50, cam: cam(PP(74, -6, 8), [2, 4, 60], 50), ease: glide },
-    { f: cue(W.wiped), dur: 40, cam: cam(PP(66, -5, 7), [2, 5, 64], 50) },
+    { f: SA(2) + 8, dur: 50, cam: cam(PP(53, 1.5, 3.2), [0, 5, 200], 52), ease: glide },
+    { f: cue(W.wiped), dur: 50, cam: cam(PP(52.5, 1.5, 3.0), [0, 12, 190], 52) },
   ],
   // 3 LOW beside the empty overturned boat at the water's edge
   3: [
@@ -311,8 +333,8 @@ const KEYS: Record<number, Key[]> = {
   ],
   // 19 high wide over the town: the wave sweeps in over the rooftops
   19: [
-    { f: SA(19), cam: cam(T(-46, 78, -470), T(-10, 4, -130), 50) },
-    { f: SA(19), dur: 24, cam: cam(T(-45, 74, -462), T(-10, 4, -124), 50) },
+    { f: SA(19), cam: cam(T(-92, 11, -258), T(8, 22, -60), 36) },
+    { f: SA(19), dur: 30, cam: cam(T(-90, 11, -255), T(10, 23, -60), 36) },
   ],
   // 20 LOW on the path looking down the valley: the water climbs far below, people run up past the lens
   20: [

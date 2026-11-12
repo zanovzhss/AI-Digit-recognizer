@@ -10,6 +10,7 @@ import { LIGHTS, LOOK, LightPreset } from "./lights";
 import { TONE, CHAR, untone } from "./shade";
 import { NOINK, TWIN_LAYER } from "./ink";
 import { Pool, Actor, Fx, stage } from "./cast";
+import { waveAt } from "./story";
 import { FPS, SHOTS, camAt, camRig, ShotDef, OFF, floodAt, swellAt, townFrontAt, ringAt, growAt, SHAKE_F, smooth, clamp01, onPath, HAUL_U, cue, W } from "./story";
 import { pathX, H } from "./terrain";
 import { buildHill, HillParts } from "./hill";
@@ -140,8 +141,11 @@ export class World {
       const w = this.hill.water;
       w.uTime.value = t;
       w.uLevel.value = floodAt(id, f) ?? 0;
-      const sw = id === 2 ? swellAt(f) : { h: 0, z: 1e5 };
-      w.uSwellH.value = sw.h; w.uSwellZ.value = sw.z;
+      void swellAt; w.uSwellH.value = 0; w.uSwellZ.value = 1e5; // the old swell is replaced by the wave walls
+      const wv = waveAt(id, f);
+      this.hill.w1896.update({ on: wv?.key === "w1896", toe: wv?.toe ?? 0, H: wv?.H ?? 1, curl: wv?.curl ?? 0, backLevel: wv?.backLevel ?? 0, t });
+      this.hill.w1933.update({ on: wv?.key === "w1933", toe: wv?.toe ?? 0, H: wv?.H ?? 1, curl: wv?.curl ?? 0, backLevel: wv?.backLevel ?? 0, t });
+      w.uFrontOn.value = id === 6 && f >= 460 ? 1 : 0; w.uFrontZ.value = wv?.key === "w1933" ? wv.toe : -1e5;
       w.uChop.value = s.light === "storm" ? 2.6 : s.light === "dark" ? 2.0 : 1.0;
       w.uFlow.value = id === 6 ? 1.0 : id === 20 ? 1.3 : id === 21 ? 1.3 * (1 - clamp01((f - 1462) / 40)) + 0.15 : 0;
       w.uFlowDir.value.set(0, -1);
@@ -186,6 +190,8 @@ export class World {
       const w = T.water;
       w.uTime.value = t;
       w.uFrontOn.value = id === 19 ? 1 : 0; w.uFrontZ.value = townFrontAt(f);
+      const wt = waveAt(id, f);
+      T.w2011.update({ on: wt?.key === "w2011", toe: wt?.toe ?? 0, H: wt?.H ?? 1, curl: wt?.curl ?? 0, backLevel: wt?.backLevel ?? 0, t });
       w.uChop.value = id === 19 ? 2.2 : 1.0; w.uFlow.value = id === 19 ? 1.6 : 0; w.uFlowDir.value.set(0, -1);
       this.seaColours(w, look);
     }

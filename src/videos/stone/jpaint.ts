@@ -14,13 +14,13 @@ const jitHex = (r: () => number, c: THREE.Color, k: number) => { const x = c.clo
 /** the real inscription (columns read right to left): "High dwellings are the peace of our descendants / remember the
  *  calamity of the great tsunami / do not build your homes below this point", plus the two years (Meiji 29, Showa 8) */
 const COLS: { t: string; size: number; x: number; y0: number }[] = [
-  { t: "高き住居は児孫の和楽", size: 0.085, x: 0.79, y0: 0.13 },
-  { t: "想へ惨禍の大津浪", size: 0.085, x: 0.64, y0: 0.13 },
-  { t: "此処より下に家を建てるな", size: 0.098, x: 0.45, y0: 0.08 },
-  { t: "明治二十九年", size: 0.05, x: 0.27, y0: 0.2 },
-  { t: "昭和八年", size: 0.05, x: 0.18, y0: 0.2 },
+  { t: "高き住居は児孫の和楽", size: 0.084, x: 0.735, y0: 0.15 },
+  { t: "想へ惨禍の大津浪", size: 0.084, x: 0.61, y0: 0.15 },
+  { t: "此処より下に家を建てるな", size: 0.094, x: 0.465, y0: 0.115 },
+  { t: "明治二十九年", size: 0.05, x: 0.33, y0: 0.22 },
+  { t: "昭和八年", size: 0.05, x: 0.255, y0: 0.22 },
 ];
-const SW = 1600, SH = 2950; // 0.95 m x 1.75 m
+const SW = 1500, SH = 2350; // the face of THE stone, 0.78 m x 1.22 m (stonemodel.ts)
 /** draws every glyph through fn(char, cx, cy, px) in canvas units of the SW x SH face */
 const eachGlyph = (fn: (ch: string, cx: number, cy: number, px: number) => void) => {
   for (const c of COLS) {
@@ -66,8 +66,8 @@ export const stoneFaceTex = () => ctex("stoneFace", SW, SH, (g, r) => {
   for (let i = 0; i < 5200; i++) {
     const side = r(), t = r();
     let x: number, y: number;
-    if (side < 0.3) { x = r() ** 2.4 * SW * 0.1; y = SH * (0.06 + 0.94 * t); }
-    else if (side < 0.6) { x = SW - r() ** 2.4 * SW * 0.1; y = SH * (0.06 + 0.94 * t); }
+    if (side < 0.3) { x = r() ** 2.4 * SW * 0.08; y = SH * (0.5 + 0.5 * t); }
+    else if (side < 0.6) { x = SW - r() ** 2.4 * SW * 0.08; y = SH * (0.5 + 0.5 * t); }
     else if (side < 0.85) { x = SW * t; y = SH - r() ** 2.2 * SH * 0.1; }
     else { x = SW * t; y = r() ** 2.4 * SH * 0.05; }
     const rad = 3 + r() * 12;
@@ -75,8 +75,17 @@ export const stoneFaceTex = () => ctex("stoneFace", SW, SH, (g, r) => {
     g.beginPath(); g.ellipse(x, y, rad, rad * (0.5 + 0.6 * r()), r() * 3, 0, TAU); g.fill();
   }
   g.globalAlpha = 1;
-  // outside the slab outline: transparent (alphaTest)
-  g.globalCompositeOperation = "destination-in"; g.fillStyle = "#000"; stoneOutline(g); g.fill(); g.globalCompositeOperation = "source-over";
+  void stoneOutline;
+});
+/** rough sides and back of the stone: weathered granite with cracks, chips and lichen */
+export const rockSideTex = () => ctex("rockSide", 512, 768, (g, r) => {
+  g.fillStyle = "#8c857a"; g.fillRect(0, 0, 512, 768);
+  for (let i = 0; i < 9000; i++) { const k = r(); g.fillStyle = k < 0.45 ? `rgba(58,52,46,${0.12 + 0.25 * r()})` : k < 0.85 ? `rgba(214,206,192,${0.1 + 0.22 * r()})` : `rgba(140,112,88,${0.15 + 0.2 * r()})`; g.fillRect(r() * 512, r() * 768, 1 + r() * 4, 1 + r() * 4); }
+  for (let i = 0; i < 26; i++) { // cracks
+    let x = r() * 512, y = r() * 768; g.strokeStyle = `rgba(40,36,32,${0.35 + 0.3 * r()})`; g.lineWidth = 1.5 + r() * 2.5; g.beginPath(); g.moveTo(x, y);
+    for (let k = 0; k < 6; k++) { x += (r() - 0.5) * 50; y += 10 + r() * 40; g.lineTo(x, y); } g.stroke();
+  }
+  for (let i = 0; i < 60; i++) { g.fillStyle = r() < 0.5 ? "rgba(200,196,150,0.35)" : "rgba(120,140,90,0.35)"; g.beginPath(); g.ellipse(r() * 512, r() * 768, 6 + r() * 20, 4 + r() * 14, r() * 3, 0, TAU); g.fill(); }
 });
 /** bump: the face is high (white), the carved strokes low (black), soft chisel walls */
 export const stoneBumpTex = () => ctex("stoneBump", SW / 2, SH / 2, (g, r) => {

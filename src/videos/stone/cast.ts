@@ -5,8 +5,10 @@
 // (sweat, drips, the bulb, sawdust, warm air) are unlit cards. Cards, effects and blobs live on the NOINK layer so the
 // world ink pass never outlines their quads. Infrastructure (pool, cards, tiers, blinks, blobs) is the template's.
 import * as THREE from "three";
+import { keepClear } from "./obstacles";
+import { crestPoint, toePoint, WaveDef } from "./wave";
 import { Pen, bodyFront, bodySide, fxShadow, fxContact, Outfit, FrontOpts, SideOpts, fisher, villager, modern, VENDOR, LUNCH, GRANDPA, GRANDMA } from "./toon";
-import { FPS, SHOTS, V3, W, clamp01, cue, smooth, STONE, onStone, houseAt, SURV2, SURV4, survivorAt, BOAT_OVER, YARD, HAUL_U, STOP_U, STONE_U, MARKET, OLDSTONE, GULL_F, SHAKE_F, onPath, at, lerp3, OFF, townFrontAt } from "./story";
+import { FPS, SHOTS, V3, W, clamp01, cue, smooth, STONE, onStone, houseAt, SURV2, SURV4, survivorAt, BOAT_OVER, YARD, HAUL_U, STOP_U, STONE_U, MARKET, OLDSTONE, GULL_F, SHAKE_F, onPath, at, lerp3, OFF, townFrontAt, waveAt, WaveSpec, WAVE_DEF } from "./story";
 import { H } from "./terrain";
 import { SEA_Y_TOWN as SEA_TOWN } from "./town";
 import { LIGHTS, LightName, LOOK } from "./lights";
@@ -224,7 +226,8 @@ export type Stage = { places: Place[]; fx: FxPlace[] };
 const mk = (i: number, o: Outfit, okey: string): Who => ({ i, o, okey });
 
 /** a front-facing figure standing (or sitting) at p */
-const fig = (out: Stage, cam: CamInfo, who: Who, p: V3, f: number, fo: FrontOpts, o: { flip?: boolean; shadow?: boolean; scale?: number; roll?: number; pitch?: number } = {}) => {
+const fig = (out: Stage, cam: CamInfo, who: Who, p0: V3, f: number, fo: FrontOpts, o: { flip?: boolean; shadow?: boolean; scale?: number; roll?: number; pitch?: number; seat?: string } = {}) => {
+  const p = keepClear(p0, who.okey, o.seat); // collision rule: 0.6 m from the stone and every prop
   const t = f / FPS, fo2: FrontOpts = { blink: lidAt(t, who.i, SWAPS[SHOTS.findIndex((s) => f >= s.a && f < s.b) + 1]), ...fo };
   const pl = person(cam, who, p[0], p[1], p[2], { side: false, mirror: false, flip: o.flip }, fo2, {}, o.scale ?? 1);
   pl.roll = o.roll ?? (fo.mode === "march" ? 0 : 0.018 * Math.sin(t * 1.6 + who.i * 1.37) + 0.008 * Math.sin(t * 3.1 + who.i));
@@ -234,7 +237,8 @@ const fig = (out: Stage, cam: CamInfo, who: Who, p: V3, f: number, fo: FrontOpts
   return fo2;
 };
 /** a side-view figure walking along (dx, dz): faces the way it walks on screen */
-const walker = (out: Stage, cam: CamInfo, who: Who, p: V3, f: number, dir: [number, number], so: SideOpts, o: { scale?: number; shadow?: boolean } = {}) => {
+const walker = (out: Stage, cam: CamInfo, who: Who, p0: V3, f: number, dir: [number, number], so: SideOpts, o: { scale?: number; shadow?: boolean; seat?: string } = {}) => {
+  const p = keepClear(p0, who.okey, o.seat);
   const t = f / FPS, so2: SideOpts = { blink: lidAt(t, who.i), ...so };
   const left = dir[0] * cam.right.x + dir[1] * cam.right.z < 0;
   out.places.push(person(cam, who, p[0], p[1], p[2], { side: true, mirror: left }, {}, so2, o.scale ?? 1));
@@ -284,6 +288,32 @@ const sprayDraw = (k: number) => (p: Pen) => {
   for (let i = 0; i < 6; i++) { const a = i * 1.1, r = 22 + 18 * k + 10 * Math.sin(i * 2.3); g.fillStyle = `rgba(250,252,255,${(0.9 * (1 - 0.7 * k)).toFixed(3)})`; g.beginPath(); g.arc(64 + 30 * Math.cos(a) * (0.5 + k), 70 - 26 * Math.sin(a) * (0.4 + k) - 20 * k, r, 0, Math.PI * 2); g.fill(); }
 };
 
+/** an inked cauliflower of foam (toon): circles outlined together, white fill, shaded underside */
+const PUFF: [number, number, number][] = [[64, 74, 30], [36, 84, 22], [92, 84, 23], [48, 52, 24], [80, 50, 22], [64, 32, 18]];
+const puffDraw = (k: number, light: boolean) => (p: Pen) => {
+  const g = p.g, gr = 0.82 + 0.2 * k;
+  g.lineWidth = 8; g.strokeStyle = "#141a26";
+  for (const [x, y, r] of PUFF) { g.beginPath(); g.arc(x, y, r * gr, 0, 6.283); g.stroke(); }
+  g.fillStyle = light ? "#f4f7f9" : "#c2cad2";
+  for (const [x, y, r] of PUFF) { g.beginPath(); g.arc(x, y, r * gr, 0, 6.283); g.fill(); }
+  g.fillStyle = light ? "rgba(140,162,184,0.5)" : "rgba(84,98,114,0.5)";
+  for (const [x, y, r] of PUFF) { g.beginPath(); g.arc(x + 3, y + 7, r * gr * 0.72, 0.2, 2.9); g.fill(); }
+};
+/** foam puffs along a wave crest: n puffs over +-span m of the wall, each rising, growing and falling back, recycled */
+const foamCrest = (out: Stage, def: WaveDef, wv: WaveSpec, t: number, n: number, span: number, light: boolean, seed: number) => {
+  for (let i = 0; i < n; i++) {
+    const x = def.cx - span + 2 * span * hh(i, seed), u = (t * (0.55 + 0.3 * hh(i, seed + 1)) + hh(i, seed + 2)) % 1, k = q(u, 6);
+    const c = crestPoint(def, { H: wv.H, t, toe: wv.toe }, x), sz = wv.H * (0.16 + 0.12 * hh(i, seed + 3)) * (0.75 + 0.5 * Math.sin(u * Math.PI));
+    out.fx.push({ key: `puff${k}${light}`, cw: 128, ch: 128, draw: puffDraw(k, light), x, y: c[1] + wv.H * (0.02 + 0.12 * Math.sin(u * Math.PI)), z: c[2] + wv.H * 0.12 * u, w: sz, h: sz });
+    if (i % 3 === 0) out.fx.push({ key: `spray${q(u, 8)}`, cw: 128, ch: 128, draw: sprayDraw(q(u, 8)), x: x + 4, y: c[1] + wv.H * (0.12 + 0.18 * u), z: c[2] + wv.H * 0.2 * u, w: sz * 1.6, h: sz * 1.2, soft: true });
+    // churning foam where the foot of the wall breaks over the water or the rooftops ahead of it
+    if (i % 2 === 0) {
+      const tp = toePoint(def, { H: wv.H, t, toe: wv.toe }, x + 7), s2 = sz * 0.9;
+      out.fx.push({ key: `puff${q((u + 0.5) % 1, 6)}${light}`, cw: 128, ch: 128, draw: puffDraw(q((u + 0.5) % 1, 6), light), x: x + 7, y: tp[1] + s2 * 0.3 + wv.H * 0.06 * Math.sin(u * Math.PI), z: tp[2] - 0.5, w: s2, h: s2 });
+    }
+  }
+};
+
 /** birds circling in the sky ahead of the lens (golden, day, dawn, sunset), far and small */
 const birds = (out: Stage, cam: CamInfo, t: number, n: number, seed: number) => {
   const fx = -cam.right.z, fz = cam.right.x; // camera forward (horizontal) = right x up
@@ -315,7 +345,14 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       fig(out, cam, mk(11, villager(1), "surv2"), survivorAt(SURV2, BOAT_OVER, 3.15, -0.32), f, { mode: "stand", back: true, nod: 0.7 });
       break;
     }
+    case 2: { // the 1896 wave: foam puffs boil along its crest as it rises and comes in (storm grey)
+      const wv = waveAt(2, f);
+      if (wv && wv.H > 10) foamCrest(out, WAVE_DEF.w1896, wv, t, 60, 420, false, 9);
+      break;
+    }
     case 6: { // four survivors on the slope above the flooded lanes (seen once the camera eases back on "Four")
+      const wv6 = waveAt(6, f);
+      if (wv6) foamCrest(out, WAVE_DEF.w1933, wv6, t, 26, 110, false, 13);
       const P4: [number, number][] = [[3.0, 1.35], [4.1, 0.45], [3.35, -0.55], [4.7, -1.5]];
       const W4: Outfit[] = [fisher(0), villager(2), fisher(4), villager(3)];
       P4.forEach(([a, k], i) => fig(out, cam, mk(20 + i, W4[i], "surv4_" + i), survivorAt(SURV4, onPath(26, 0, 0), a, k), f, { mode: "stand", back: true, nod: 0.3 + 0.15 * i, tilt: i === 3 ? -4 : 0 }));
@@ -361,10 +398,11 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
     }
     case 12: case 13: { // the man on the forgotten stone eats his rice ball; a sparrow pecks his crumbs
       const chew = Math.floor(f / 9) % 2;
-      fig(out, cam, mk(70, LUNCH, "lunch"), [OLDSTONE[0] - 0.02, 0.7, OLDSTONE[2] + 0.12], f, { mode: "sit", expr: chew ? "smile_closed" : "grin", prop: "onigiri", facing: 1, headTilt: -4 }, { shadow: false });
+      // he sits on the bench beside the stone (0.9 m clear of it); his tea can stands on the stone, his bike leans on it
+      fig(out, cam, mk(70, LUNCH, "lunch"), [OLDSTONE[0] + 1.3, 0.13, OLDSTONE[2] + 0.04], f, { mode: "sit", expr: chew ? "smile_closed" : "grin", prop: "onigiri", facing: -1, headTilt: -4 }, { shadow: false, seat: "bench" });
       if (id === 13 || f > 900) {
-        const hop = ((f - 900) / 22) % 1, k = q(hop, 8), x = OLDSTONE[0] + 0.55 + 0.08 * (Math.floor((f - 900) / 22) % 3);
-        out.fx.push({ key: `sparrow${k}`, cw: 128, ch: 112, draw: sparrowDraw(k), x, y: 0.09 + 0.05 * Math.max(0, Math.sin(hop * Math.PI)), z: OLDSTONE[2] + 0.75, w: 0.16, h: 0.14 });
+        const hop = ((f - 900) / 22) % 1, k = q(hop, 8), x = OLDSTONE[0] + 0.85 + 0.09 * (Math.floor((f - 900) / 22) % 3);
+        out.fx.push({ key: `sparrow${k}`, cw: 128, ch: 112, draw: sparrowDraw(k), x, y: 0.09 + 0.05 * Math.max(0, Math.sin(hop * Math.PI)), z: OLDSTONE[2] + 0.62, w: 0.16, h: 0.14 });
       }
       break;
     }
@@ -385,12 +423,10 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       fig(out, cam, mk(91, GRANDMA, "grandma"), at("room", 0.62, 0.06, -1.02), f, { mode: "sit", expr: shk ? (f > SHAKE_F + 12 ? "shock" : "nervous") : "smile_closed", prop: shk ? null : "drink", facing: -1, look: shk ? -1 : 0 }, { shadow: false });
       break;
     }
-    case 19: { // spray along the wave front sweeping in over the rooftops (nobody anywhere near)
-      const fz = townFrontAt(f);
-      if (fz < 140) for (let i = 0; i < 26; i++) {
-        const x = OFF.town - 380 + 760 * hh(i, 51), u = ((t * 1.3 + hh(i, 52)) % 1), k = q(u, 8);
-        out.fx.push({ key: `spray${k}`, cw: 128, ch: 128, draw: sprayDraw(k), x, y: SEA_TOWN + 12.5 * 1.3 + 4 * u, z: fz + 3 + 4 * u, w: 16 + 10 * u, h: 12 + 8 * u, soft: true });
-      }
+    case 19: { // the 2011 wall rolling in over the rooftops: inked foam puffs boil along its crest, mist above (nobody near)
+      void townFrontAt; void SEA_TOWN;
+      const wv = waveAt(19, f);
+      if (wv) foamCrest(out, WAVE_DEF.w2011, wv, t, 90, 520, true, 4);
       break;
     }
     case 20: { // people run uphill past the lens; far below the foaming water climbs

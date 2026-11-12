@@ -4,22 +4,25 @@
 // in the grass at a street corner (shots 12-13), wooded hills behind. The town sea carries the 2011 wave (shot 19).
 import * as THREE from "three";
 import { Batch, V, lam, quad } from "./build";
-import { OFF, MARKET, OLDSTONE, growAt } from "./story";
+import { OFF, MARKET, OLDSTONE, growAt, STONE, WAVE_DEF, W2011_H } from "./story";
+import { makeStone, stoneTopAt } from "./stonemodel";
+import { addObst } from "./obstacles";
 import { modernBoat, utilityPole, wires, tr, lbox, col, bicycle, vendingMachine, jHouse } from "./jhouse";
-import { kawaraTex, marketSignTex, fishTex, oldStoneTex, groundDetailTex, boatNumTex } from "./jpaint";
+import { kawaraTex, marketSignTex, fishTex, groundDetailTex, boatNumTex } from "./jpaint";
 import { plant, Inst } from "./forest";
 import { rep, rng, ctex, stoneHD } from "./paint";
 import { twoTone } from "./shade";
 import { TWIN_LAYER, inkTwins, NOINK } from "./ink";
 import { waterUniforms, waterMaterial, waterInkMaterial, waterGrid, WaterU } from "./water";
 import { crateY } from "./common";
+import { makeWave, Wave } from "./wave";
 
 export const SEA_Y_TOWN = -1.6;
 export type TownParts = {
   bodies: THREE.InstancedMesh; roofs: THREE.InstancedMesh; poles: THREE.InstancedMesh; keys: Float32Array; mats: THREE.Matrix4[]; roofMats: THREE.Matrix4[];
   fields: { mesh: THREE.Mesh; key: number }[]; lots: { mesh: THREE.Mesh; key: number }[]; poleKeys: Float32Array; poleMats: THREE.Matrix4[];
   harbour: THREE.Group; boats: THREE.Group; water: WaterU; win: THREE.Mesh[]; fish: THREE.Mesh; man: THREE.Vector3;
-  trees: THREE.InstancedMesh[]; treeKeys: Float32Array; cloudShadow: THREE.Mesh;
+  trees: THREE.InstancedMesh[]; treeKeys: Float32Array; cloudShadow: THREE.Mesh; w2011: Wave;
 };
 
 const wallTex = () => ctex("townWall", 256, 256, (g) => {
@@ -138,11 +141,17 @@ export const buildTown = (root: THREE.Object3D): { parts: TownParts } => {
   BOATS.slice(0, 7).forEach(([x, z, yaw], i) => { const nm = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.52), lam("bnum" + i, () => ({ map: boatNumTex(String(11 + i * 7)), transparent: true, alphaTest: 0.4 }))); nm.position.set(O + x + Math.cos(yaw) * 2.6, SEA_Y_TOWN + 1.45, z - Math.sin(yaw) * 2.6 + 1.25); nm.rotation.y = yaw - Math.PI / 2; boats.add(nm); });
   // ---- the fish market (shot 11): the shed, the stalls, the fish on ice, the banner ----
   const [mx, , mz] = MARKET, mb = new Batch();
-  for (const sx of [-12, -4, 4, 12]) for (const sz of [-5, 5]) lbox(mb, col("shedPost", "#8a8a8e"), new THREE.Matrix4(), mx + sx - 0.15, mx + sx + 0.15, 0, 4.4, mz + sz - 0.15, mz + sz + 0.15);
-  mb.add(new THREE.BoxGeometry(26, 0.25, 12.5).translate(mx, 4.5, mz), lam("shedRoof", () => ({ color: "#8aa2b8" })));
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.5), twoTone(new THREE.MeshLambertMaterial({ map: marketSignTex() }))); sign.position.set(mx - 4, 3.6, mz - 6.3); sign.rotation.y = Math.PI; root.add(sign);
+  // open-air stalls along the quay, each under a striped canvas awning on two poles (no shed roof)
+  const awning = (ax: number, cols2: [string, string]) => {
+    for (const sx of [-1.55, 1.55]) lbox(mb, col("awnPole", "#7a7a80"), new THREE.Matrix4(), ax + sx - 0.035, ax + sx + 0.035, 0, 2.55, mz + 0.85 - 0.035, mz + 0.85 + 0.035);
+    for (let k = 0; k < 8; k++) { const x0 = ax - 1.7 + k * 0.425; mb.add(new THREE.PlaneGeometry(0.425, 1.9).rotateX(-Math.PI / 2 + 0.32).translate(x0 + 0.2125, 2.42, mz + 0.05), lam(k % 2 ? "awnA" + cols2[0] : "awnB" + cols2[1], () => ({ color: k % 2 ? cols2[0] : cols2[1], side: THREE.DoubleSide }))); }
+    for (let k = 0; k < 16; k++) { const x0 = ax - 1.7 + k * 0.2125; mb.add(new THREE.PlaneGeometry(0.2, 0.16).translate(x0 + 0.1, 2.06, mz - 0.86), lam(k % 4 < 2 ? "awnA" + cols2[0] : "awnB" + cols2[1], () => ({ color: k % 4 < 2 ? cols2[0] : cols2[1], side: THREE.DoubleSide }))); }
+  };
+  awning(mx, ["#d8462a", "#f2ece0"]); awning(mx - 7, ["#2f6ab5", "#f2ece0"]); awning(mx + 10, ["#3a8a4a", "#f2ece0"]);
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.6, 0.65), twoTone(new THREE.MeshLambertMaterial({ map: marketSignTex() }))); sign.position.set(mx - 7, 2.25, mz - 0.9); sign.rotation.y = Math.PI; root.add(sign);
   // the vendor's stall: a table with blue crates of fish on ice (the customers stand inland, -z; the sea behind the vendor)
   lbox(mb, lam("stallTable", () => ({ color: "#d8d4cc" })), new THREE.Matrix4(), mx - 1.4, mx + 1.4, 0.82, 0.9, mz - 0.55, mz + 0.55);
+  addObst("stall", mx, mz, 1.4, 0.55);
   for (const sx of [-1.3, 1.3]) for (const sz of [-0.45, 0.45]) lbox(mb, col("stallLeg", "#6a6a70"), new THREE.Matrix4(), mx + sx - 0.04, mx + sx + 0.04, 0, 0.82, mz + sz - 0.04, mz + sz + 0.04);
   const fishM = lam("fishCut", () => ({ map: fishTex(), alphaTest: 0.5, side: THREE.DoubleSide }));
   for (let k = 0; k < 4; k++) {
@@ -159,6 +168,8 @@ export const buildTown = (root: THREE.Object3D): { parts: TownParts } => {
   }
   lbox(mb, col("scale", "#c8352a"), new THREE.Matrix4(), mx + 1.05, mx + 1.35, 0.9, 1.15, mz + 0.1, mz + 0.4);
   crateY(mb, mx + 0.45, 0, mz - 0.6, 0.5, 0.2); crateY(mb, mx - 2.2, 0, mz - 0.6, 0.55, 0.4);
+  addObst("crate", mx + 0.45, mz - 0.6, 0.3, 0.3); addObst("crate", mx - 2.2, mz - 0.6, 0.32, 0.32); addObst("icebox", mx - 0.47, mz - 0.77, 0.3, 0.2);
+  addObst("bucket", mx + 0.7, mz - 0.85, 0.2, 0.2); addObst("bucket", mx - 1.3, mz - 0.4, 0.2, 0.2); addObst("cart", mx - 3.0, mz - 2.0, 0.42, 0.42);
   lbox(mb, col("iceBox", "#e8eef4"), new THREE.Matrix4(), mx - 0.75, mx - 0.2, 0, 0.42, mz - 0.95, mz - 0.6); lbox(mb, col("iceBoxLid", "#2f6ab5"), new THREE.Matrix4(), mx - 0.77, mx - 0.18, 0.42, 0.47, mz - 0.97, mz - 0.58);
   mb.add(new THREE.CircleGeometry(0.5, 24).rotateX(-Math.PI / 2).scale(1.4, 1, 0.7), col("puddle", "#5a6470"), tr(mx + 0.35, 0.006, mz - 1.15));
   for (const [bx, bz] of [[0.7, -0.85], [-1.3, -0.4]] as const) { mb.add(new THREE.CylinderGeometry(0.2, 0.16, 0.32, 16).translate(0, 0.16, 0), col("fishBucket", "#3a7ac8"), tr(mx + bx, 0, mz + bz)); mb.add(new THREE.PlaneGeometry(0.3, 0.11).rotateX(-Math.PI / 2), fishM, tr(mx + bx, 0.31, mz + bz, 0.5)); }
@@ -171,36 +182,40 @@ export const buildTown = (root: THREE.Object3D): { parts: TownParts } => {
   const fish = new THREE.Mesh(new THREE.PlaneGeometry(0.46, 0.17), fishM); root.add(fish);
   // ---- the forgotten stone at a street corner (shots 12-13): tall grass, the stone, a bicycle, a vending machine ----
   const [ox, , oz] = OLDSTONE, sb = new Batch();
-  const og = new THREE.SphereGeometry(1, 32, 24);
-  const op = og.attributes.position as THREE.BufferAttribute;
-  const sgn = (v: number, e: number) => Math.sign(v) * Math.pow(Math.abs(v), e);
-  for (let i = 0; i < op.count; i++) { const y = op.getY(i); op.setXYZ(i, sgn(op.getX(i), 0.5), y < 0 ? sgn(y, 0.5) : y, sgn(op.getZ(i), 0.6)); }
-  og.scale(0.36, 0.64, 0.19).translate(0, 0.5, 0);
-  for (let i = 0; i < op.count; i++) { const y = op.getY(i); if (y < 0) op.setY(i, y * 0.3); op.setX(i, op.getX(i) * (1 + 0.06 * Math.sin(i))); }
-  og.computeVertexNormals();
-  const osTex = oldStoneTex().clone(); osTex.wrapS = THREE.RepeatWrapping; osTex.offset.x = 0.286; osTex.needsUpdate = true; // characters toward the street (+z)
-  const oldStone = new THREE.Mesh(og, twoTone(new THREE.MeshLambertMaterial({ map: osTex }))); oldStone.position.set(ox, -0.12, oz); oldStone.castShadow = true; oldStone.receiveShadow = true; root.add(oldStone);
+  // THE stone (one model for the whole film), half in the grass, leaning a little with age; the carved face to the street
+  const oldStone = makeStone(); oldStone.position.set(ox, -0.04, oz); oldStone.rotation.set(0.035, 0.1, -0.045); root.add(oldStone);
+  addObst("stone:old", ox, oz, STONE.w / 2 + 0.05, STONE.t / 2 + 0.06, 0.1);
   lbox(sb, lam("cornerWall", () => ({ map: rep(groundDetailTex(), 4, 1), color: "#b8b4aa" })), new THREE.Matrix4(), ox - 5, ox + 6, 0, 0.9, oz - 3.2, oz - 2.8);
   sb.add(new THREE.CircleGeometry(6.5, 40).rotateX(-Math.PI / 2).scale(1.3, 1, 0.75), lam("cornerGrass", () => ({ color: "#7a9a52", map: rep(groundDetailTex(), 6, 6) })), new THREE.Matrix4().makeTranslation(ox, 0.035, oz + 0.6));
-  // his open lunch box on a cloth at the foot of the stone
-  lbox(sb, col("furoshiki", "#2f5f9a"), new THREE.Matrix4(), ox + 0.3, ox + 0.75, 0.035, 0.045, oz + 0.2, oz + 0.6);
-  lbox(sb, col("bento", "#8a2a2a"), new THREE.Matrix4(), ox + 0.38, ox + 0.62, 0.045, 0.11, oz + 0.28, oz + 0.46);
-  lbox(sb, col("bentoRice", "#f6f2e8"), new THREE.Matrix4(), ox + 0.4, ox + 0.6, 0.11, 0.118, oz + 0.3, oz + 0.44);
-  lbox(sb, col("bentoPickle", "#d84a3a"), new THREE.Matrix4(), ox + 0.5, ox + 0.54, 0.118, 0.128, oz + 0.33, oz + 0.37);
-  vendingMachine(sb, root, ox - 3.4, 0, oz - 1.8, 0.15);
+  // the bench he eats on (0.9 m right of the stone) with his open lunch box beside him; his tea can stands on the stone
+  lbox(sb, col("benchBlock", "#a8a49a"), new THREE.Matrix4(), ox + 0.95, ox + 2.05, 0, 0.4, oz - 0.2, oz + 0.2);
+  lbox(sb, col("benchTop", "#94683e"), new THREE.Matrix4(), ox + 0.9, ox + 2.1, 0.4, 0.45, oz - 0.25, oz + 0.25);
+  addObst("bench", ox + 1.5, oz, 0.6, 0.25);
+  lbox(sb, col("furoshiki", "#2f5f9a"), new THREE.Matrix4(), ox + 1.62, ox + 2.02, 0.45, 0.455, oz - 0.2, oz + 0.18);
+  lbox(sb, col("bento", "#8a2a2a"), new THREE.Matrix4(), ox + 1.68, ox + 1.94, 0.455, 0.52, oz - 0.12, oz + 0.08);
+  lbox(sb, col("bentoRice", "#f6f2e8"), new THREE.Matrix4(), ox + 1.7, ox + 1.92, 0.52, 0.528, oz - 0.1, oz + 0.06);
+  lbox(sb, col("bentoPickle", "#d84a3a"), new THREE.Matrix4(), ox + 1.79, ox + 1.83, 0.528, 0.538, oz - 0.04, oz);
+  oldStone.updateMatrixWorld(true);
+  const canAt = oldStone.localToWorld(new THREE.Vector3(-0.13, stoneTopAt(-0.13) - 0.012, 0));
+  sb.add(new THREE.CylinderGeometry(0.033, 0.033, 0.12, 14).translate(0, 0.06, 0), col("teaCan", "#2f7a46"), tr(canAt.x, canAt.y, canAt.z));
+  sb.add(new THREE.CylinderGeometry(0.0335, 0.0335, 0.03, 14).translate(0, 0.07, 0), col("teaCanBand", "#f0ece0"), tr(canAt.x, canAt.y, canAt.z));
+  vendingMachine(sb, root, ox - 3.4, 0, oz - 1.8, 0.15); addObst("vending", ox - 3.4, oz - 1.8, 0.5, 0.45, 0.15);
   const pp = utilityPole(sb, ox + 3.6, 0, oz - 2.2, 0, 9); void pp;
-  sb.add(new THREE.CylinderGeometry(0.16, 0.16, 1.1, 12).translate(0, 0.55, 0), col("mailbox", "#c8352a"), tr(ox + 2.4, 0, oz - 1.6));
+  sb.add(new THREE.CylinderGeometry(0.16, 0.16, 1.1, 12).translate(0, 0.55, 0), col("mailbox", "#c8352a"), tr(ox + 2.4, 0, oz - 1.6)); addObst("mailbox", ox + 2.4, oz - 1.6, 0.17, 0.17);
   jHouse(sb, wb, ox + 1, 0, oz - 12, 0, { w: 9, d: 7, style: "modern", wall: "#d8cdb8", roof: "#4a5462", seed: 77 });
   jHouse(sb, wb, ox - 12, 0, oz - 14, 0.05, { w: 8, d: 7, style: "modern", wall: "#e8e0d0", roof: "#6a4a40", seed: 78 });
   for (const [px, pz] of [[-2.2, 1.6], [2.8, 2.4], [-4.6, 0.6]] as const) { sb.add(new THREE.CylinderGeometry(0.25, 0.2, 0.4, 12).translate(0, 0.2, 0), col("planter", "#8a5a3a"), tr(ox + px, 0, oz + pz)); sb.add(new THREE.SphereGeometry(0.32, 10, 8), col("planterLeaf", "#5a9a3a"), tr(ox + px, 0.6, oz + pz)); }
   sb.build(root, true);
-  bicycle(root, ox + 0.78, 0, oz + 0.3, -1.25, 0.2);
+  bicycle(root, ox - 0.95, 0, oz + 0.12, -1.25, -0.2); // leaning on the stone (the stone as a bike stand)
+  addObst("bicycle", ox - 0.95, oz + 0.12, 0.85, 0.2, Math.PI / 2 - 1.25);
+  // grass round the stone: tall behind and beside it, short and sparse toward the street (the lens side); the near-clip
+  // rule in plant() drops anything within 0.5 m of the lens
   const grass: Inst[] = [];
-  const lens = [[ox - 1.0, oz + 4.4, 1.3], [ox - 0.9, oz + 3.7, 1.3], [ox - 0.3, oz + 1.55, 0.45]];
   for (let k = 0; k < 700; k++) {
     const a = r() * 6.283, d = 0.35 + 3.4 * Math.sqrt(r()), x = ox + Math.cos(a) * d * 1.3, z = oz + Math.sin(a) * d * 0.8 + 0.4;
-    if (lens.some(([lx, lz, lr]) => Math.hypot(x - lx, z - lz) < lr)) continue;
-    grass.push({ x, y: 0, z, h: 0.3 + 0.35 * r() * (d < 1.2 ? 1.3 : 1), w: 0.9 + 0.5 * r(), c: Math.floor(r() * 4) });
+    const front = z - oz > 0.6, hh = 0.3 + 0.35 * r() * (d < 1.2 ? 1.3 : 1);
+    if (front && r() < 0.45) continue;
+    grass.push({ x, y: 0, z, h: front ? Math.min(0.28, hh * 0.5) : hh, w: front ? 0.7 + 0.3 * r() : 0.9 + 0.5 * r(), c: Math.floor(r() * 4) });
   }
   plant(root, "blades", grass, { shadow: false });
   // ---- street dressing: wires along the main road, a few cars, bushes ----
@@ -214,7 +229,9 @@ export const buildTown = (root: THREE.Object3D): { parts: TownParts } => {
   const tmpG = new THREE.Group(); wb.build(tmpG, false); const win: THREE.Mesh[] = []; for (const ch of [...tmpG.children]) { root.add(ch); win.push(ch as THREE.Mesh); }
   // ---- the town sea (the 2011 wave sweeps in over the plain) ----
   const water = waterUniforms();
-  water.uFrontH.value = 12.5; water.uOrigin.value.set(O, 0);
+  water.uFrontH.value = 0.45 * W2011_H; water.uOrigin.value.set(O, 0); // the flood behind the 2011 wall (wave backLevel x H)
+  const w2011 = makeWave(WAVE_DEF.w2011.cx, WAVE_DEF.w2011.len, WAVE_DEF.w2011.base, { back: "#1e4a6c", foam: "#f2f6f8", faceTop: "#62b8d8", face: "#1f5a80", toe: "#e6edf1" }, 11, 260);
+  root.add(w2011.mesh);
   const wm = waterMaterial(water, "town"), wink = waterInkMaterial(water);
   for (const g of [waterGrid(O - 760, O + 760, -470, 230, 3.5, 3.5), waterGrid(O - 2600, O + 2600, 230, 2700, 26, 12), waterGrid(O - 2600, O - 760, -60, 230, 30, 12), waterGrid(O + 760, O + 2600, -60, 230, 30, 12)]) {
     const mesh = new THREE.Mesh(g, wm); mesh.position.y = SEA_Y_TOWN; mesh.layers.set(TWIN_LAYER); mesh.receiveShadow = true; mesh.castShadow = false; mesh.frustumCulled = false;
@@ -222,5 +239,5 @@ export const buildTown = (root: THREE.Object3D): { parts: TownParts } => {
   }
   void growAt;
   return { parts: { bodies, roofs, poles, keys, mats, roofMats, fields, lots, poleKeys, poleMats, harbour, boats, water, win, fish, man: V(ox, 0.7, oz),
-    trees: treeG.children as THREE.InstancedMesh[], treeKeys, cloudShadow } };
+    trees: treeG.children as THREE.InstancedMesh[], treeKeys, cloudShadow, w2011 } };
 };
