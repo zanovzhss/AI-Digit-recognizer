@@ -85,9 +85,9 @@ export const gravelTex = () => ctex("gravelRoad", 512, 1920, (g, r) => {
     let x = r() * 512, y = r() * 1920; g.strokeStyle = `rgba(40,34,28,${0.5 + 0.3 * r()})`; g.lineWidth = 1.5 + r() * 2; g.beginPath(); g.moveTo(x, y);
     for (let k = 0; k < 7; k++) { x += (r() - 0.5) * 60; y += 10 + r() * 34; g.lineTo(x, y); } g.stroke();
   }
-  for (const [x, y, rx, ry] of [[150, 420, 60, 120], [380, 1180, 75, 140], [170, 1620, 50, 90]] as const) { // puddles
-    g.fillStyle = "rgba(170,190,205,0.55)"; g.beginPath(); g.ellipse(x, y, rx + 6, ry + 8, 0.1, 0, TAU); g.fill();
-    g.fillStyle = "rgba(70,86,104,0.9)"; g.beginPath(); g.ellipse(x, y, rx, ry, 0.1, 0, TAU); g.fill();
+  for (const [x, y, rx, ry] of [[150, 420, 42, 90], [380, 1180, 50, 105]] as const) { // puddles (dull, rain-grey)
+    g.fillStyle = "rgba(150,150,145,0.45)"; g.beginPath(); g.ellipse(x, y, rx + 5, ry + 7, 0.1, 0, TAU); g.fill();
+    g.fillStyle = "rgba(92,96,100,0.75)"; g.beginPath(); g.ellipse(x, y, rx, ry, 0.1, 0, TAU); g.fill();
     g.fillStyle = "rgba(200,215,230,0.35)"; g.beginPath(); g.ellipse(x - rx * 0.3, y - ry * 0.3, rx * 0.35, ry * 0.12, 0.1, 0, TAU); g.fill();
   }
 });

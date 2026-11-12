@@ -37,6 +37,15 @@ const paddyTex = () => ctex("paddy", 512, 512, (g, r) => {
   for (let y = 0; y < 512; y += 8) { g.fillStyle = `rgba(${r() < 0.5 ? "60,110,40" : "150,190,90"},0.35)`; g.fillRect(0, y, 512, 3); }
   g.strokeStyle = "#9a8a5a"; g.lineWidth = 10; g.strokeRect(5, 5, 502, 502); g.beginPath(); g.moveTo(256, 0); g.lineTo(256, 512); g.stroke();
 });
+/** the quay apron: worn concrete slabs with dark joints, wet patches, rust and oil stains, scattered fish scales */
+const quayTex = () => ctex("quayConcrete", 512, 512, (g, r) => {
+  g.fillStyle = "#a9a59b"; g.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 9000; i++) { g.fillStyle = r() < 0.5 ? `rgba(80,78,72,${0.08 + 0.15 * r()})` : `rgba(220,216,206,${0.08 + 0.15 * r()})`; g.fillRect(r() * 512, r() * 512, 2 + r() * 3, 2 + r() * 3); }
+  for (let i = 0; i < 7; i++) { g.fillStyle = `rgba(70,74,80,${0.18 + 0.15 * r()})`; g.beginPath(); g.ellipse(r() * 512, r() * 512, 30 + r() * 70, 18 + r() * 40, r() * 3, 0, Math.PI * 2); g.fill(); } // wet patches
+  for (let i = 0; i < 5; i++) { g.fillStyle = `rgba(120,80,50,${0.15 + 0.15 * r()})`; g.beginPath(); g.ellipse(r() * 512, r() * 512, 8 + r() * 20, 6 + r() * 14, r() * 3, 0, Math.PI * 2); g.fill(); } // rust / oil
+  g.strokeStyle = "rgba(60,58,54,0.7)"; g.lineWidth = 4; for (const v of [0, 256]) { g.beginPath(); g.moveTo(v, 0); g.lineTo(v, 512); g.stroke(); g.beginPath(); g.moveTo(0, v); g.lineTo(512, v); g.stroke(); } // slab joints
+  for (let i = 0; i < 60; i++) { g.fillStyle = "rgba(225,232,236,0.6)"; g.fillRect(r() * 512, r() * 512, 3, 2); } // fish scales
+});
 /** a flooded rice paddy: grey-blue water catching the sky, rows of young rice, a few glints */
 const paddyWaterTex = () => ctex("paddyWater", 256, 256, (g, r) => {
   const gr = g.createLinearGradient(0, 0, 256, 256); gr.addColorStop(0, "#7d9ca2"); gr.addColorStop(1, "#5f7f88"); g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
@@ -184,7 +193,7 @@ export const buildTown = (root: THREE.Object3D): { parts: TownParts } => {
   // the working quay (shot 10): a concrete apron the height of the sea wall (0.6 m), bollards with mooring lines, fish
   // boxes, crates, net heaps, a hand cart, coiled ropes
   const qb = new Batch();
-  { const ap = new Batch(), apG = new THREE.Group(); lbox(ap, lam("quayApron", () => ({ map: rep(groundDetailTex(), 30, 3), color: "#b8b4aa" })), new THREE.Matrix4(), O - 72, O + 52, 0, 0.6, -10, -1.4); ap.build(apG, true); root.add(apG); addGround(apG); }
+  { const ap = new Batch(), apG = new THREE.Group(); lbox(ap, lam("quayApron", () => ({ map: rep(quayTex(), 24, 2) })), new THREE.Matrix4(), O - 72, O + 52, 0, 0.6, -10, -1.4); ap.build(apG, true); root.add(apG); addGround(apG); }
   for (let x = -60; x <= 40; x += 8) { qb.add(new THREE.CylinderGeometry(0.2, 0.26, 0.6, 12).translate(0, 0.3, 0), col("bollard", "#3a3e44"), tr(O + x, 0.6, -0.6)); }
   for (const [x, z, yaw, s] of BOATS.slice(0, 7)) { const bx = Math.round(x / 8) * 8; const pts = [V(O + bx, 1.1, -0.6), V(O + (bx + x) / 2, 0.2, (z - 0.6) / 2), V(O + x - 0.5, SEA_Y_TOWN + 1.6, z - 2.6)]; qb.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 12, 0.035, 5), col("mooring", "#d8c8a0"), new THREE.Matrix4()); void yaw; void s; }
   for (let k = 0; k < 14; k++) { const x = -46 + k * 4.6 + (r() - 0.5) * 1.5, z = -3.2 - r() * 3.5; crateY(qb, O + x, 0.6, z, 0.5 + 0.15 * r(), r() * 3); if (k % 3 === 0) crateY(qb, O + x + 0.1, 1.15, z, 0.45, r()); addObst("crate", O + x, z, 0.35, 0.35); }

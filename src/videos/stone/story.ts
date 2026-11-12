@@ -232,6 +232,8 @@ const hs = (i: number, dy = 0): V3 => { const v = houseAt(i); return [v[0], v[1]
 const T = (x: number, y: number, z: number): V3 => at("town", x, y, z);
 const RM = (x: number, y: number, z: number): V3 => at("room", x, y, z);
 
+/** a move that ramps up over its first 40 % and then runs at a steady speed (no jolt when it starts, no stop at the end) */
+const RAMP = (u: number) => { const a = 0.4, k = 1 - a / 2; return (u < a ? (u * u) / (2 * a) : u - a / 2) / k; };
 /** shot 22 ends on all eleven houses (the middle of the hamlet, a little above it) */
 const END_LOOK: V3 = (() => { const a = houseAt(4), b = houseAt(10), c = houseAt(5); return [(a[0] + b[0]) / 2, c[1] + 15, -245] as V3; })();
 /** shot 21 looks just past the stone, down the path toward the stopped water */
@@ -240,10 +242,10 @@ const KEYS: Record<number, Key[]> = {
   // 1 macro of the carved main column, a slow tilt down it; on "do" pull back and crane up over the eleven houses to the
   //   valley and the sea far below; hold + creep; on "You see" push back into the carved years (Meiji 29 = 1896)
   1: [
-    { f: 0, cam: cam(onStone(0.3, 0.66, 3.5), onStone(0, 1.12, 0), 50) },
-    { f: 0, dur: cue(W.do), cam: cam(onStone(0.08, 0.58, 1.75), onStone(0, 1.08, 0), 50), creep: 0, ease: (u: number) => u },
-    { f: cue(W.do), dur: 30, cam: cam(onStone(0.1, 3.4, 4.2), onStone(0, 0.2, -9), 54), ease: glide },
-    { f: cue(W.do) + 18, dur: 48, cam: cam(PP(252, 0, 40), PP(152, 0, 0), 60), ease: glide },
+    { f: 0, cam: cam(onStone(0.32, 0.68, 4.1), onStone(0, 1.12, 0), 50) },
+    { f: 0, dur: cue(W.do), cam: cam(onStone(0.08, 0.58, 1.75), onStone(0, 1.08, 0), 50), creep: 0, ease: (u: number) => 0.6 * u + 0.4 * (1 - (1 - u) ** 2) },
+    { f: cue(W.do), dur: 30, cam: cam(onStone(0.1, 2.6, 3.4), onStone(0, 0.3, -8), 54), ease: RAMP },
+    { f: cue(W.do) + 30, dur: 46, cam: cam(PP(252, 0, 40), PP(152, 0, 0), 60), ease: (u: number) => 0.12 * u + 0.88 * glide(u) },
   ],
   // 2 the 1896 notice board above the village, then back and up over the thatched village to the stormy sea
   2: [
