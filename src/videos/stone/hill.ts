@@ -50,7 +50,7 @@ export const clear = (x: number, y: number, z: number, r: number, h: number) => 
 
 // ---------------- terrain ----------------
 const C = (h: string) => new THREE.Color(h);
-const GR = [C("#6f9a48"), C("#5f8c40"), C("#82a654"), C("#91a85a")], FOREST = C("#4c7038"), ROCK = C("#8c8474"), SAND = C("#d6c39a"), WET = C("#b4a07c"),
+const GR = [C("#76984f"), C("#688a47"), C("#86a25a"), C("#94a464")], FOREST = C("#56723f"), ROCK = C("#8c8474"), SAND = C("#d6c39a"), WET = C("#b4a07c"),
   BED = C("#8a9a8a"), DIRT = C("#a8885e"), FIELD = C("#8a7448");
 const terrainMat = () => {
   const m = twoTone(new THREE.MeshLambertMaterial({ vertexColors: true, map: rep(groundDetailTex(), 160, 140) }));
@@ -136,10 +136,11 @@ const buildForest = (root: THREE.Object3D) => {
     for (let k = 0; k < 9; k++) { const x = p[0] + s * (7 + 6 * r()), z = p[2] + (r() - 0.5) * 14; if (clear(x, H(x, z), z, 1.2, 8)) bamboo.push({ x, y: H(x, z), z, h: 7 + 3 * r(), w: 5 }); }
     for (let k = 0; k < 4; k++) { const x = p[0] + (r() - 0.5) * 16, z = p[2] - 6 - 3 * r(); if (clear(x, H(x, z), z, 1, 1.6)) bush.push({ x, y: H(x, z), z, h: 1.2 + 0.6 * r() }); }
   }
-  for (let u = 4; u < 330; u += 0.9) for (const s of [-1, 1]) {
-    const x = pathX(-u) + s * (1.9 + 3.5 * r()), z = -u + (r() - 0.5) * 0.8, y = H(x, z);
+  for (let u = 4; u < 330; u += 2.3) for (const s of [-1, 1]) {
+    const x = pathX(-u) + s * (2.1 + 3.5 * r()), z = -u + (r() - 0.5) * 0.8, y = H(x, z);
     if (Math.hypot(x - STONE.x, z - STONE.z) < 1.0) continue;
-    tuft.push({ x, y, z, h: 0.35 + 0.35 * r(), w: 0.5 + 0.4 * r(), c: Math.floor(r() * 4) });
+    if (!clear(x, y, z, 0.4, 0.5)) continue;
+    tuft.push({ x, y, z, h: 0.3 + 0.3 * r(), w: 0.45 + 0.35 * r(), c: Math.floor(r() * 4) });
   }
   for (let k = 0; k < 140; k++) { const a = r() * 6.283, d = 1.1 + 4 * r(), x = STONE.x + Math.cos(a) * d, z = STONE.z + Math.sin(a) * d; tuft.push({ x, y: H(x, z), z, h: 0.3 + 0.35 * r(), w: 0.5 + 0.3 * r(), c: Math.floor(r() * 4) }); }
   for (let k = 0; k < 420; k++) { const x = (r() - 0.5) * 700, z = -r() * 420 + 40, y = H(x, z); if (y < 0.5 || Math.abs(x - pathX(z)) < 3 || nearPad(x, z, 9)) continue; rock.push({ x, y, z, h: 0.6 + 2.4 * r() ** 2, w: 0.9 + 3 * r() ** 2 }); }
@@ -214,7 +215,7 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
       n++;
     }
     const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2)); g.setIndex(ix); g.computeVertexNormals();
-    const road = new THREE.Mesh(g, lam("roadAsphalt", () => ({ color: "#7a7874", side: THREE.DoubleSide }))); road.receiveShadow = true; groups.now.add(road);
+    const road = new THREE.Mesh(g, lam("roadAsphalt", () => ({ color: "#a29a8c", side: THREE.DoubleSide }))); road.receiveShadow = true; groups.now.add(road);
   }
   let prevPole: THREE.Vector3[] | null = null;
   for (let u = 20; u < 320; u += 38) { const x = pathX(-u) + 3.2, z = -u; const pts = utilityPole(b, x, H(x, z) - 0.2, z, 0.1, 8); if (prevPole) wires(b, prevPole, pts, 0.7); prevPole = pts; }
@@ -252,7 +253,7 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
 
   // ---- the 1896 aftermath: the overturned boat, debris, broken frames at a distance ----
   const rb = new Batch(), rr = rng(9);
-  woodBoat(rb, BOAT_OVER[0], BOAT_OVER[1] - 0.05, BOAT_OVER[2], 0.42, 6.4, { over: true });
+  woodBoat(rb, BOAT_OVER[0], BOAT_OVER[1] - 0.05, BOAT_OVER[2], 0.42, 6.4, { over: true, tint: "#a88a66" });
   const plank = lam("debrisPlank", () => ({ map: rep(beamHD(), 1, 0.2), color: "#7a5a40" }));
   for (let k = 0; k < 46; k++) { const x = (rr() - 0.5) * 80, u = 0.5 + rr() * 24, y = H(x, -u); lbox(rb, plank, tr(x, y + 0.06, -u, rr() * 3).multiply(new THREE.Matrix4().makeRotationZ((rr() - 0.5) * 0.4)), -0.9 - rr(), 0.9 + rr(), 0, 0.08, -0.12, 0.12); }
   netHeap(rb, BOAT_OVER[0] + 3.4, BOAT_OVER[1], BOAT_OVER[2] - 1.6, 0.8);
@@ -310,8 +311,8 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
   sledge.traverse((o) => { o.castShadow = true; o.receiveShadow = true; });
   groups.haul.add(sledge);
   const hb = new Batch();
-  for (let k = 0; k < 6; k++) {
-    const u = HAUL_U - 8 + k * 9, s = k % 2 ? 1 : -1, x = pathX(-u) + s * 2.4, z = -u, y = H(x, z);
+  for (let k = 0; k < 7; k++) {
+    const u = k === 6 ? STONE_U + 2 : HAUL_U - 8 + k * 9, s = k % 2 ? 1 : -1, x = pathX(-u) + s * 2.4, z = -u, y = H(x, z);
     hb.add(new THREE.CylinderGeometry(0.035, 0.035, 2.6, 6).translate(0, 1.3, 0), col("bambooPole", "#8a9a5a"), tr(x, y, z));
     chochin(hb, groups.haul, x - s * 0.3, y + 2.25, z, 1.1);
     lights.push({ place: "hill", pos: [x - s * 0.3, y + 2.05, z], color: "#ffa850", intensity: 7, distance: 8, shots: [8] });
@@ -334,7 +335,7 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
   const lab = (text: string, colr: string, level: number, side: number) => {
     let u = 0; while (u < 200 && floorY(u) < level) u += 0.5;
     const x = pathX(-u) + side * 34, z = -u - 6, m = new THREE.Mesh(new THREE.PlaneGeometry(44, 17), new THREE.MeshBasicMaterial({ map: mapLabelTex(text, colr), transparent: true, depthWrite: false }));
-    m.rotation.x = -Math.PI / 2; m.position.set(x, H(x, z) + 6, z); m.layers.set(NOINK); groups.map.add(m);
+    m.rotation.set(-Math.PI / 2, 0, Math.PI); m.position.set(x, H(x, z) + 6, z); m.layers.set(NOINK); groups.map.add(m);
   };
   lab("1896", "#ffdc52", 14, -1); lab("1933", "#ff7452", 10, 1);
   { const m = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshBasicMaterial({ map: ringMarkTex(), transparent: true, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.set(STONE.x, STONE.y + 5, STONE.z); m.layers.set(NOINK); groups.map.add(m); }

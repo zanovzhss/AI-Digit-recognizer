@@ -110,13 +110,13 @@ export type WorldLook = {
 };
 export const LOOK: Record<LightName, WorldLook> = {
   golden: {
-    sky: { c: ["#ffd08a", "#f7b27a", "#e8967c", "#b8808a", "#8a6f8a"], e: [0, 4, 10, 22, 45] },
-    sea: { near: "#4a7a8c", far: "#e8a888", foam: "#fff0dc", deep: "#2f5268" }, cloud: { lit: "#ffd2a8", mid: "#f2a08f", shade: "#a98fc4" },
+    sky: { c: ["#ffd496", "#f8c08a", "#e8a88a", "#b89490", "#8e8090"], e: [0, 4, 10, 22, 45] },
+    sea: { near: "#5a7e8a", far: "#e8b894", foam: "#fff0dc", deep: "#36566a" }, cloud: { lit: "#ffd8b0", mid: "#f0aa94", shade: "#a894b4" },
     bounce: [0.05, 0.025, 0.0], sat: 0.92, clouds: 0.7, birds: true, stars: false,
   },
   storm: {
-    sky: { c: ["#8b96a8", "#727e94", "#5c6780", "#4a556e", "#3a4258"], e: [0, 4, 10, 22, 45] },
-    sea: { near: "#3a4c5e", far: "#6e7a8c", foam: "#d8dee8", deep: "#243444" }, cloud: { lit: "#9aa4b8", mid: "#7a849a", shade: "#5a6278" },
+    sky: { c: ["#7e8a9c", "#66728a", "#525e78", "#424c66", "#333b52"], e: [0, 4, 10, 22, 45] },
+    sea: { near: "#3c4e60", far: "#66748a", foam: "#d8dee8", deep: "#22303f" }, cloud: { lit: "#8a94a8", mid: "#6c768c", shade: "#4e566c" },
     bounce: [0, 0, 0.01], sat: 0.82, clouds: 1.0, birds: false, stars: false,
   },
   lantern: {
@@ -126,7 +126,7 @@ export const LOOK: Record<LightName, WorldLook> = {
   },
   day: {
     sky: { c: ["#c9dcef", "#a9c6e6", "#8cb4de", "#78a2d4", "#6692c8"], e: [0, 3, 8, 16, 40] },
-    sea: { near: "#2f9aac", far: "#9cc4dc", foam: "#ffffff", deep: "#1e6a8e" }, cloud: { lit: "#fbf8f1", mid: "#e1e5f3", shade: "#c8ccdc" },
+    sea: { near: "#346878", far: "#8eaabc", foam: "#ffffff", deep: "#204a60" }, cloud: { lit: "#fbf8f1", mid: "#e1e5f3", shade: "#c8ccdc" },
     bounce: [0, 0, 0], sat: 0.98, clouds: 0.6, birds: true, stars: false,
   },
   dawn: {
@@ -142,15 +142,15 @@ export const LOOK: Record<LightName, WorldLook> = {
   grey: {
     sky: { c: ["#b8bec6", "#aab0ba", "#9aa2ae", "#8a929e", "#7a828e"], e: [0, 4, 10, 22, 45] },
     sea: { near: "#4e6270", far: "#a0aab4", foam: "#f0f2f4", deep: "#34485a" }, cloud: { lit: "#d4d8de", mid: "#bcc2ca", shade: "#9aa2ae" },
-    bounce: [0, 0, 0], sat: 0.82, clouds: 1.0, birds: false, stars: false,
+    bounce: [0, 0, 0], sat: 0.7, clouds: 1.0, birds: false, stars: false,
   },
   dark: {
-    sky: { c: ["#8e96a2", "#78808e", "#646c7c", "#525a6a", "#424a58"], e: [0, 4, 10, 22, 45] },
-    sea: { near: "#38485a", far: "#6e7886", foam: "#dfe4ea", deep: "#223040" }, cloud: { lit: "#8a92a0", mid: "#727a88", shade: "#5a6270" },
-    bounce: [0, 0, 0.01], sat: 0.8, clouds: 1.0, birds: false, stars: false,
+    sky: { c: ["#868e9a", "#707886", "#5c6474", "#4a5262", "#3a4252"], e: [0, 4, 10, 22, 45] },
+    sea: { near: "#34465a", far: "#66707e", foam: "#dfe4ea", deep: "#1e2a3a" }, cloud: { lit: "#8a92a0", mid: "#727a88", shade: "#5a6270" },
+    bounce: [0, 0, 0.01], sat: 0.66, clouds: 1.0, birds: false, stars: false,
   },
   sunset: {
-    sky: { c: ["#ffc98a", "#f7ae7a", "#e0948a", "#b07e92", "#8a6e86"], e: [0, 4, 10, 22, 45] },
+    sky: { c: ["#ffc994", "#f6ae8a", "#e2988e", "#b4869a", "#8a7896"], e: [0, 4, 10, 22, 45] },
     sea: { near: "#4a6a84", far: "#e8a888", foam: "#fff0dc", deep: "#2f4a64" }, cloud: { lit: "#ffd2a8", mid: "#f2a08f", shade: "#a98fc4" },
     bounce: [0.05, 0.025, 0.0], sat: 0.92, clouds: 0.7, birds: true, stars: false,
   },

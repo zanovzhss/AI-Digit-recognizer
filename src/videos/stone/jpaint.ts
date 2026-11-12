@@ -50,34 +50,31 @@ export const stoneFaceTex = () => ctex("stoneFace", SW, SH, (g, r) => {
     g.strokeStyle = `rgba(70,64,56,${0.04 + 0.06 * r()})`; g.lineWidth = 6 + r() * 26;
     g.beginPath(); g.moveTo(x, y); g.bezierCurveTo(x + (r() - 0.5) * 40, y + l * 0.3, x + (r() - 0.5) * 60, y + l * 0.7, x + (r() - 0.5) * 50, y + l); g.stroke();
   }
-  // carved characters: dark floor, shadowed upper-left wall, lit lower-right lip
+  // carved characters: a lit lip outside the lower-right edge, then the engraved glyph (its own canvas): a dark
+  // upper-left inner wall and a mid-dark rough floor, so the strokes read as cut into the stone, not printed on it
   g.textAlign = "center"; g.textBaseline = "middle";
-  eachGlyph((ch, cx, cy, px) => {
-    g.font = `bold ${px}px ${JP}`;
-    g.fillStyle = "rgba(255,244,222,0.55)"; g.fillText(ch, cx + px * 0.035, cy + px * 0.035);
-    g.fillStyle = "#3d3832"; g.fillText(ch, cx, cy);
-    g.fillStyle = "rgba(20,16,14,0.55)"; g.fillText(ch, cx - px * 0.02, cy - px * 0.02);
-  });
-  // lichen and moss: on the edges, the crown and the foot
-  const moss = ["#6f8a3a", "#5d7a34", "#8aa04a", "#4e6a2e", "#a8b45a"];
-  for (let i = 0; i < 2600; i++) {
+  eachGlyph((ch, cx, cy, px) => { g.font = `bold ${px}px ${JP}`; g.fillStyle = "rgba(246,236,214,0.7)"; g.fillText(ch, cx + px * 0.03, cy + px * 0.03); });
+  const gc = document.createElement("canvas"); gc.width = SW; gc.height = SH;
+  const gg = gc.getContext("2d")!; gg.textAlign = "center"; gg.textBaseline = "middle";
+  eachGlyph((ch, cx, cy, px) => { gg.font = `bold ${px}px ${JP}`; gg.fillStyle = "#2e2924"; gg.fillText(ch, cx, cy); });
+  gg.globalCompositeOperation = "source-atop";
+  eachGlyph((ch, cx, cy, px) => { gg.font = `bold ${px}px ${JP}`; gg.fillStyle = "#6b6258"; gg.fillText(ch, cx + px * 0.045, cy + px * 0.045); });
+  for (let i = 0; i < 9000; i++) { gg.fillStyle = r() < 0.5 ? "rgba(30,26,22,0.35)" : "rgba(150,140,125,0.3)"; gg.fillRect(r() * SW, r() * SH, 2 + r() * 3, 2 + r() * 3); }
+  g.drawImage(gc, 0, 0);
+  // moss: a ragged band on the left and right edges, the crown and the foot (none on the inscription)
+  const moss = ["#6f8a3a", "#5d7a34", "#8aa04a", "#4e6a2e", "#7a9442"];
+  for (let i = 0; i < 5200; i++) {
     const side = r(), t = r();
     let x: number, y: number;
-    if (side < 0.25) { x = r() ** 2 * SW * 0.16; y = SH * (0.1 + 0.9 * t); }
-    else if (side < 0.5) { x = SW - r() ** 2 * SW * 0.16; y = SH * (0.1 + 0.9 * t); }
-    else if (side < 0.72) { x = SW * t; y = SH - r() ** 2 * SH * 0.16; }
-    else if (side < 0.86) { x = SW * t; y = r() ** 2 * SH * 0.09; }
-    else { x = SW * r(); y = SH * r(); if (r() < 0.8) continue; }
-    const rad = 4 + r() * 22;
-    g.fillStyle = moss[Math.floor(r() * moss.length)]; g.globalAlpha = 0.35 + 0.5 * r();
-    g.beginPath(); g.ellipse(x, y, rad, rad * (0.6 + 0.6 * r()), r() * 3, 0, TAU); g.fill();
+    if (side < 0.3) { x = r() ** 2.4 * SW * 0.1; y = SH * (0.06 + 0.94 * t); }
+    else if (side < 0.6) { x = SW - r() ** 2.4 * SW * 0.1; y = SH * (0.06 + 0.94 * t); }
+    else if (side < 0.85) { x = SW * t; y = SH - r() ** 2.2 * SH * 0.1; }
+    else { x = SW * t; y = r() ** 2.4 * SH * 0.05; }
+    const rad = 3 + r() * 12;
+    g.fillStyle = moss[Math.floor(r() * moss.length)]; g.globalAlpha = 0.5 + 0.45 * r();
+    g.beginPath(); g.ellipse(x, y, rad, rad * (0.5 + 0.6 * r()), r() * 3, 0, TAU); g.fill();
   }
   g.globalAlpha = 1;
-  for (let i = 0; i < 420; i++) { // pale lichen rosettes
-    const x = r() * SW, y = r() * SH, rad = 6 + r() * 26;
-    g.fillStyle = r() < 0.5 ? "rgba(214,216,180,0.45)" : "rgba(190,200,150,0.4)";
-    g.beginPath(); g.arc(x, y, rad, 0, TAU); g.fill();
-  }
   // outside the slab outline: transparent (alphaTest)
   g.globalCompositeOperation = "destination-in"; g.fillStyle = "#000"; stoneOutline(g); g.fill(); g.globalCompositeOperation = "source-over";
 });
@@ -85,8 +82,8 @@ export const stoneFaceTex = () => ctex("stoneFace", SW, SH, (g, r) => {
 export const stoneBumpTex = () => ctex("stoneBump", SW / 2, SH / 2, (g, r) => {
   g.fillStyle = "#c8c8c8"; g.fillRect(0, 0, SW / 2, SH / 2);
   for (let i = 0; i < 9000; i++) { const v = 170 + Math.floor(r() * 70); g.fillStyle = `rgb(${v},${v},${v})`; g.fillRect(r() * SW / 2, r() * SH / 2, 2, 2); }
-  g.textAlign = "center"; g.textBaseline = "middle"; g.filter = "blur(1.5px)";
-  eachGlyph((ch, cx, cy, px) => { g.font = `bold ${px / 2}px ${JP}`; g.fillStyle = "#202020"; g.fillText(ch, cx / 2, cy / 2); });
+  g.textAlign = "center"; g.textBaseline = "middle"; g.filter = "blur(2px)";
+  eachGlyph((ch, cx, cy, px) => { g.font = `bold ${px / 2}px ${JP}`; g.fillStyle = "#1a1a1a"; g.fillText(ch, cx / 2, cy / 2); });
   g.filter = "none";
 });
 export const STONE_TEX_ASPECT = SW / SH;

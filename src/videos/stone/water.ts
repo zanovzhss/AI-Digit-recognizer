@@ -49,8 +49,8 @@ float waterH( vec2 p, out float crest ) {
   if ( uFrontOn > 0.5 ) {
     float s = q.y - uFrontZ;                                   // < 0 ahead of the front (dry land), > 0 behind it
     float k = 1.0 / ( 1.0 + exp( -s / 1.7 ) );
-    float bump = exp( -pow( ( s - 4.5 ) / 5.5, 2.0 ) );
-    h += mix( -16.0, uFrontH * ( 1.0 + 0.5 * bump ), k ) + 0.9 * sin( q.x * 0.07 + uTime * 2.2 ) * k;
+    float bump = exp( -pow( ( s - 6.0 ) / 7.0, 2.0 ) );
+    h += mix( -16.0, uFrontH * ( 1.0 + 0.85 * bump ), k ) + 1.2 * sin( q.x * 0.07 + uTime * 2.2 ) * k;
     crest = max( crest, bump * k );
   }
   return h;
@@ -76,7 +76,7 @@ vec3 objectTangent = vec3( 1.0, 0.0, 0.0 );
 #endif
 `;
 const FRAG_DECL = /* glsl */ `
-uniform float uTime, uHasGround, uFoamW, uFlow, uRingR, uMapFront;
+uniform float uTime, uHasGround, uFoamW, uFlow, uRingR, uMapFront, uFrontOn, uFrontZ;
 uniform sampler2D uGround; uniform vec2 uGroundO, uGroundS, uFlowDir, uRingC, uOrigin;
 uniform vec3 uNear, uFar, uDeep, uFoam;
 varying vec3 vWPos; varying float vCrest;
@@ -100,14 +100,23 @@ const FRAG_COLOR = /* glsl */ `
     float g = texture2D( uGround, ( q - uGroundO ) / uGroundS ).r;
     float depth = vWPos.y - g;
     float edge = fNoise( q * 0.35 + vec2( uTime * 0.6, -uTime * 0.4 ) );
-    foam = max( foam, 1.0 - smoothstep( 0.0, uFoamW * ( 0.6 + 0.8 * edge ), depth ) );
-    col = mix( col, mix( col, uFoam, 0.25 ), 1.0 - smoothstep( 0.0, uFoamW * 4.0, depth ) );
-  }
-  if ( uFlow > 0.0 ) {                            // foam streaks running with the water
+    foam = max( foam, 1.0 - smoothstep( 0.0, uFoamW * ( 0.45 + 0.7 * edge ), depth ) );
+    col = mix( col, mix( col, uFoam, 0.18 ), 1.0 - smoothstep( 0.0, uFoamW * 2.0, depth ) );
+    if ( uFlow > 0.0 ) {                          // foam streaks running with the water, where it is shallow (the flood)
+      vec2 d = normalize( uFlowDir ), n2 = vec2( -d.y, d.x );
+      float a = dot( q, d ), b = dot( q, n2 );
+      float s1 = fNoise( vec2( b * 0.22, a * 0.05 - uTime * 1.6 * uFlow ) ), s2 = fNoise( vec2( b * 0.5 + 7.0, a * 0.11 - uTime * 2.3 * uFlow ) );
+      float shallow = 1.0 - smoothstep( 3.0, 14.0, depth );
+      foam = max( foam, ( smoothstep( 0.62, 0.8, s1 ) * 0.85 + smoothstep( 0.72, 0.86, s2 ) * 0.6 ) * shallow );
+      col = mix( col, uDeep * 0.8 + uFoam * 0.08, 0.35 * shallow );
+    }
+  } else if ( uFlow > 0.0 ) {                     // no ground texture (the town): streaks behind the wave front only
     vec2 d = normalize( uFlowDir ), n2 = vec2( -d.y, d.x );
     float a = dot( q, d ), b = dot( q, n2 );
-    float s1 = fNoise( vec2( b * 0.22, a * 0.05 - uTime * 1.6 * uFlow ) ), s2 = fNoise( vec2( b * 0.5 + 7.0, a * 0.11 - uTime * 2.3 * uFlow ) );
-    foam = max( foam, smoothstep( 0.62, 0.8, s1 ) * 0.85 + smoothstep( 0.72, 0.86, s2 ) * 0.6 );
+    float s1 = fNoise( vec2( b * 0.18, a * 0.04 - uTime * 1.6 * uFlow ) ), s2 = fNoise( vec2( b * 0.4 + 7.0, a * 0.09 - uTime * 2.3 * uFlow ) );
+    float near = uFrontOn > 0.5 ? 1.0 - smoothstep( 20.0, 160.0, q.y - uFrontZ ) : 0.0;
+    foam = max( foam, ( smoothstep( 0.6, 0.8, s1 ) * 0.9 + smoothstep( 0.7, 0.86, s2 ) * 0.7 ) * near );
+    col = mix( col, uDeep, 0.5 * near );
   }
   foam = max( foam, vCrest * ( 0.75 + 0.25 * fNoise( q * 0.6 + uTime ) ) );
   if ( uRingR > 0.0 ) {                           // map: quake ripples (rings behind a leading ring)

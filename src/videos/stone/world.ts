@@ -98,6 +98,7 @@ export class World {
   private shotSun(id: number, s: ShotDef, L: LightPreset) {
     let v = this.sunCache.get(id);
     if (v) return v;
+    if (s.sunW) { v = new THREE.Vector3(...s.sunW).normalize(); this.sunCache.set(id, v); return v; }
     let fx = 0, fz = 0;
     for (let f = s.a; f < s.b; f += 3) {
       const c = camRig(id, f), x = c.look[0] - c.pos[0], z = c.look[2] - c.pos[2], n = Math.hypot(x, z) || 1;
@@ -135,9 +136,9 @@ export class World {
       w.uChop.value = s.light === "storm" ? 2.6 : s.light === "dark" ? 2.0 : 1.0;
       w.uFlow.value = id === 6 ? 1.0 : id === 20 ? 1.3 : id === 21 ? 1.3 * (1 - clamp01((f - 1462) / 40)) + 0.15 : 0;
       w.uFlowDir.value.set(0, -1);
-      w.uFoamW.value = id === 20 || id === 21 || id === 6 ? 2.2 : 0.7;
+      w.uFoamW.value = id === 20 || id === 21 || id === 6 ? 2.2 : id === 3 || id === 4 ? 0.12 : 0.7;
       const rg = id === 18 ? ringAt(f) : null;
-      w.uRingR.value = rg ? rg.r : 0; w.uRingC.value.set(40, 620); w.uMapFront.value = rg && f >= cue(W.sends) ? rg.front : 1e5;
+      w.uRingR.value = rg ? rg.r : 0; w.uRingC.value.set(40, 430); w.uMapFront.value = rg && f >= cue(W.sends) ? rg.front : 1e5;
       this.seaColours(w, look);
       // the haul: the sledge slides up the path
       if (id === 8) {
@@ -164,6 +165,10 @@ export class World {
       this.lastG = g;
       let pc = 0; while (pc < T.poleKeys.length && T.poleKeys[pc] <= g) pc++;
       T.poles.count = pc;
+      let tc = 0; while (tc < T.treeKeys.length && T.treeKeys[tc] <= g) tc++;
+      for (const im of T.trees) im.count = tc;
+      T.cloudShadow.visible = id === 9;
+      if (id === 9) { const mt = (T.cloudShadow.material as THREE.MeshBasicMaterial).map!; mt.offset.set(-(f - 635) * 0.006, (f - 635) * 0.004); }
       for (const fl of T.fields) fl.mesh.visible = fl.key > g;
       for (const lo of T.lots) lo.mesh.visible = lo.key <= g;
       T.harbour.scale.set(1, 1, id === 9 ? Math.max(0.001, smooth((f - 668) / 40)) : 1);

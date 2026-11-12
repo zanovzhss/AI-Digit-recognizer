@@ -10,7 +10,7 @@ import { kawaraTex, marketSignTex, fishTex, oldStoneTex, groundDetailTex, boatNu
 import { plant, Inst } from "./forest";
 import { rep, rng, ctex, stoneHD } from "./paint";
 import { twoTone } from "./shade";
-import { TWIN_LAYER, inkTwins } from "./ink";
+import { TWIN_LAYER, inkTwins, NOINK } from "./ink";
 import { waterUniforms, waterMaterial, waterInkMaterial, waterGrid, WaterU } from "./water";
 import { crateY } from "./common";
 
@@ -19,6 +19,7 @@ export type TownParts = {
   bodies: THREE.InstancedMesh; roofs: THREE.InstancedMesh; poles: THREE.InstancedMesh; keys: Float32Array; mats: THREE.Matrix4[]; roofMats: THREE.Matrix4[];
   fields: { mesh: THREE.Mesh; key: number }[]; lots: { mesh: THREE.Mesh; key: number }[]; poleKeys: Float32Array; poleMats: THREE.Matrix4[];
   harbour: THREE.Group; boats: THREE.Group; water: WaterU; win: THREE.Mesh[]; fish: THREE.Mesh; man: THREE.Vector3;
+  trees: THREE.InstancedMesh[]; treeKeys: Float32Array; cloudShadow: THREE.Mesh;
 };
 
 const wallTex = () => ctex("townWall", 256, 256, (g) => {
@@ -95,6 +96,12 @@ export const buildTown = (root: THREE.Object3D): { parts: TownParts } => {
     poleSpots.push({ x: x0 - 1.5, z: z1 + 3, key: blockKey }, { x: (x0 + x1) / 2, z: z1 + 3, key: blockKey + 0.05 });
   }
   houses.sort((a, c) => a.key - c.key);
+  const lotTrees: (Inst & { key: number })[] = [];
+  for (const h of houses) if (r() < 0.45) lotTrees.push({ x: O + h.x + (r() < 0.5 ? -1 : 1) * (h.w / 2 + 2), y: 0, z: h.z + (r() - 0.5) * 4, h: 5 + 3 * r(), c: Math.floor(r() * 4), key: h.key + 0.01 });
+  lotTrees.sort((a, c2) => a.key - c2.key);
+  const treeG = plant(root, "round", lotTrees), treeKeys = new Float32Array(lotTrees.map((t) => t.key));
+  const cloudShadow = new THREE.Mesh(new THREE.PlaneGeometry(1400, 900), new THREE.MeshBasicMaterial({ map: ctex("cloudShadow", 512, 512, (g, rr) => { g.fillStyle = "#ffffff"; g.fillRect(0, 0, 512, 512); g.filter = "blur(18px)"; for (let i = 0; i < 9; i++) { g.fillStyle = "rgba(90,96,120,0.55)"; g.beginPath(); g.ellipse(rr() * 512, rr() * 512, 50 + rr() * 70, 30 + rr() * 40, rr() * 3, 0, Math.PI * 2); g.fill(); } g.filter = "none"; }), blending: THREE.MultiplyBlending, transparent: true, depthWrite: false, fog: false }));
+  cloudShadow.rotation.x = -Math.PI / 2; cloudShadow.position.set(O, 9.5, -200); cloudShadow.layers.set(NOINK); cloudShadow.renderOrder = 3; root.add(cloudShadow);
   const n = houses.length, keys = new Float32Array(n), mats: THREE.Matrix4[] = [], roofMats: THREE.Matrix4[] = [];
   const bodyM = twoTone(new THREE.MeshLambertMaterial({ map: rep(wallTex(), 1, 1) })), roofM = twoTone(new THREE.MeshLambertMaterial({ map: rep(kawaraTex("#9aa0aa"), 3, 3), side: THREE.DoubleSide }));
   const bodies = new THREE.InstancedMesh(new THREE.BoxGeometry(1, 1, 1).translate(0, 0.5, 0), bodyM, n), roofs = new THREE.InstancedMesh(roofUnit(), roofM, n);
@@ -132,7 +139,7 @@ export const buildTown = (root: THREE.Object3D): { parts: TownParts } => {
   // ---- the fish market (shot 11): the shed, the stalls, the fish on ice, the banner ----
   const [mx, , mz] = MARKET, mb = new Batch();
   for (const sx of [-12, -4, 4, 12]) for (const sz of [-5, 5]) lbox(mb, col("shedPost", "#8a8a8e"), new THREE.Matrix4(), mx + sx - 0.15, mx + sx + 0.15, 0, 4.4, mz + sz - 0.15, mz + sz + 0.15);
-  mb.add(new THREE.BoxGeometry(26, 0.25, 12.5).translate(mx, 4.5, mz), lam("shedRoof", () => ({ color: "#4a6a8a" })));
+  mb.add(new THREE.BoxGeometry(26, 0.25, 12.5).translate(mx, 4.5, mz), lam("shedRoof", () => ({ color: "#8aa2b8" })));
   const sign = new THREE.Mesh(new THREE.PlaneGeometry(6, 1.5), twoTone(new THREE.MeshLambertMaterial({ map: marketSignTex() }))); sign.position.set(mx - 4, 3.6, mz - 6.3); sign.rotation.y = Math.PI; root.add(sign);
   // the vendor's stall: a table with blue crates of fish on ice (the customers stand inland, -z; the sea behind the vendor)
   lbox(mb, lam("stallTable", () => ({ color: "#d8d4cc" })), new THREE.Matrix4(), mx - 1.4, mx + 1.4, 0.82, 0.9, mz - 0.55, mz + 0.55);
@@ -173,7 +180,12 @@ export const buildTown = (root: THREE.Object3D): { parts: TownParts } => {
   sb.build(root, true);
   bicycle(root, ox + 0.78, 0, oz + 0.3, -1.25, 0.2);
   const grass: Inst[] = [];
-  for (let k = 0; k < 900; k++) { const a = r() * 6.283, d = 0.35 + 3.4 * Math.sqrt(r()), x = ox + Math.cos(a) * d * 1.3, z = oz + Math.sin(a) * d * 0.8 + 0.4; grass.push({ x, y: 0, z, h: 0.35 + 0.55 * r() * (d < 1.2 ? 1.3 : 1), w: 0.6 + 0.4 * r(), c: Math.floor(r() * 4) }); }
+  const lens = [[ox - 1.0, oz + 4.4], [ox - 0.9, oz + 3.7], [ox - 0.3, oz + 1.55]];
+  for (let k = 0; k < 700; k++) {
+    const a = r() * 6.283, d = 0.35 + 3.4 * Math.sqrt(r()), x = ox + Math.cos(a) * d * 1.3, z = oz + Math.sin(a) * d * 0.8 + 0.4;
+    if (lens.some(([lx, lz]) => Math.hypot(x - lx, z - lz) < 1.3)) continue;
+    grass.push({ x, y: 0, z, h: 0.25 + 0.3 * r() * (d < 1.2 ? 1.2 : 1), w: 0.45 + 0.3 * r(), c: Math.floor(r() * 4) });
+  }
   plant(root, "tuft", grass, { shadow: false });
   // ---- street dressing: wires along the main road, a few cars, bushes ----
   const bushes: Inst[] = [];
@@ -193,5 +205,6 @@ export const buildTown = (root: THREE.Object3D): { parts: TownParts } => {
     mesh.userData.inkNormal = wink; inkTwins.add(mesh); root.add(mesh);
   }
   void growAt;
-  return { parts: { bodies, roofs, poles, keys, mats, roofMats, fields, lots, poleKeys, poleMats, harbour, boats, water, win, fish, man: V(ox, 0.7, oz) } };
+  return { parts: { bodies, roofs, poles, keys, mats, roofMats, fields, lots, poleKeys, poleMats, harbour, boats, water, win, fish, man: V(ox, 0.7, oz),
+    trees: treeG.children as THREE.InstancedMesh[], treeKeys, cloudShadow } };
 };

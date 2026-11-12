@@ -322,7 +322,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       break;
     }
     case 7: { // the carvers: one in the foreground (OTS, his profile, blurred), the other kneels at the stone with hammer and chisel
-      walker(out, cam, mk(30, fisher(2), "carverA"), [YARD[0] - 1.25, YARD[1] + 0.02, YARD[2] + 1.45], f, [1, -0.9], { mode: "stand", expr: "neutral" }, { shadow: false });
+      walker(out, cam, mk(30, fisher(2), "carverA"), [YARD[0] - 1.35, YARD[1] + 0.02, YARD[2] + 1.55], f, [1, -0.9], { mode: "stand", expr: "neutral" }, { shadow: false });
       const tap = (f % 14) / 14, k = tap < 0.25 ? tap / 0.25 : 1 - (tap - 0.25) / 0.75;
       fig(out, cam, mk(31, fisher(3), "carverB"), [YARD[0] + 0.95, YARD[1] + 0.05, YARD[2] - 0.55], f, { mode: "sit", expr: "stern", prop: ["hammer", q(k, 8)], chisel: true, facing: -1, headTilt: 8 }, { shadow: false });
       fig(out, cam, mk(32, villager(0), "watcher"), [YARD[0] + 2.4, YARD[1], YARD[2] - 1.6], f, { mode: "stand", expr: "neutral", facing: -1 });
@@ -395,7 +395,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
     }
     case 20: { // people run uphill past the lens; far below the foaming water climbs
       for (let i = 0; i < 7; i++) {
-        const sp = 3.2 + 0.9 * hh(i, 31), u = STOP_U - 6 + sp * (f - 1400) / 30 + 3 * hh(i, 32), dx = (hh(i, 33) - 0.5) * 2.6;
+        const sp = 3.2 + 0.9 * hh(i, 31), u = STOP_U + 9 + sp * (f - 1400) / 30 + 4 * hh(i, 32), dx = (hh(i, 33) - 0.5) * 2.6;
         if (u > STOP_U + 30) continue;
         const p = onPath(u, dx, 0), o = i === 3 ? { ...modern(i), build: "kid" as const } : modern(i + 2);
         fig(out, cam, mk(100 + i, o, "runner" + i), p, f, { mode: "march", phase: q(((f / 30) * 2.4 + hh(i, 34)) % 1, 16), lift: 80, expr: i % 3 ? "nervous" : "pained", tilt: -4, facing: dx > 0 ? -1 : 1 }, { scale: i === 3 ? 0.85 : 1 });
@@ -403,7 +403,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       break;
     }
     case 21: { // a villager by the stone watches the water stop far below (backs to the lens); two more further up
-      fig(out, cam, mk(110, modern(6), "watcherStone"), G(onStone(-0.8, 0, 1.1)), f, { mode: "stand", back: true, nod: f > cue(W.stops) + 20 ? 0.2 : 0.5 });
+      fig(out, cam, mk(110, modern(6), "watcherStone"), G(onStone(1.0, 0, 0.35)), f, { mode: "stand", back: true, nod: f > cue(W.stops) + 20 ? 0.2 : 0.5 });
       fig(out, cam, mk(111, modern(1), "watcher2"), onPath(STONE_U + 6, 1.2, 0), f, { mode: "stand", back: true, nod: 0.4 });
       fig(out, cam, mk(112, modern(8), "watcher3"), onPath(STONE_U + 7, 2.2, 0), f, { mode: "stand", back: true, prop: "shoulder" });
       break;
