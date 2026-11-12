@@ -322,11 +322,11 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       break;
     }
     case 7: { // the carvers: one in the foreground (OTS, his profile, blurred), the other kneels at the stone with hammer and chisel
-      walker(out, cam, mk(30, fisher(2), "carverA"), [YARD[0] - 1.12, YARD[1] + 0.02, YARD[2] + 0.88], f, [1, -0.9], { mode: "stand", expr: "neutral" }, { shadow: false });
       const tap = (f % 14) / 14, k = tap < 0.25 ? tap / 0.25 : 1 - (tap - 0.25) / 0.75;
-      fig(out, cam, mk(31, fisher(3), "carverB"), [YARD[0] + 1.15, YARD[1] + 0.05, YARD[2] + 0.55], f, { mode: "sit", expr: "stern", prop: ["hammer", q(k, 8)], chisel: true, facing: -1, headTilt: 8 }, { shadow: false });
+      fig(out, cam, mk(30, fisher(0), "carverA"), [YARD[0] - 1.27, YARD[1] + 0.17, YARD[2] - 1.04], f, { mode: "sit", expr: "neutral", prop: ["hammer", q((k + 0.5) % 1, 8)], chisel: true, facing: 1, headTilt: 10 }, { shadow: false });
+      fig(out, cam, mk(31, fisher(3), "carverB"), [YARD[0] + 0.23, YARD[1] + 0.05, YARD[2] - 0.43], f, { mode: "sit", expr: "stern", prop: ["hammer", q(k, 8)], chisel: true, facing: -1, headTilt: 8 }, { shadow: false });
       fig(out, cam, mk(32, villager(0), "watcher"), [YARD[0] + 2.4, YARD[1], YARD[2] - 1.6], f, { mode: "stand", expr: "neutral", facing: -1 });
-      if (tap < 0.35) for (let i = 0; i < 5; i++) { const u2 = tap / 0.35, a = hh(i + Math.floor(f / 14) * 7, 3) * Math.PI; out.fx.push({ key: "chip", cw: 32, ch: 32, draw: chipDraw, x: YARD[0] + 0.55 + Math.cos(a) * 0.3 * u2, y: YARD[1] + 0.62 + 0.25 * u2 - 0.5 * u2 * u2, z: YARD[2] - 0.2 + Math.sin(a) * 0.2 * u2, w: 0.025, h: 0.025, rot: i + f }); }
+      if (tap < 0.35) for (let i = 0; i < 5; i++) { const u2 = tap / 0.35, a = hh(i + Math.floor(f / 14) * 7, 3) * Math.PI; out.fx.push({ key: "chip", cw: 32, ch: 32, draw: chipDraw, x: YARD[0] - 0.15 + Math.cos(a) * 0.3 * u2, y: YARD[1] + 0.7 + 0.25 * u2 - 0.5 * u2 * u2, z: YARD[2] - 0.23 + Math.sin(a) * 0.2 * u2, w: 0.025, h: 0.025, rot: i + f }); }
       break;
     }
     case 8: { // the haul: six villagers lean into two ropes up the path; an elder walks beside; a dog trots along
@@ -348,7 +348,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
     case 11: { // the vendor holds up a fish on "jobs"; on "view" a gull swoops in and takes it
       const took = f >= GULL_F + 2;
       fig(out, cam, mk(60, VENDOR, "vendor"), [MARKET[0] - 0.15, 0, MARKET[2] + 0.75], f, { mode: "stand", expr: took ? "shock" : f > cue(W.jobs) ? "grin" : "smile", prop: f > cue(W.jobs) - 6 ? (took ? "fishless" : "fish") : "hold", facing: 0 });
-      fig(out, cam, mk(61, modern(5), "customer"), [MARKET[0] - 0.75, 0, MARKET[2] - 2.2], f, { mode: "stand", back: true });
+      fig(out, cam, mk(61, modern(5), "customer"), [MARKET[0] + 0.9, 0, MARKET[2] - 2.06], f, { mode: "stand", back: true }); // OTS: her back at the left edge
       for (let i = 0; i < 6; i++) fig(out, cam, mk(62 + i, modern(i + 7), "shopper" + i), [MARKET[0] - 8 + i * 3.1, 0, MARKET[2] + 1.5 + 3.5 * hh(i, 9)], f, { mode: "stand", expr: "neutral", facing: i % 2 ? 1 : -1 }, { scale: 0.97 });
       const u = (f - (GULL_F - 10)) / 28;
       if (u > 0 && u < 1) {
@@ -403,7 +403,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       break;
     }
     case 21: { // a villager by the stone watches the water stop far below (backs to the lens); two more further up
-      fig(out, cam, mk(110, modern(6), "watcherStone"), G(onStone(1.3, 0, 0.3)), f, { mode: "stand", back: true, nod: f > cue(W.stops) + 20 ? 0.2 : 0.5 });
+      fig(out, cam, mk(110, modern(6), "watcherStone"), G(onStone(1.15, 0, 0.9)), f, { mode: "stand", back: true, nod: f > cue(W.stops) + 20 ? 0.2 : 0.5 });
       fig(out, cam, mk(111, modern(1), "watcher2"), onPath(STONE_U + 6, 1.2, 0), f, { mode: "stand", back: true, nod: 0.4 });
       fig(out, cam, mk(112, modern(8), "watcher3"), onPath(STONE_U + 7, 2.2, 0), f, { mode: "stand", back: true, prop: "shoulder" });
       break;

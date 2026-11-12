@@ -59,6 +59,13 @@ export const buildRoom = (root: THREE.Object3D): { parts: RoomParts; lights: Pra
   const clock = new THREE.Mesh(new THREE.CircleGeometry(0.145, 24), twoTone(new THREE.MeshLambertMaterial({ color: "#f4efe4" }))); clock.position.set(O + 0.9, 2.2, Z0 + 0.06); root.add(clock);
   for (const [len, a] of [[0.09, 0.9], [0.12, 3.6]] as const) { const h = new THREE.Mesh(new THREE.BoxGeometry(0.012, len, 0.004).translate(0, len / 2, 0), col("clockHand", "#2a2a2a")); h.position.set(O + 0.9, 2.2, Z0 + 0.07); h.rotation.z = a; root.add(h); }
   const cal = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.59), twoTone(new THREE.MeshLambertMaterial({ map: calendar2011Tex() }))); cal.position.set(O - 1.2, 1.72, Z0 + 0.012); root.add(cal);
+  // beside it: a round paper fan on its nail, a small shelf with a vase and a tin, a framed landscape
+  b.add(new THREE.CircleGeometry(0.15, 24), col("fanPaper", "#e8d8b0"), tr(O - 0.62, 1.8, Z0 + 0.015)); lbox(b, col("fanStick", "#8a6a40"), m0, O - 0.635, O - 0.605, 1.45, 1.67, Z0 + 0.012, Z0 + 0.02);
+  lbox(b, wood, m0, O - 2.15, O - 1.6, 1.28, 1.31, Z0, Z0 + 0.16);
+  b.add(new THREE.CylinderGeometry(0.04, 0.06, 0.18, 14).translate(0, 0.09, 0), col("vase", "#3a6a8a"), tr(O - 1.95, 1.31, Z0 + 0.08)); b.add(new THREE.SphereGeometry(0.06, 10, 8), col("vaseFlower", "#e8a030"), tr(O - 1.95, 1.52, Z0 + 0.08));
+  b.add(new THREE.CylinderGeometry(0.045, 0.045, 0.1, 14).translate(0, 0.05, 0), col("teaTin", "#c8352a"), tr(O - 1.72, 1.31, Z0 + 0.08));
+  lbox(b, col("landscapeFrame", "#4a3020"), m0, O - 2.2, O - 1.7, 1.55, 1.9, Z0 + 0.005, Z0 + 0.03);
+  const land = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.27), twoTone(new THREE.MeshLambertMaterial({ color: "#7aa0b8" }))); land.position.set(O - 1.95, 1.725, Z0 + 0.032); root.add(land);
   lbox(b, col("phoneTable", "#6a4a32"), m0, O - 2.5, O - 2.0, 0, 0.7, 0.9, 1.4); lbox(b, col("phone", "#e8e4dc"), m0, O - 2.38, O - 2.12, 0.7, 0.78, 1.05, 1.25);
   // a framed family photo and a small radio on the shelf, a coat on a hook, a cushion pile, a basket of wool
   lbox(b, col("photoFrame", "#5a3a26"), m0, O - 0.15, O + 0.35, 1.55, 1.9, Z0 + 0.01, Z0 + 0.04);

@@ -93,7 +93,7 @@ export const oldStoneTex = () => ctex("oldStone", 768, 1024, (g, r) => {
   g.fillStyle = "#8a857c"; g.fillRect(0, 0, 768, 1024);
   for (let i = 0; i < 9000; i++) { const k = r(); g.fillStyle = k < 0.5 ? `rgba(50,46,40,${0.1 + 0.25 * r()})` : `rgba(210,204,190,${0.1 + 0.2 * r()})`; g.fillRect(r() * 768, r() * 1024, 2 + r() * 3, 2 + r() * 3); }
   g.textAlign = "center"; g.textBaseline = "middle"; g.font = `bold 96px ${JP}`;
-  [..."此処より下に"].forEach((ch, i) => { g.fillStyle = "rgba(40,36,32,0.42)"; g.fillText(ch, 384, 170 + i * 104); g.fillStyle = "rgba(240,232,215,0.25)"; g.fillText(ch, 387, 173 + i * 104); });
+  [..."此処より下に"].forEach((ch, i) => { g.fillStyle = "rgba(240,232,215,0.4)"; g.fillText(ch, 388, 174 + i * 104); g.fillStyle = "rgba(36,32,28,0.62)"; g.fillText(ch, 384, 170 + i * 104); });
   for (let i = 0; i < 1400; i++) { const x = r() * 768, y = r() < 0.6 ? 1024 - r() ** 2 * 380 : r() * 1024, rad = 5 + r() * 20; g.fillStyle = ["#6f8a3a", "#5d7a34", "#8aa04a", "#4e6a2e"][Math.floor(r() * 4)]; g.globalAlpha = 0.3 + 0.5 * r(); g.beginPath(); g.arc(x, y, rad, 0, TAU); g.fill(); }
   g.globalAlpha = 1;
 });

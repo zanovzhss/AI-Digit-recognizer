@@ -84,7 +84,7 @@ export const LIGHTS: Record<LightName, LightPreset> = {
     ...base, az: -30, el: 30,
     lit: [0.86, 0.9, 1.0], shade: [0.2, 0.21, 0.26], lift: [0.03, 0.035, 0.05], term: 0.45, lambert: 0.5,
     charTint: [0.88, 0.9, 0.98], charShade: 0.84, charGrad: 0.06, bodyGrad: 0.18, sideTint: [0.84, 0.86, 0.94],
-    blob: [0.55, 0.56, 0.62], actorShadow: false, top: "#4a5262", hor: "#8e96a2", fog: "#7c8490", fogNear: 70, fogFar: 900,
+    blob: [0.55, 0.56, 0.62], actorShadow: false, top: "#4a5262", hor: "#8e96a2", fog: "#7c8490", fogNear: 140, fogFar: 1500,
     sunCol: "#d4dcea", sunI: 1.6, sky: "#a4acba", ground: "#4a4c52", hemiI: 0.45, practical: 0.6, windows: 0.6,
   },
   // warm sunset (the end): the low sun behind the lens on the houses, plum shade, peach sky, lit windows

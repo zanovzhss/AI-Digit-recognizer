@@ -118,7 +118,12 @@ const FRAG_COLOR = /* glsl */ `
     foam = max( foam, ( smoothstep( 0.6, 0.8, s1 ) * 0.9 + smoothstep( 0.7, 0.86, s2 ) * 0.7 ) * near );
     col = mix( col, uDeep, 0.5 * near );
   }
-  foam = max( foam, vCrest * ( 0.75 + 0.25 * fNoise( q * 0.6 + uTime ) ) );
+  // the steep face of a wave or swell: dark water (no streaks on it) under a white crest
+  vec3 wn = normalize( cross( dFdx( vWPos ), dFdy( vWPos ) ) );
+  float steep = smoothstep( 0.2, 0.6, 1.0 - abs( wn.y ) );
+  col = mix( col, uDeep * 0.7, steep * 0.9 );
+  foam *= 1.0 - 0.85 * steep;
+  foam = max( foam, vCrest * ( 1.0 - steep ) * ( 0.75 + 0.25 * fNoise( q * 0.6 + uTime ) ) );
   if ( uRingR > 0.0 ) {                           // map: quake ripples (rings behind a leading ring)
     float rd = length( q - uRingC );
     float band = 1.0 - smoothstep( 0.0, 3.5, abs( fract( ( uRingR - rd ) / 70.0 ) * 70.0 - 2.0 ) );

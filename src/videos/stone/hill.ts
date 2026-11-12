@@ -147,8 +147,8 @@ const buildForest = (root: THREE.Object3D) => {
     if (!clear(x, y, z, 0.4, 0.5)) continue;
     tuft.push({ x, y, z, h: 0.3 + 0.3 * r(), w: 0.45 + 0.35 * r(), c: Math.floor(r() * 4) });
   }
-  for (let k = 0; k < 45; k++) { const a = r() * 6.283, d = 1.2 + 4 * r(), x = STONE.x + Math.cos(a) * d, z = STONE.z + Math.sin(a) * d; tuft.push({ x, y: H(x, z), z, h: 0.22 + 0.25 * r(), w: 0.4 + 0.25 * r(), c: Math.floor(r() * 4) }); }
-  for (let k = 0; k < 420; k++) { const x = (r() - 0.5) * 700, z = -r() * 420 + 40, y = H(x, z); if (y < 0.5 || Math.abs(x - pathX(z)) < 3 || nearPad(x, z, 9)) continue; rock.push({ x, y, z, h: 0.6 + 2.4 * r() ** 2, w: 0.9 + 3 * r() ** 2 }); }
+  for (let k = 0; k < 45; k++) { const a = r() * 6.283, d = 1.2 + 4 * r(), x = STONE.x + Math.cos(a) * d, z = STONE.z + Math.sin(a) * d; if ((x - STONE.x) * STONE.nx + (z - STONE.z) * STONE.nz < 0.4) continue; tuft.push({ x, y: H(x, z), z, h: 0.22 + 0.25 * r(), w: 0.4 + 0.25 * r(), c: Math.floor(r() * 4) }); }
+  for (let k = 0; k < 420; k++) { const x = (r() - 0.5) * 700, z = -r() * 420 + 40, y = H(x, z); if (y < 0.5 || Math.abs(x - pathX(z)) < 3 || nearPad(x, z, 9) || Math.hypot(x - STONE.x, z - STONE.z) < 16) continue; rock.push({ x, y, z, h: 0.6 + 2.4 * r() ** 2, w: 0.9 + 3 * r() ** 2 }); }
   plant(root, "sugi", sugi); plant(root, "round", round); plant(root, "pine", pine); plant(root, "bush", bush);
   plant(root, "bamboo", bamboo); plant(root, "tuft", tuft, { shadow: false }); plant(root, "rock", rock);
 };
@@ -288,18 +288,22 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
 
   // ---- the carving yard (1933, night): the stone on logs, tools, mats, lanterns ----
   const yb = new Batch(), [yx, yy, yz] = YARD;
-  const yardStone = makeStone(); yardStone.rotation.set(-Math.PI / 2, 0, 0.25, "YXZ"); yardStone.rotation.y = 0.25; yardStone.position.set(yx, yy + 0.52, yz + STONE.h / 2 - 0.1); groups.yard.add(yardStone);
-  for (const dz of [-0.6, 0.6]) yb.add(new THREE.CylinderGeometry(0.18, 0.18, 1.4, 12).rotateZ(Math.PI / 2), lam("log", () => ({ map: rep(beamHD(), 1, 0.3), color: "#7a5a3c" })), tr(yx, yy + 0.18, yz + dz, 0.25));
-  lbox(yb, lam("strawMatY", () => ({ color: "#c8b070" })), tr(yx - 1.2, yy, yz, 0.25), -0.6, 0.6, 0, 0.03, -1.1, 1.1);
-  lbox(yb, lam("strawMatY", () => ({ color: "#c8b070" })), tr(yx + 1.3, yy, yz, 0.25), -0.6, 0.6, 0, 0.03, -1.1, 1.1);
-  for (let k = 0; k < 5; k++) lbox(yb, col("chisel", "#8a8e94"), tr(yx + 1.0 + k * 0.08, yy + 0.04, yz + 1.1, 0.3 + k * 0.2), -0.1, 0.1, 0, 0.02, -0.01, 0.01);
-  bucket(yb, yx - 1.6, yy, yz + 1.2); ropeCoil(yb, yx + 1.8, yy, yz - 1.0); sack(yb, yx - 2.0, yy, yz - 0.8); crateY(yb, yx + 2.4, yy, yz + 0.8, 0.5, 0.4);
-  const lanternPos: V3[] = [[yx - 1.6, yy + 2.1, yz - 1.2], [yx + 1.7, yy + 2.0, yz + 0.4]];
+  const yardStone = makeStone();
+  const yardSide = twoTone(new THREE.MeshLambertMaterial({ color: "#5f5952", map: rep(groundDetailTex(), 2, 3) })); // fresh-cut sides, not lit up like cake
+  yardStone.material = (yardStone.material as THREE.MeshLambertMaterial[]).map((m, i) => (i === 4 ? m : (yardSide as THREE.MeshLambertMaterial)));
+  yardStone.rotation.set(-Math.PI / 2, 0, 0.25, "YXZ"); yardStone.rotation.y = 0.25; yardStone.position.set(yx, yy + 0.52, yz + STONE.h / 2 - 0.1); groups.yard.add(yardStone);
+  for (const dz of [-0.6, 0.6]) yb.add(new THREE.CylinderGeometry(0.13, 0.13, 1.3, 12).rotateZ(Math.PI / 2), lam("log", () => ({ map: rep(beamHD(), 1, 0.3), color: "#5e5044" })), tr(yx, yy + 0.24, yz + dz, 0.25));
+  // straw mats under the two carvers (one each side of the slab, as seen from its foot)
+  lbox(yb, lam("strawMatY", () => ({ color: "#9a8456" })), tr(yx + 0.3, yy, yz - 0.5, 0.5), -0.5, 0.5, 0, 0.03, -0.9, 0.9);
+  lbox(yb, lam("strawMatY", () => ({ color: "#9a8456" })), tr(yx - 1.2, yy, yz - 0.9, 0.5), -0.5, 0.5, 0, 0.03, -0.7, 0.7);
+  for (let k = 0; k < 5; k++) lbox(yb, col("chisel", "#8a8e94"), tr(yx + 0.39 + k * 0.08, yy + 0.04, yz + 0.96, 0.3 + k * 0.2), -0.1, 0.1, 0, 0.02, -0.01, 0.01);
+  bucket(yb, yx - 0.8, yy, yz + 0.87); ropeCoil(yb, yx + 1.08, yy, yz + 0.87); sack(yb, yx - 2.0, yy, yz - 0.8); crateY(yb, yx + 1.5, yy, yz - 1.9, 0.5, 0.4); crateY(yb, yx - 1.27, yy, yz - 1.2, 0.46, 0.3); // carver A's seat
+  const lanternPos: V3[] = [[yx - 0.71, yy + 1.75, yz - 1.68], [yx + 0.78, yy + 1.9, yz - 1.13]];
   for (const [lx, ly, lz] of lanternPos) { chochin(yb, groups.yard, lx, ly, lz, 1.2); yb.add(new THREE.CylinderGeometry(0.03, 0.03, 2.4, 6).translate(0, 1.2, 0), col("bambooPole", "#8a9a5a"), tr(lx + 0.25, yy, lz)); lbox(yb, col("bambooPole", "#8a9a5a"), tr(lx, ly + 0.35, lz), -0.02, 0.27, -0.02, 0.02, -0.02, 0.02); }
-  andon(yb, groups.yard, yx + 0.4, yy, yz + 1.6);
+  andon(yb, groups.yard, yx + 0.34, yy, yz + 1.61);
   yb.build(groups.yard, true);
-  for (const [lx, ly, lz] of lanternPos) { lights.push({ place: "hill", pos: [lx, ly - 0.2, lz], color: "#ffa850", intensity: 9, distance: 9, shots: [7] }); const p = pool(5, 5, 0.22, 0.13, 0.05, "yardPool"); p.rotation.x = -Math.PI / 2; p.position.set(lx, yy + 0.04, lz); groups.yard.add(p); }
-  lights.push({ place: "hill", pos: [yx + 0.4, yy + 0.6, yz + 1.6], color: "#ffb860", intensity: 3, distance: 4, shots: [7] });
+  for (const [lx, ly, lz] of lanternPos) { lights.push({ place: "hill", pos: [lx, ly - 0.2, lz], color: "#ffa850", intensity: 3.8, distance: 4.2, shots: [7] }); const p = pool(2.8, 2.8, 0.14, 0.08, 0.03, "yardPool"); p.rotation.x = -Math.PI / 2; p.position.set(lx, yy + 0.04, lz); groups.yard.add(p); }
+  lights.push({ place: "hill", pos: [yx + 0.34, yy + 0.6, yz + 1.61], color: "#ffb860", intensity: 1.6, distance: 3, shots: [7] });
 
   // ---- the haul (shot 8): the sledge with the stone (moved per frame), lanterns on poles along the path ----
   const sledge = new THREE.Group(), sb = new Batch();
