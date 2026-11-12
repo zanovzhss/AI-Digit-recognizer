@@ -141,7 +141,7 @@ const buildForest = (root: THREE.Object3D) => {
     for (let k = 0; k < 9; k++) { const x = p[0] + s * (7 + 6 * r()), z = p[2] + (r() - 0.5) * 14; if (clear(x, H(x, z), z, 1.2, 8) && !inSunPath(x, z)) bamboo.push({ x, y: H(x, z), z, h: 7 + 3 * r(), w: 5 }); }
     for (let k = 0; k < 4; k++) { const x = p[0] + (r() - 0.5) * 16, z = p[2] - 6 - 3 * r(); if (clear(x, H(x, z), z, 1, 1.6) && !inSunPath(x, z)) bush.push({ x, y: H(x, z), z, h: 1.2 + 0.6 * r() }); }
   }
-  for (let u = 4; u < 330; u += 3.4) for (const s of [-1, 1]) {
+  for (let u = 4; u < 330; u += 5.5) for (const s of [-1, 1]) {
     const x = pathX(-u) + s * (2.6 + 4.5 * r()), z = -u + (r() - 0.5) * 0.8, y = H(x, z);
     if (Math.hypot(x - STONE.x, z - STONE.z) < 1.0) continue;
     if (!clear(x, y, z, 0.4, 0.5)) continue;
@@ -320,7 +320,7 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
     const u = k === 6 ? STONE_U + 2 : HAUL_U - 8 + k * 9, s = k % 2 ? 1 : -1, x = pathX(-u) + s * 2.4, z = -u, y = H(x, z);
     hb.add(new THREE.CylinderGeometry(0.035, 0.035, 2.6, 6).translate(0, 1.3, 0), col("bambooPole", "#8a9a5a"), tr(x, y, z));
     chochin(hb, groups.haul, x - s * 0.3, y + 2.25, z, 1.1);
-    lights.push({ place: "hill", pos: [x - s * 0.3, y + 2.05, z], color: "#ffa850", intensity: 7, distance: 8, shots: [8] });
+    lights.push({ place: "hill", pos: [x - s * 0.3, y + 2.05, z], color: "#ffa850", intensity: 12, distance: 10, shots: [8] });
     const p = pool(4, 4, 0.2, 0.12, 0.05, "haulPool"); p.rotation.x = -Math.PI / 2; p.position.set(x, y + 0.05, z); groups.haul.add(p);
   }
   hb.build(groups.haul, true);

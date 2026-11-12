@@ -29,7 +29,7 @@ const wallTex = () => ctex("townWall", 256, 256, (g) => {
   g.fillStyle = "rgba(0,0,0,0.12)"; g.fillRect(0, 120, 256, 6);
 });
 const paddyTex = () => ctex("paddy", 512, 512, (g, r) => {
-  g.fillStyle = "#7aa848"; g.fillRect(0, 0, 512, 512);
+  g.fillStyle = "#8aa45e"; g.fillRect(0, 0, 512, 512);
   for (let y = 0; y < 512; y += 8) { g.fillStyle = `rgba(${r() < 0.5 ? "60,110,40" : "150,190,90"},0.35)`; g.fillRect(0, y, 512, 3); }
   g.strokeStyle = "#9a8a5a"; g.lineWidth = 10; g.strokeRect(5, 5, 502, 502); g.beginPath(); g.moveTo(256, 0); g.lineTo(256, 512); g.stroke();
 });

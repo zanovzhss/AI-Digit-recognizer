@@ -36,12 +36,33 @@ const COLS: Record<TreeKind, string[]> = {
   bush: ["#5a9040", "#4e8838", "#6a9c48"], blades: ["#6e9a44", "#7aa64c", "#5e8a3c", "#88aa52"], tuft: ["#6e9048", "#62843f", "#7a9a52", "#86a058"], rock: ["#8e8a80", "#7e7a72", "#9c968a"], bamboo: ["#6a9a48", "#7aa850", "#5e8e42"],
 };
 export type Inst = { x: number; y: number; z: number; h: number; yaw?: number; w?: number; c?: number };
+/** the wind clock (seconds) and strength, set per frame by world.ts */
+export const WIND = { uWindT: { value: 0 }, uWindK: { value: 1 } };
+const sway = (m: THREE.MeshLambertMaterial, amp: number, key: string) => {
+  const prev = m.onBeforeCompile;
+  m.onBeforeCompile = (sh, r) => {
+    prev.call(m, sh, r);
+    Object.assign(sh.uniforms, WIND);
+    sh.vertexShader = sh.vertexShader.replace("#include <common>", "#include <common>\nuniform float uWindT, uWindK;")
+      .replace("#include <begin_vertex>", `#include <begin_vertex>
+      #ifdef USE_INSTANCING
+      { vec3 ip = instanceMatrix[3].xyz; float ph = ip.x * 0.11 + ip.z * 0.07;
+        float k = ${amp.toFixed(4)} * uWindK * max(0.0, position.y);
+        transformed.x += k * ( sin( uWindT * 1.3 + ph ) + 0.4 * sin( uWindT * 2.9 + ph * 1.7 ) );
+        transformed.z += k * 0.6 * sin( uWindT * 1.1 + ph * 1.3 ); }
+      #endif`);
+  };
+  m.customProgramCacheKey = () => "sway_" + key;
+  return m;
+};
 /** build the instanced meshes of one kind; returns the group (call once per kind per set) */
 export const plant = (root: THREE.Object3D, kind: TreeKind, list: Inst[], opts: { shadow?: boolean; tint?: string[] } = {}) => {
   const g = new THREE.Group();
   if (!list.length) return g;
   const cols = opts.tint ?? COLS[kind];
-  const leafMat = twoTone(new THREE.MeshLambertMaterial({ map: kind === "rock" ? null : leafTex(), color: "#ffffff" }));
+  const leafMat0 = twoTone(new THREE.MeshLambertMaterial({ map: kind === "rock" ? null : leafTex(), color: "#ffffff" }));
+  const amp = kind === "tuft" || kind === "blades" ? 0.09 : kind === "bamboo" ? 0.03 : kind === "rock" ? 0 : 0.012;
+  const leafMat = amp > 0 ? sway(leafMat0, amp, kind) : leafMat0;
   const canopy = new THREE.InstancedMesh(canopyGeo(kind), leafMat, list.length);
   const tg = trunkGeo(kind), trunk = tg ? new THREE.InstancedMesh(tg, twoTone(new THREE.MeshLambertMaterial({ color: kind === "sugi" ? "#6a4a36" : "#7a5a40" })), list.length) : null;
   const m = new THREE.Matrix4(), q = new THREE.Quaternion(), s = new THREE.Vector3(), p = new THREE.Vector3(), c = new THREE.Color(), Y = new THREE.Vector3(0, 1, 0);

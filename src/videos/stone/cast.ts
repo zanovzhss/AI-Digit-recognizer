@@ -227,7 +227,7 @@ const mk = (i: number, o: Outfit, okey: string): Who => ({ i, o, okey });
 const fig = (out: Stage, cam: CamInfo, who: Who, p: V3, f: number, fo: FrontOpts, o: { flip?: boolean; shadow?: boolean; scale?: number; roll?: number; pitch?: number } = {}) => {
   const t = f / FPS, fo2: FrontOpts = { blink: lidAt(t, who.i, SWAPS[SHOTS.findIndex((s) => f >= s.a && f < s.b) + 1]), ...fo };
   const pl = person(cam, who, p[0], p[1], p[2], { side: false, mirror: false, flip: o.flip }, fo2, {}, o.scale ?? 1);
-  if (o.roll) pl.roll = o.roll;
+  pl.roll = o.roll ?? (fo.mode === "march" ? 0 : 0.018 * Math.sin(t * 1.6 + who.i * 1.37) + 0.008 * Math.sin(t * 3.1 + who.i));
   if (o.pitch) pl.pitch = o.pitch;
   out.places.push(pl);
   if (o.shadow !== false) blob(out, p[0], p[1], p[2], o.scale ?? 1);
@@ -374,9 +374,9 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       break;
     }
     case 15: { // two fishermen walk down the steep path toward the boats, one with a net, one with an oar
-      const w = (f - 1088) / 30 * 1.1;
-      walker(out, cam, mk(82, { ...modern(0), jacket: "#e8a030" }, "fishA"), onPath(STONE_U - 7 - w, 0.45, 0), f, [0.1, 1], { mode: "march", phase: q((f / 30 * 1.6) % 1, 16), stride: 0.8, carry: "net", expr: "grin" });
-      walker(out, cam, mk(83, { ...modern(3), jacket: "#2f5f9a" }, "fishB"), onPath(STONE_U - 8.4 - w, -0.55, 0), f, [0.1, 1], { mode: "march", phase: q((f / 30 * 1.6 + 0.4) % 1, 16), stride: 0.8, carry: "oar", expr: "smile" });
+      const w = (f - 1088) / 30 * 1.2;
+      walker(out, cam, mk(82, { ...modern(0), jacket: "#e8a030" }, "fishA"), onPath(STONE_U - 1.0 - w, 0.45, 0), f, [0.1, 1], { mode: "march", phase: q((f / 30 * 1.6) % 1, 16), stride: 0.8, carry: "net", expr: "grin" });
+      walker(out, cam, mk(83, { ...modern(3), jacket: "#2f5f9a" }, "fishB"), onPath(STONE_U - 2.6 - w, -0.55, 0), f, [0.1, 1], { mode: "march", phase: q((f / 30 * 1.6 + 0.4) % 1, 16), stride: 0.8, carry: "oar", expr: "smile" });
       break;
     }
     case 16: case 17: { // the old couple at the low table; the cup rattles, she looks up
@@ -395,7 +395,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
     }
     case 20: { // people run uphill past the lens; far below the foaming water climbs
       for (let i = 0; i < 7; i++) {
-        const sp = 3.2 + 0.9 * hh(i, 31), u = STOP_U + 9 + sp * (f - 1400) / 30 + 4 * hh(i, 32), dx = (hh(i, 33) - 0.5) * 2.6;
+        const sp = 4.0 + 1.5 * hh(i, 31), u = STOP_U + 8 + sp * (f - 1400) / 30 + 3 * hh(i, 32), dx = 1.6 + 3.6 * hh(i, 33);
         if (u > STOP_U + 30) continue;
         const p = onPath(u, dx, 0), o = i === 3 ? { ...modern(i), build: "kid" as const } : modern(i + 2);
         fig(out, cam, mk(100 + i, o, "runner" + i), p, f, { mode: "march", phase: q(((f / 30) * 2.4 + hh(i, 34)) % 1, 16), lift: 80, expr: i % 3 ? "nervous" : "pained", tilt: -4, facing: dx > 0 ? -1 : 1 }, { scale: i === 3 ? 0.85 : 1 });

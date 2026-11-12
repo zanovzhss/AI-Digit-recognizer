@@ -18,6 +18,7 @@ import { buildRoom, RoomParts } from "./room";
 import { Practical } from "./common";
 import { winGlow, winPaper, winGlassDay, WIN_BASE } from "./jhouse";
 import { cloudHD } from "./paint";
+import { WIND } from "./forest";
 
 export const loadKit = () => Promise.resolve({} as Kit);
 
@@ -200,6 +201,7 @@ export class World {
 
   update(id: number, f: number, cam: THREE.PerspectiveCamera, scene: THREE.Scene) {
     const t = f / FPS, s = SHOTS[id - 1], L = LIGHTS[s.light], K = LOOK[s.light];
+    WIND.uWindT.value = t; WIND.uWindK.value = s.light === "storm" || s.light === "dark" ? 2.2 : s.light === "lantern" ? 0.6 : 1.0;
     // ---- camera ----
     const c = camAt(id, f);
     cam.position.set(...c.pos); cam.up.set(0, 1, 0); cam.lookAt(...c.look); cam.rotateZ(c.roll);

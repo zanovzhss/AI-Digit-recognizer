@@ -42,7 +42,7 @@ export const LIGHTS: Record<LightName, LightPreset> = {
   // lantern night (the carving, the haul): a cool moon key, deep indigo shade (#161328), warm paper lanterns with pools
   lantern: {
     ...base, az: -60, el: 30,
-    lit: [0.38, 0.46, 0.82], shade: [0.06, 0.055, 0.13], lift: [0.015, 0.015, 0.05], lambert: 0.4, sideK: 0.8, term: 0.15,
+    lit: [0.5, 0.58, 0.95], shade: [0.08, 0.075, 0.16], lift: [0.02, 0.02, 0.06], lambert: 0.4, sideK: 0.8, term: 0.15,
     charTint: [1.0, 0.84, 0.66], charShade: 0.8, charGrad: 0.14, bodyGrad: 0.3, sideTint: [0.72, 0.74, 0.96],
     blob: [0.5, 0.45, 0.6], top: "#262640", hor: "#46507a", fog: "#1d2240", fogNear: 40, fogFar: 520,
     sunCol: "#9fb4ff", sunI: 1.2, sky: "#2a3060", ground: "#1a1820", hemiI: 0.2, practical: 1.0, windows: 1.2,
