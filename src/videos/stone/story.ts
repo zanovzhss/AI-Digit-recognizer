@@ -135,14 +135,14 @@ const PL: [PlaceId, Light, Era, number?, number?][] = [
   ["town", "dark", "town"],                 // 19 the wave over the rooftops
   ["hill", "dark", "now"],                  // 20 up the valley
   ["hill", "dark", "now"],                  // 21 it stops
-  ["hill", "sunset", "now", 125, 11],       // 22 every house still standing
+  ["hill", "sunset", "now", -10, 16],       // 22 every house still standing (the low sun just above the ridge, in frame)
 ];
 /** world-fixed sun directions (toward the sun) where a camera-relative key cannot light both framings of a shot:
  *  shot 1 = a low golden sun from inland, raking across the carved face and down the valley toward the sea */
 const SUNW: Record<number, V3> = { 1: [0.22, 0.42, -0.88] };
 export const SHOTS: ShotDef[] = PL.map(([place, light, era, sunAz, sunEl], i) => ({ id: i + 1, a: B[i], b: B[i + 1], light, place, era, sunAz, sunEl, sunW: SUNW[i + 1] }));
 /** crossfades (frames, centred on the shot's first frame) */
-export const XFADE: Record<number, number> = { 2: 12, 3: 12, 4: 10, 5: 12, 6: 10, 7: 10, 8: 8, 9: 14, 10: 12, 11: 10, 12: 12, 14: 12, 15: 8, 16: 10, 17: 10, 18: 12, 19: 10, 22: 12 };
+export const XFADE: Record<number, number> = { 2: 12, 3: 12, 4: 10, 5: 12, 6: 10, 7: 10, 8: 8, 9: 14, 10: 12, 11: 10, 12: 12, 14: 12, 15: 8, 16: 10, 17: 10, 18: 12, 19: 10, 21: 10, 22: 12 };
 export const FLASH_AT: number | null = null;
 
 export const shotAt = (f: number) => SHOTS.find((s) => f >= s.a && f < s.b) ?? SHOTS[SHOTS.length - 1];
@@ -210,7 +210,7 @@ const KEYS: Record<number, Key[]> = {
     { f: 0, dur: 40, cam: sFace(-0.05, 1.22, 0.8, 34, 0.08) },
     { f: cue(W.carved), dur: 34, cam: sFace(-0.04, 1.16, 0.66, 34, 0.06) },
     { f: cue(W.do), dur: 26, cam: sFace(-0.04, 1.1, 5.5, 40, 0.6), ease: glide },
-    { f: cue(W.do) + 22, dur: 46, cam: cam(PP(292, 3, 64), PP(150, 0, 0), 64), ease: glide },
+    { f: cue(W.do) + 22, dur: 46, cam: cam(PP(284, 2.5, 56), PP(145, 0, 0), 64), ease: glide },
     { f: 166, dur: 30, cam: sFace(-0.22, 1.25, 0.55, 34, 0.04), creep: 0, ease: glide },
   ],
   // 2 the 1896 notice board above the village, then back and up over the thatched village to the stormy sea
@@ -244,12 +244,13 @@ const KEYS: Record<number, Key[]> = {
   7: [
     { f: SA(7), cam: cam(add3(YARD, [-1.95, 1.85, 2.3]), add3(YARD, [0.6, 0.55, -0.1]), 50) },
     { f: SA(7), dur: 18, cam: cam(add3(YARD, [-1.8, 1.78, 2.05]), add3(YARD, [0.6, 0.55, -0.1]), 50) },
+    { f: cue(W.warning), dur: 22, cam: cam(add3(YARD, [-1.45, 1.62, 1.75]), add3(YARD, [0.7, 0.5, -0.05]), 50) },
   ],
   // 8 LOW from the side of the path: the haulers lean up the slope; on "hillside" crane up toward the stone's spot
   8: [
     { f: SA(8), cam: cam(PP(HAUL_U - 5.5, 4.6, 0.9), PP(HAUL_U + 6, -0.6, 1.3), 52) },
     { f: SA(8), dur: 18, cam: cam(PP(HAUL_U - 5, 4.2, 0.8), PP(HAUL_U + 6.5, -0.6, 1.4), 52) },
-    { f: cue(W.hillside) - 12, dur: 40, cam: cam(PP(HAUL_U - 3, 3, 2.6), PP(STONE_U - 4, -1, 3), 54), ease: glide },
+    { f: cue(W.hillside) - 12, dur: 40, cam: cam(PP(HAUL_U - 3.5, 3.4, 2.0), PP(HAUL_U + 28, -1, 3), 54), ease: glide },
   ],
   // 9 TOP over the town; the time-lapse; slow creep
   9: [
@@ -260,6 +261,7 @@ const KEYS: Record<number, Key[]> = {
   10: [
     { f: SA(10), cam: cam(T(-99, 14, -16), T(10, -1, 12), 50) },
     { f: SA(10), dur: 26, cam: cam(T(-96, 13, -14), T(10, -1, 12), 50) },
+    { f: cue(W.boats), dur: 22, cam: cam(T(-86, 11, -12), T(14, -1, 12), 50) },
   ],
   // 11 WCU at the fish stall from the customers' side, the harbour behind the vendor; the gull on "view"
   11: [
@@ -279,8 +281,9 @@ const KEYS: Record<number, Key[]> = {
   ],
   // 14 dawn: low behind the Aneyoshi stone, gliding up past it to the eleven houses up the hill
   14: [
-    { f: SA(14), cam: cam(onStone(0.5, 1.3, -4.2), onStone(0.2, 0.9, 0), 50) },
-    { f: SA(14) + 6, dur: 56, cam: cam(PP(STONE_U - 10, 17, 16), PP(STONE_U + 46, -6, 2), 56), ease: glide },
+    { f: SA(14), cam: cam(PP(STONE_U - 11, 14, 13), PP(STONE_U + 46, -6, 1), 56) },
+    { f: SA(14), dur: 34, cam: cam(PP(STONE_U - 10, 17, 16), PP(STONE_U + 46, -6, 2), 56) },
+    { f: cue(W.houses), dur: 30, cam: cam(PP(STONE_U - 8, 11, 15), PP(STONE_U + 48, -4, 2), 56) },
   ],
   // 15 LOW tracking down the steep path behind two fishermen, the stone (its carved face) passing in the foreground
   15: [
@@ -301,6 +304,7 @@ const KEYS: Record<number, Key[]> = {
   18: [
     { f: SA(18), cam: cam([0, 560, -40], [0, 0, -39], 54, 0) },
     { f: SA(18), dur: 34, cam: cam([0, 520, -30], [0, 0, -29], 54, 0) },
+    { f: cue(W.history), dur: 26, cam: cam([0, 470, -12], [0, 0, -11], 54, 0) },
   ],
   // 19 high wide over the town: the wave sweeps in over the rooftops
   19: [
@@ -314,8 +318,8 @@ const KEYS: Record<number, Key[]> = {
   ],
   // 21 OTS past a villager beside the stone (its carved face toward us): the water stops at the 300 ft post far below
   21: [
-    { f: SA(21), cam: "prev" },
-    { f: SA(21), dur: 26, cam: cam(onStone(0.6, 2.15, 2.5), PP(STOP_U + 4, 0, 0), 52) },
+    { f: SA(21), cam: cam(onStone(0.65, 2.25, 2.9), PP(STOP_U + 4, 0, 0), 52) },
+    { f: SA(21), dur: 22, cam: cam(onStone(0.6, 2.15, 2.5), PP(STOP_U + 4, 0, 0), 52) },
     { f: cue(W.three) + 4, dur: 30, cam: cam(onStone(0.5, 2.7, 3.6), PP(STOP_U + 8, 0, 0), 52) },
   ],
   // 22 low behind the stone at sunset, crane up to all eleven houses up the hill; hold to the last frame

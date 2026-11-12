@@ -322,7 +322,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       break;
     }
     case 7: { // the carvers: one in the foreground (OTS, his profile, blurred), the other kneels at the stone with hammer and chisel
-      walker(out, cam, mk(30, fisher(2), "carverA"), [YARD[0] - 1.2, YARD[1] + 0.02, YARD[2] + 1.3], f, [1, -0.9], { mode: "stand", expr: "neutral" }, { shadow: false });
+      walker(out, cam, mk(30, fisher(2), "carverA"), [YARD[0] - 1.12, YARD[1] + 0.02, YARD[2] + 0.88], f, [1, -0.9], { mode: "stand", expr: "neutral" }, { shadow: false });
       const tap = (f % 14) / 14, k = tap < 0.25 ? tap / 0.25 : 1 - (tap - 0.25) / 0.75;
       fig(out, cam, mk(31, fisher(3), "carverB"), [YARD[0] + 1.15, YARD[1] + 0.05, YARD[2] + 0.55], f, { mode: "sit", expr: "stern", prop: ["hammer", q(k, 8)], chisel: true, facing: -1, headTilt: 8 }, { shadow: false });
       fig(out, cam, mk(32, villager(0), "watcher"), [YARD[0] + 2.4, YARD[1], YARD[2] - 1.6], f, { mode: "stand", expr: "neutral", facing: -1 });

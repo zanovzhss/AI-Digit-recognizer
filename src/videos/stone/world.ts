@@ -35,7 +35,7 @@ export class World {
   private practicals: { spec: Practical; light: THREE.PointLight }[] = [];
   private clouds: { mesh: THREE.Mesh; place: string; k: number }[] = [];
   private cloudMat: THREE.MeshBasicMaterial[] = [];
-  private stars: THREE.Points; private disc: THREE.Mesh;
+  private stars: THREE.Points; private disc: THREE.Mesh; private rays: THREE.Mesh;
   private frustum = new THREE.Frustum();
   private m4 = new THREE.Matrix4(); private v = new THREE.Vector3(); private sph = new THREE.Sphere();
   private lastG = -1;
@@ -69,6 +69,14 @@ export class World {
     const discTex = new THREE.CanvasTexture((() => { const c = document.createElement("canvas"); c.width = c.height = 256; const g = c.getContext("2d")!; const gr = g.createRadialGradient(128, 128, 0, 128, 128, 128); gr.addColorStop(0, "rgba(255,255,255,1)"); gr.addColorStop(0.3, "rgba(255,255,255,1)"); gr.addColorStop(0.36, "rgba(255,255,255,0.5)"); gr.addColorStop(1, "rgba(255,255,255,0)"); g.fillStyle = gr; g.fillRect(0, 0, 256, 256); return c; })());
     this.disc = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: discTex, transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending }));
     this.disc.layers.set(NOINK); this.disc.renderOrder = -0.5; R.add(this.disc);
+    const rayTex = new THREE.CanvasTexture((() => { const c = document.createElement("canvas"); c.width = c.height = 512; const g = c.getContext("2d")!;
+      g.translate(256, 256);
+      for (let k = 0; k < 18; k++) { const a = (k / 18) * Math.PI * 2 + 0.11 * Math.sin(k * 3.7), wdt = 0.05 + 0.04 * ((k * 0.37) % 1);
+        const gr = g.createRadialGradient(0, 0, 20, 0, 0, 256); gr.addColorStop(0, "rgba(255,255,255,0.55)"); gr.addColorStop(0.5, "rgba(255,255,255,0.18)"); gr.addColorStop(1, "rgba(255,255,255,0)");
+        g.fillStyle = gr; g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, 256, a - wdt, a + wdt); g.closePath(); g.fill(); }
+      return c; })());
+    this.rays = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ map: rayTex, transparent: true, depthWrite: false, fog: false, blending: THREE.AdditiveBlending }));
+    this.rays.layers.set(NOINK); this.rays.renderOrder = -0.6; R.add(this.rays);
     const sp: number[] = [];
     for (let i = 0; i < 700; i++) { const a = (((Math.sin(i * 12.9898) * 43758.5453) % 1 + 1) % 1) * Math.PI * 2, e = 0.08 + 0.92 * Math.sqrt(((i * 0.618) % 1)), r = 1200; sp.push(Math.cos(a) * Math.cos(e * 1.4) * r, Math.sin(e * 1.4) * r, Math.sin(a) * Math.cos(e * 1.4) * r); }
     const sg = new THREE.BufferGeometry(); sg.setAttribute("position", new THREE.Float32BufferAttribute(sp, 3));
@@ -239,6 +247,8 @@ export class World {
     const discOn = L.sunDisc !== "#000000" && sunDir.y > -0.02;
     this.disc.visible = discOn;
     if (discOn) { this.disc.position.copy(cam.position).addScaledVector(sunDir, 1150); this.disc.lookAt(cam.position); this.disc.scale.setScalar(150); (this.disc.material as THREE.MeshBasicMaterial).color.set(L.sunDisc).multiplyScalar(2.4); }
+    this.rays.visible = discOn;
+    if (discOn) { this.rays.position.copy(cam.position).addScaledVector(sunDir, 1180); this.rays.lookAt(cam.position); this.rays.rotateZ(t * 0.02); this.rays.scale.setScalar(1100); (this.rays.material as THREE.MeshBasicMaterial).color.set(L.sunDisc).multiplyScalar(0.55); }
     this.props(id, f, t, L);
     // ---- cast + effects ----
     const right = V(0, 0, 0).setFromMatrixColumn(cam.matrixWorld, 0);

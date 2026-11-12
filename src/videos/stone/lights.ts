@@ -90,7 +90,7 @@ export const LIGHTS: Record<LightName, LightPreset> = {
   // warm sunset (the end): the low sun behind the lens on the houses, plum shade, peach sky, lit windows
   sunset: {
     ...base, az: 175, el: 10,
-    lit: [1.62, 1.28, 0.95], shade: [0.27, 0.2, 0.26], lift: [0.05, 0.035, 0.05], term: 0.14,
+    lit: [1.62, 1.28, 0.95], shade: [0.44, 0.31, 0.33], lift: [0.06, 0.04, 0.05], term: 0.14,
     charTint: [1.0, 0.88, 0.76], charShade: 0.86, charGrad: 0.1, bodyGrad: 0.26, sideTint: [0.9, 0.84, 0.9],
     blob: [0.75, 0.68, 0.76], top: "#8a6e86", hor: "#ffc98a", fog: "#e8b08e", fogNear: 70, fogFar: 1000, sunDisc: "#ffcf9e",
     sunCol: "#ffb066", sunI: 4.4, sky: "#e8b0a8", ground: "#8a6a60", hemiI: 0.5, practical: 0.8, windows: 0.9,
@@ -115,8 +115,8 @@ export const LOOK: Record<LightName, WorldLook> = {
     bounce: [0.05, 0.025, 0.0], sat: 0.92, clouds: 0.7, birds: true, stars: false,
   },
   storm: {
-    sky: { c: ["#7e8a9c", "#66728a", "#525e78", "#424c66", "#333b52"], e: [0, 4, 10, 22, 45] },
-    sea: { near: "#3c4e60", far: "#66748a", foam: "#d8dee8", deep: "#22303f" }, cloud: { lit: "#8a94a8", mid: "#6c768c", shade: "#4e566c" },
+    sky: { c: ["#8a90a0", "#5e6a82", "#4a5670", "#3a4460", "#2c344a"], e: [0, 3, 9, 20, 45] },
+    sea: { near: "#3c4e60", far: "#66748a", foam: "#d8dee8", deep: "#22303f" }, cloud: { lit: "#6c7690", mid: "#545e76", shade: "#3c445a" },
     bounce: [0, 0, 0.01], sat: 0.82, clouds: 1.0, birds: false, stars: false,
   },
   lantern: {

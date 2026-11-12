@@ -98,8 +98,9 @@ export const jHouse = (b: Batch, win: Batch, x: number, y: number, z: number, ya
       const x0 = -hw + 0.25 + (k * (w - 0.5)) / n, x1 = x0 + (w - 0.5) / n - 0.06;
       win.add(quad(V(x0, 0.5, hd + 0.02), V(x1, 0.5, hd + 0.02), V(x1, 2.25, hd + 0.02), V(x0, 2.25, hd + 0.02)), winPaper(), m);
     }
-    // a small side window
+    // a small side window and two on the back
     win.add(quad(V(hw + 0.02, 1.2, 0.6), V(hw + 0.02, 1.2, -0.6), V(hw + 0.02, 2.0, -0.6), V(hw + 0.02, 2.0, 0.6)), winPaper(), m);
+    for (const cx of [-hw * 0.45, hw * 0.4]) win.add(quad(V(cx + 0.55, 1.15, -hd - 0.02), V(cx - 0.55, 1.15, -hd - 0.02), V(cx - 0.55, 2.05, -hd - 0.02), V(cx + 0.55, 2.05, -hd - 0.02)), winPaper(), m);
   }
   // ---- roof ----
   const rcol = o.roof ?? (st === "modern" ? "#4a5462" : "#4e5866");

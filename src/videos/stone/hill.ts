@@ -147,7 +147,7 @@ const buildForest = (root: THREE.Object3D) => {
     if (!clear(x, y, z, 0.4, 0.5)) continue;
     tuft.push({ x, y, z, h: 0.3 + 0.3 * r(), w: 0.45 + 0.35 * r(), c: Math.floor(r() * 4) });
   }
-  for (let k = 0; k < 140; k++) { const a = r() * 6.283, d = 1.1 + 4 * r(), x = STONE.x + Math.cos(a) * d, z = STONE.z + Math.sin(a) * d; tuft.push({ x, y: H(x, z), z, h: 0.3 + 0.35 * r(), w: 0.5 + 0.3 * r(), c: Math.floor(r() * 4) }); }
+  for (let k = 0; k < 45; k++) { const a = r() * 6.283, d = 1.2 + 4 * r(), x = STONE.x + Math.cos(a) * d, z = STONE.z + Math.sin(a) * d; tuft.push({ x, y: H(x, z), z, h: 0.22 + 0.25 * r(), w: 0.4 + 0.25 * r(), c: Math.floor(r() * 4) }); }
   for (let k = 0; k < 420; k++) { const x = (r() - 0.5) * 700, z = -r() * 420 + 40, y = H(x, z); if (y < 0.5 || Math.abs(x - pathX(z)) < 3 || nearPad(x, z, 9)) continue; rock.push({ x, y, z, h: 0.6 + 2.4 * r() ** 2, w: 0.9 + 3 * r() ** 2 }); }
   plant(root, "sugi", sugi); plant(root, "round", round); plant(root, "pine", pine); plant(root, "bush", bush);
   plant(root, "bamboo", bamboo); plant(root, "tuft", tuft, { shadow: false }); plant(root, "rock", rock);
@@ -220,7 +220,7 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
       n++;
     }
     const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pts, 3)); g.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2)); g.setIndex(ix); g.computeVertexNormals();
-    const road = new THREE.Mesh(g, lam("roadAsphalt", () => ({ color: "#a29a8c", side: THREE.DoubleSide }))); road.receiveShadow = true; groups.now.add(road);
+    const road = new THREE.Mesh(g, lam("roadAsphalt", () => ({ color: "#b2a48a", side: THREE.DoubleSide }))); road.receiveShadow = true; groups.now.add(road);
   }
   let prevPole: THREE.Vector3[] | null = null;
   for (let u = 20; u < 320; u += 38) { const x = pathX(-u) + 3.2, z = -u; const pts = utilityPole(b, x, H(x, z) - 0.2, z, 0.1, 8); if (prevPole) wires(b, prevPole, pts, 0.7); prevPole = pts; }
@@ -358,6 +358,18 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
   for (const [x, z, sx, sy, sz] of [[-760, 300, 300, 160, 260], [780, 260, 320, 180, 280], [-900, -200, 400, 260, 400], [920, -260, 420, 240, 380], [0, -900, 700, 300, 300]] as const)
     fb.add(new THREE.SphereGeometry(1, 30, 14, 0, Math.PI * 2, 0, Math.PI / 2), lam("farHill", () => ({ color: "#4e7a46" })), new THREE.Matrix4().compose(V(x, -20, z), new THREE.Quaternion(), V(sx, sy, sz)));
   fb.build(root, false);
+  { // cedar forest on the far hills (no flat, featureless domes behind the valley)
+    const fr = rng(31), far: Inst[] = [];
+    for (const [hx, hz, sx, sy, sz] of [[-760, 300, 300, 160, 260], [780, 260, 320, 180, 280], [-900, -200, 400, 260, 400], [920, -260, 420, 240, 380], [0, -900, 700, 300, 300]] as const) {
+      for (let k = 0; k < 520; k++) {
+        const a2 = fr() * Math.PI * 2, rr = Math.sqrt(fr()) * 0.96, dx = Math.cos(a2) * rr, dz = Math.sin(a2) * rr;
+        const x = hx + dx * sx, z = hz + dz * sz, y = -20 + sy * Math.sqrt(Math.max(0, 1 - rr * rr));
+        if (Math.abs(x) < 520 && z > -560 && z < 360) continue; // inside the terrain grid: the valley has its own forest
+        far.push({ x, y: y - 1, z, h: 24 + 14 * fr(), w: 20 + 8 * fr(), c: Math.floor(fr() * 4) });
+      }
+    }
+    plant(root, "sugi", far, { shadow: false });
+  }
   void onPath; void gnd; void STONE_U; void quad; void cloudHD; void CLOUD_DAY;
   return { parts: { groups, stone, sledge, water, mapU, winOld, winNow, winRebuilt }, lights };
 };

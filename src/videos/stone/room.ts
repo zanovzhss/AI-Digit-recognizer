@@ -60,6 +60,16 @@ export const buildRoom = (root: THREE.Object3D): { parts: RoomParts; lights: Pra
   for (const [len, a] of [[0.09, 0.9], [0.12, 3.6]] as const) { const h = new THREE.Mesh(new THREE.BoxGeometry(0.012, len, 0.004).translate(0, len / 2, 0), col("clockHand", "#2a2a2a")); h.position.set(O + 0.9, 2.2, Z0 + 0.07); h.rotation.z = a; root.add(h); }
   const cal = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.59), twoTone(new THREE.MeshLambertMaterial({ map: calendar2011Tex() }))); cal.position.set(O - 1.2, 1.72, Z0 + 0.012); root.add(cal);
   lbox(b, col("phoneTable", "#6a4a32"), m0, O - 2.5, O - 2.0, 0, 0.7, 0.9, 1.4); lbox(b, col("phone", "#e8e4dc"), m0, O - 2.38, O - 2.12, 0.7, 0.78, 1.05, 1.25);
+  // a framed family photo and a small radio on the shelf, a coat on a hook, a cushion pile, a basket of wool
+  lbox(b, col("photoFrame", "#5a3a26"), m0, O - 0.15, O + 0.35, 1.55, 1.9, Z0 + 0.01, Z0 + 0.04);
+  const photo = new THREE.Mesh(new THREE.PlaneGeometry(0.42, 0.28), twoTone(new THREE.MeshLambertMaterial({ color: "#c8b48c" }))); photo.position.set(O + 0.1, 1.725, Z0 + 0.045); root.add(photo);
+  lbox(b, col("radioR", "#8a4a3a"), m0, O + X0 + 0.04, O + X0 + 0.28, 1.82, 1.98, -1.4, -1.05);
+  b.add(new THREE.SphereGeometry(0.22, 12, 10).scale(1, 2.0, 0.6), col("coatR", "#4a5a6a"), tr(O + X1 - 0.12, 1.2, 1.6));
+  for (let k = 0; k < 3; k++) b.add(new THREE.BoxGeometry(0.55, 0.07, 0.55).translate(0, 0.035 + k * 0.07, 0), col("zabuton" + k, ["#6a3a4a", "#3a4a6a", "#8a6a3a"][k]), tr(O + 1.9, 0, 1.9, 0.2 * k));
+  b.add(new THREE.CylinderGeometry(0.2, 0.16, 0.22, 14, 1, true).translate(0, 0.11, 0), lam("basket", () => ({ color: "#b8945a", side: THREE.DoubleSide })), tr(O - 1.6, 0, 1.6));
+  for (let k = 0; k < 3; k++) b.add(new THREE.SphereGeometry(0.07, 10, 8), col("wool" + k, ["#c8352a", "#e8d8b0", "#3a6a9a"][k]), tr(O - 1.6 + (k - 1) * 0.08, 0.2, 1.6));
+  // a soft shaft of grey daylight from the window onto the tatami
+  const shaft = pool(1.6, 2.4, 0.07, 0.075, 0.085, "shaft"); shaft.rotation.x = -Math.PI / 2; shaft.position.set(O + 0.55, 0.012, Z0 + 1.4); root.add(shaft);
   b.add(new THREE.CylinderGeometry(0.15, 0.12, 0.3, 14).translate(0, 0.15, 0), col("potR", "#b8704a"), tr(O + 2.2, 0, Z0 + 0.35)); b.add(new THREE.SphereGeometry(0.28, 12, 10).scale(1, 1.4, 1), col("plantR", "#4a8a3a"), tr(O + 2.2, 0.62, Z0 + 0.35));
   b.add(new THREE.CylinderGeometry(0.015, 0.015, 1.5).translate(0, 0.75, 0), col("lampStand", "#2a2a2e"), tr(O - 2.2, 0, Z0 + 0.4));
   b.add(new THREE.CylinderGeometry(0.12, 0.2, 0.28, 16, 1, true), lam("lampShadeF", () => ({ color: "#f2e2c0", side: THREE.DoubleSide })), tr(O - 2.2, 1.55, Z0 + 0.4));
@@ -77,7 +87,7 @@ export const buildRoom = (root: THREE.Object3D): { parts: RoomParts; lights: Pra
   b.add(new THREE.SphereGeometry(1, 24, 12, 0, Math.PI * 2, 0, Math.PI / 2), lam("roomHills", () => ({ color: "#5a7a4a" })), new THREE.Matrix4().compose(P(6, -2, -90), new THREE.Quaternion(), V(60, 26, 30)));
   for (let k = 0; k < 6; k++) b.add(new THREE.SphereGeometry(0.7, 10, 8), col("hedgeR", "#4a7a3a"), tr(O - 2 + k * 1.1, 0.0, -5.5));
   const wiresG = new THREE.Group(); root.add(wiresG);
-  const wbx = new Batch(); const pts = utilityPole(wbx, O + 1.9, -0.4, -7.5, 0.3, 9); wbx.build(wiresG, true);
+  const wbx = new Batch(); const pts = utilityPole(wbx, O + 1.2, -0.4, -4.6, 0.3, 8); wbx.build(wiresG, true);
   for (let i = 0; i < 3; i++) { // three wires across the window, built in the group's space (world.ts sways the group)
     const a = pts[i], c = a.clone().add(V(-14, -0.3, 3.5)), d = a.clone().add(V(14, -0.4, -3));
     for (const e of [c, d]) { const ps: THREE.Vector3[] = []; for (let k = 0; k <= 10; k++) { const t = k / 10; ps.push(a.clone().lerp(e, t).add(V(0, -0.8 * 4 * t * (1 - t), 0))); } const tube = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(ps), 14, 0.02, 4), col("wireR", "#1e1e22")); wiresG.add(tube); }
