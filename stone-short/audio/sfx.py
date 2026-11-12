@@ -13,14 +13,15 @@ import sfx_lib as L
 import timeline as T
 
 N = ns(T.DUR)
-SFX_DB = -6.0
+SFX_DB = -10.0   # rebuild: quieter SFX (was -6 dB); no music at all
+BED_DB = -4.0    # ambience beds trimmed too
 
 
 class Cue:
     def __init__(self, t, name, desc, gen, naive, kind="event", p=0.0, extra=0.0, room="yard", send=0.12):
         self.t, self.name, self.desc, self.gen, self.naive = t, name, desc, gen, naive
         self.kind, self.p, self.extra, self.room, self.send = kind, p, extra, room, send
-        self.applied = naive + (SFX_DB if kind == "event" else 0.0) + extra
+        self.applied = naive + (SFX_DB if kind == "event" else BED_DB) + extra
         self.measured = None
 
 
@@ -218,7 +219,6 @@ def cues():
         add(Cue(a, f"bed: {pl}", f"shot {i} ambience", lambda r=rr(), d=d, gen=gen, fi=fi, fo=fo: (fades(gen(r, d), fi, fo), 0.0), lvl, kind="bed", send=0.0))
     # ---- 1 the stone, the reveal, the push back in
     add(Cue(f(T.REVEAL), "crane up", "the lens pulls off the carved face into the wind", lambda r=rr(): L.whoosh(r, 1.6, 180, 900, 0.45), -18.0))
-    add(Cue(f(T.PUSH_1896), "push in", "push back into the carved years", lambda r=rr(): L.whoosh(r, 0.7, 250, 1400, 0.7), -17.0))
     # ---- 2-6 1896 and 1933
     add(Cue(f(T.SWELL[0]), "the swell", "a low roar builds far out at sea", lambda r=rr(): (swell_rumble(r, f(T.SWELL[1] - T.SWELL[0]) + 0.6), 0.0), -10.0, kind="bed"))
     add(Cue(f(T.FLOOD_1933[0]), "water between the houses", "water rushing between the 1933 houses, at a distance", lambda r=rr(): (lp(water_roar(r, 2.6, 0.8, 0.6), 2600), 0.0), -13.0, kind="bed"))

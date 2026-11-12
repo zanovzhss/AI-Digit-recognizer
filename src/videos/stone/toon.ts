@@ -868,13 +868,13 @@ export const bodyFront = (p: Pen, o: Outfit, opts: FrontOpts) => {
 };
 
 export type SideOpts = {
-  phase?: number; expr?: Expr; mode?: "march" | "stand" | "swing" | "push"; blink?: boolean | number; stomp?: number; pose?: number;
+  phase?: number; expr?: Expr; mode?: "march" | "run" | "stand" | "swing" | "push"; blink?: boolean | number; stomp?: number; pose?: number;
   /** step length as a multiple of 0.8 m (370 units): matches 1.6 m/s at 2 steps/s; scale by the view's foreshortening */
   stride?: number; light?: number; seed?: number;
   /** push mode: where the hands land at pose 1, in final canvas units (e.g. the swing kid's back) */
   hand?: [number, number];
   /** stone short: leaning into a haul rope held at the hip (0..1); a net bundle on the shoulder or an oar */
-  pull?: number; carry?: "net" | "oar";
+  pull?: number; carry?: "net" | "oar" | "broom";
 };
 
 /** two-bone leg, knee bending forward (+x) */
@@ -915,6 +915,26 @@ export const bodySide = (p: Pen, o: Outfit, opts: SideOpts) => {
       legs.push({ ank: [300 + L.x, ankY - L.h], pitch: L.stance ? 0 : rad(35 * Math.sin(Math.PI * L.s) * (1 - 1.6 * L.s)), near });
     lean = 4 + 3 * Math.cos(2 * two * phase) + 15 * (opts.pull ?? 0); // 7 deg at contact, 1 deg at passing (+ the haul)
     nearFwd = nL.x / (S / 2);
+  } else if (mode === "run") {
+    // a run: short stance (34 %), a flight phase with both feet off the ground, the heel kicks up behind, the knee drives
+    // forward; the body bounces at the top of the flight and leans into the run
+    const S = 470 * stride, duty = 0.34, liftH = 160;
+    const st = (ph: number) => {
+      const c = (((phase + ph) % 1) + 1) % 1;
+      if (c < duty) { const s = c / duty; return { x: S * 0.4 - S * 0.8 * s, h: 0, stance: true, s }; }
+      const s = (c - duty) / (1 - duty);
+      return { x: -S * 0.4 + S * 0.8 * (s - 0.6 * Math.sin(2 * Math.PI * s) / (2 * Math.PI)), h: liftH * Math.sin(Math.PI * s) * (1.2 - 0.6 * s), stance: false, s };
+    };
+    const nL = st(0), fL = st(0.5), stance = nL.stance ? nL : fL.stance ? fL : null;
+    if (stance) { const Leff = legLen * (1 - 0.09 * Math.sin(Math.PI * stance.s)); hipY = ankY - Math.sqrt(Math.max(1, Leff * Leff - stance.x * stance.x)); }
+    else {
+      const c = (((phase % 0.5) + 0.5) % 0.5), fl = Math.max(0, Math.min(1, (c - duty) / (0.5 - duty)));
+      hipY = ankY - legLen * 0.975 - 26 * u * Math.sin(Math.PI * fl);
+    }
+    for (const [L, near] of [[fL, false], [nL, true]] as const)
+      legs.push({ ank: [300 + L.x, ankY - L.h], pitch: L.stance ? 0 : rad(-30 + 70 * L.s), near });
+    lean = 12 + 2.5 * Math.cos(2 * two * phase);
+    nearFwd = nL.x / (S * 0.4);
   } else if (mode === "push") {
     hipY = ankY - 0.87 * legLen;
     legs.push({ ank: [300 - 0.5 * legLen, ankY], pitch: rad(-8), near: false }, { ank: [300 + 0.32 * legLen, ankY], pitch: 0, near: true });
@@ -967,6 +987,14 @@ export const bodySide = (p: Pen, o: Outfit, opts: SideOpts) => {
     far = [S, [(S[0] + hN[0]) / 2 - 4 * u, (S[1] + hN[1]) / 2 - 0.02 * HH], [hN[0] - 6 * u, hN[1] - 0.08 * HH]];
   } else if (rifle) { near = [S, [S[0] - 4 * u, S[1] + 0.42 * HH], B0]; far = mode === "march" ? swingArm(rad(30) * nearFwd) : swingArm(0); }
   else if (opts.pull) { near = [S, [S[0] + 0.16 * HH, S[1] + 0.34 * HH], [S[0] + 0.34 * HH, S[1] + 0.52 * HH]]; far = [S, [S[0] + 0.1 * HH, S[1] + 0.3 * HH], [S[0] + 0.26 * HH, S[1] + 0.5 * HH]]; }
+  else if (opts.carry === "broom") { // both hands on the handle, sweeping in time with the steps
+    const sw = 0.06 * HH * Math.sin(two * phase * 2), hT: P2 = [S[0] + 0.06 * HH + sw, S[1] + 0.22 * HH], hM: P2 = [S[0] + 0.28 * HH + sw, S[1] + 0.52 * HH];
+    near = [S, [(S[0] + hM[0]) / 2 - 0.04 * HH, (S[1] + hM[1]) / 2 + 0.04 * HH], hM]; far = [S, [(S[0] + hT[0]) / 2 - 0.05 * HH, (S[1] + hT[1]) / 2 + 0.05 * HH], hT];
+  }
+  else if (mode === "run") { // bent arms pumping opposite the legs
+    const runArm = (k: number): [P2, P2, P2] => { const a = rad(55) * k, e: P2 = [S[0] + Math.sin(a) * aLen * 0.48, S[1] + Math.cos(a) * aLen * 0.48], a2 = a + rad(100); return [S, e, [e[0] + Math.sin(a2) * aLen * 0.42, e[1] + Math.cos(a2) * aLen * 0.42]]; };
+    near = runArm(-nearFwd); far = runArm(nearFwd);
+  }
   else if (opts.carry) { near = [S, [S[0] + 0.12 * HH, S[1] + 0.2 * HH], [S[0] + 0.05 * HH, S[1] - 0.12 * HH]]; far = mode === "march" ? swingArm(rad(30) * nearFwd) : null; }
   else { near = swingArm(rad(-30) * nearFwd); far = mode === "march" ? swingArm(rad(30) * nearFwd) : null; }
   if (far) { p.stroke(curve(far[0], far[1], far[2]), 5.2 * u, farArm); p.dot(far[2][0], far[2][1], 5.5 * u); }
@@ -982,6 +1010,11 @@ export const bodySide = (p: Pen, o: Outfit, opts: SideOpts) => {
     p.band([lerp2(B0, B1, 0.6), B1], "#8d949c", 2.4 * u, 1.2 * u, "round");
   }
   if (opts.carry === "net") { const c: P2 = [S[0] - 0.05 * HH, S[1] - 0.1 * HH]; p.ell(c[0], c[1], 0.36 * HH, 0.2 * HH, "#7a6a48", 2.2 * u); p.clip(ellPts(c[0], c[1], 0.36 * HH, 0.2 * HH), () => { for (let k = -6; k <= 6; k++) { p.stroke([[c[0] + k * 9 * u - 30 * u, c[1] - 30 * u], [c[0] + k * 9 * u + 30 * u, c[1] + 30 * u]], 1.2 * u, "#4a3e28"); p.stroke([[c[0] + k * 9 * u + 30 * u, c[1] - 30 * u], [c[0] + k * 9 * u - 30 * u, c[1] + 30 * u]], 1.2 * u, "#4a3e28"); } }); }
+  if (opts.carry === "broom") {
+    const sw = 0.06 * HH * Math.sin(two * phase * 2), top: P2 = [S[0] - 0.02 * HH + sw, S[1] + 0.05 * HH], foot: P2 = [300 + 0.62 * HH + 2.2 * sw, ankY - 8 * u];
+    p.band([top, foot], "#b08a5a", 4.5 * u, 1.4 * u, "round");
+    p.poly([[foot[0] - 24 * u, foot[1] + 6 * u], [foot[0] + 20 * u, foot[1] + 6 * u], [foot[0] + 9 * u, foot[1] - 14 * u], [foot[0] - 11 * u, foot[1] - 14 * u]], "#d6b45e", 2 * u);
+  }
   if (opts.carry === "oar") p.band([[S[0] - 0.9 * HH, S[1] + 0.25 * HH], [S[0] + 0.7 * HH, S[1] - 0.35 * HH]], "#b08a5a", 5 * u, 1.5 * u, "round");
   p.stroke(curve(near[0], near[1], near[2]), 5.2 * u, armCol); p.dot(near[2][0], near[2][1], 5.5 * u);
   // ---- head ----

@@ -8,7 +8,7 @@ import * as THREE from "three";
 import { keepClear } from "./obstacles";
 import { crestPoint, toePoint, WaveDef } from "./wave";
 import { Pen, bodyFront, bodySide, fxShadow, fxContact, Outfit, FrontOpts, SideOpts, fisher, villager, modern, VENDOR, LUNCH, GRANDPA, GRANDMA } from "./toon";
-import { FPS, SHOTS, V3, W, clamp01, cue, smooth, STONE, onStone, houseAt, SURV2, SURV4, survivorAt, BOAT_OVER, YARD, HAUL_U, STOP_U, STONE_U, MARKET, OLDSTONE, GULL_F, SHAKE_F, onPath, at, lerp3, OFF, townFrontAt, waveAt, WaveSpec, WAVE_DEF } from "./story";
+import { FPS, SHOTS, V3, W, clamp01, cue, smooth, STONE, onStone, houseAt, SURV2, SURV4, SURV6, survivorAt, BOAT_OVER, YARD, HAUL_U, STOP_U, STONE_U, MARKET, OLDSTONE, GULL_F, SHAKE_F, onPath, at, lerp3, OFF, townFrontAt, waveAt, WaveSpec, WAVE_DEF } from "./story";
 import { H } from "./terrain";
 import { SEA_Y_TOWN as SEA_TOWN } from "./town";
 import { LIGHTS, LightName, LOOK } from "./lights";
@@ -335,7 +335,7 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
   if (LOOK[s.light].birds && s.place !== "room" && id !== 9) birds(out, cam, t, id === 1 || id === 22 ? 9 : 6, id * 13);
   switch (id) {
     case 1: { // an old man sweeps by the stone; up by the houses a woman hangs laundry, a kid flies a kite
-      fig(out, cam, mk(1, modern(6), "sweeper"), G(onStone(-1.4, 0, 1.9)), f, { mode: "stand", expr: "smile_closed", prop: "broom", tilt: 3 * Math.sin(f * 0.12), facing: -1 });
+      walker(out, cam, mk(1, modern(6), "sweeper"), onPath(STONE_U + 6 - 0.55 * f / 30, -0.6, 0), f, [0, 1], { mode: "march", phase: q((f / 30 * 0.6) % 1, 16), stride: 0.45, carry: "broom", expr: "smile_closed" });
       fig(out, cam, mk(2, modern(1), "laundry"), off(houseAt(1), 3, 4.6), f, { mode: "stand", expr: "neutral", reach: q(0.6 + 0.3 * Math.sin(f * 0.08), 8) });
       fig(out, cam, mk(3, { ...modern(4), build: "kid" }, "kiteKid"), off(houseAt(6), -2, 6), f, { mode: "stand", expr: "grin", prop: "point", facing: 1 });
       break;
@@ -353,9 +353,9 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
     case 6: { // four survivors on the slope above the flooded lanes (seen once the camera eases back on "Four")
       const wv6 = waveAt(6, f);
       if (wv6) foamCrest(out, WAVE_DEF.w1933, wv6, t, 26, 110, false, 13);
-      const P4: [number, number][] = [[3.0, 1.35], [4.1, 0.45], [3.35, -0.55], [4.7, -1.5]];
+      const P4: [number, number][] = [[5.0, 1.35], [6.1, 0.45], [5.35, -0.55], [6.7, -1.5]];
       const W4: Outfit[] = [fisher(0), villager(2), fisher(4), villager(3)];
-      P4.forEach(([a, k], i) => fig(out, cam, mk(20 + i, W4[i], "surv4_" + i), survivorAt(SURV4, onPath(26, 0, 0), a, k), f, { mode: "stand", back: true, nod: 0.3 + 0.15 * i, tilt: i === 3 ? -4 : 0 }));
+      P4.forEach(([a, k], i) => fig(out, cam, mk(20 + i, W4[i], "surv4_" + i), survivorAt(SURV6, onPath(10, 6, 0), a, k), f, { mode: "stand", back: true, nod: 0.3 + 0.15 * i, tilt: i === 3 ? -4 : 0 }));
       break;
     }
     case 7: { // the carvers: one in the foreground (OTS, his profile, blurred), the other kneels at the stone with hammer and chisel
@@ -378,8 +378,10 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       break;
     }
     case 10: { // fishermen on the quay: one coils a rope, one waves to a boat
-      fig(out, cam, mk(50, modern(3), "quay1"), at("town", 22, 0, -2.5), f, { mode: "stand", expr: "neutral", prop: "hold", tilt: 4 * Math.sin(f * 0.1) });
-      fig(out, cam, mk(51, modern(2), "quay2"), at("town", 34, 0, -3.5), f, { mode: "stand", expr: "grin", wave: q(0.5 + 0.5 * Math.sin(f * 0.3), 4) });
+      // on the quay (0.6 m up): one coils a mooring rope, one waves to a boat coming in, one carries a net along the quay
+      fig(out, cam, mk(50, modern(3), "quay1"), at("town", -19, 0.6, -2.2), f, { mode: "stand", expr: "neutral", prop: "hold", tilt: 4 * Math.sin(f * 0.1) });
+      fig(out, cam, mk(51, modern(2), "quay2"), at("town", -8, 0.6, -1.9), f, { mode: "stand", expr: "grin", wave: q(0.5 + 0.5 * Math.sin(f * 0.3), 4) });
+      walker(out, cam, mk(52, { ...modern(5), jacket: "#d8a030" }, "quay3"), at("town", -24 + 1.4 * (f - 756) / 30, 0.6, -4.6), f, [1, 0], { mode: "march", phase: q((f / 30 * 0.95) % 1, 16), stride: 0.95, carry: "net", expr: "smile" });
       break;
     }
     case 11: { // the vendor holds up a fish on "jobs"; on "view" a gull swoops in and takes it
@@ -412,9 +414,9 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       break;
     }
     case 15: { // two fishermen walk down the steep path toward the boats, one with a net, one with an oar
-      const w = (f - 1088) / 30 * 1.2;
-      walker(out, cam, mk(82, { ...modern(0), jacket: "#e8a030" }, "fishA"), onPath(STONE_U - 1.0 - w, 0.45, 0), f, [0.1, 1], { mode: "march", phase: q((f / 30 * 1.6) % 1, 16), stride: 0.8, carry: "net", expr: "grin" });
-      walker(out, cam, mk(83, { ...modern(3), jacket: "#2f5f9a" }, "fishB"), onPath(STONE_U - 2.6 - w, -0.55, 0), f, [0.1, 1], { mode: "march", phase: q((f / 30 * 1.6 + 0.4) % 1, 16), stride: 0.8, carry: "oar", expr: "smile" });
+      const w = (f - 1084) / 30 * 1.55; // 1.55 m/s down the path, through the frame
+      walker(out, cam, mk(82, { ...modern(0), jacket: "#e8a030" }, "fishA"), onPath(STONE_U + 3.0 - w, 0.45, 0), f, [0, 1], { mode: "march", phase: q((f / 30 * 1.0) % 1, 16), stride: 1.05, carry: "net", expr: "grin" });
+      walker(out, cam, mk(83, { ...modern(3), jacket: "#2f5f9a" }, "fishB"), onPath(STONE_U + 4.6 - w, -0.5, 0), f, [0, 1], { mode: "march", phase: q((f / 30 * 1.0 + 0.4) % 1, 16), stride: 1.05, carry: "oar", expr: "smile" });
       break;
     }
     case 16: case 17: { // the old couple at the low table; the cup rattles, she looks up
@@ -430,11 +432,17 @@ export const stage = (id: number, t: number, cam: CamInfo): Stage => {
       break;
     }
     case 20: { // people run uphill past the lens; far below the foaming water climbs
-      for (let i = 0; i < 7; i++) {
-        const sp = 4.0 + 1.5 * hh(i, 31), u = STOP_U + 8 + sp * (f - 1400) / 30 + 3 * hh(i, 32), dx = 1.6 + 3.6 * hh(i, 33);
-        if (u > STOP_U + 30) continue;
-        const p = onPath(u, dx, 0), o = i === 3 ? { ...modern(i), build: "kid" as const } : modern(i + 2);
-        fig(out, cam, mk(100 + i, o, "runner" + i), p, f, { mode: "march", phase: q(((f / 30) * 2.4 + hh(i, 34)) % 1, 16), lift: 80, expr: i % 3 ? "nervous" : "pained", tilt: -4, facing: dx > 0 ? -1 : 1 }, { scale: i === 3 ? 0.85 : 1 });
+      // a crowd running uphill on the path and the grass beside it, travelling 3.6-5.2 m/s, passing the lens on both sides
+      for (let i = 0; i < 30; i++) {
+        const kid = i % 6 === 2, elder = i % 7 === 5, sp = elder ? 2.8 : 3.6 + 1.6 * hh(i, 31);
+        const u = STOP_U - 6 + 30 * hh(i, 32) + sp * (f - 1396) / 30;
+        // on the path and the verge in front of the lens; the near ones pass it at 1-3 m and leave the frame at its sides
+        const dx = -0.6 + 5.6 * hh(i, 33) * Math.max(0.35, 1 - Math.max(0, u - STOP_U - 14) / 14);
+        if (u > STOP_U + 26.5) continue;
+        const o = kid ? { ...modern(i), build: "kid" as const } : modern(i + 2), p = onPath(u, dx, 0);
+        walker(out, cam, mk(100 + i, o, "runner" + i), p, f, [p[0] - cam.pos.x, p[2] - cam.pos.z],
+          { mode: "run", phase: q(((f / 30) * sp / 3.0 + hh(i, 34)) % 1, 16), stride: kid ? 1.0 : 1.35, expr: i % 3 ? "nervous" : "pained", carry: i % 4 === 1 ? "net" : undefined },
+          { scale: kid ? 0.78 : 1 });
       }
       break;
     }

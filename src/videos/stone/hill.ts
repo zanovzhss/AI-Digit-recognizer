@@ -5,6 +5,7 @@
 import * as THREE from "three";
 import { Batch, V, lam, quad } from "./build";
 import { H, GRID, heightGrid, heightTexture, pathX, sideDist, floorY } from "./terrain";
+import { MAP_1896, MAP_1933, MAP_EYE } from "./story";
 import { STONE, HOUSES, VILLAGE, houseAt, villageAt, BOARD_1896, PLAQUE_1933, PLAQUE_POS, REBUILT_D, BOAT_OVER, YARD, HAUL_U, POSTS_U, STONE_U,
   SHOTS, camRig, gnd, onPath, V3, WAVE_DEF } from "./story";
 import { jHouse, woodBoat, modernBoat, dryingRack, netOnPosts, netHeap, chochin, andon, utilityPole, wires, terraceWall, vegRows, laundry, tr, lbox, col } from "./jhouse";
@@ -62,7 +63,7 @@ const GR = [C("#76984f"), C("#688a47"), C("#86a25a"), C("#94a464")], FOREST = C(
   BED = C("#8a9a8a"), DIRT = C("#a8885e"), FIELD = C("#8a7448");
 const terrainMat = () => {
   const m = twoTone(new THREE.MeshLambertMaterial({ vertexColors: true, map: rep(groundDetailTex(), 160, 140) }));
-  const u = { uMap: { value: 0 }, uLevels: { value: new THREE.Vector2(14, 10) } };
+  const u = { uMap: { value: 0 }, uLevels: { value: new THREE.Vector2(MAP_1896, MAP_1933) } };
   const prev = m.onBeforeCompile;
   m.onBeforeCompile = (sh, r) => {
     prev.call(m, sh, r);
@@ -71,14 +72,17 @@ const terrainMat = () => {
       .replace("#include <project_vertex>", "#include <project_vertex>\nvWp = ( modelMatrix * vec4( transformed, 1.0 ) ).xyz;");
     sh.fragmentShader = sh.fragmentShader.replace("#include <common>", "#include <common>\nvarying vec3 vWp; uniform float uMap; uniform vec2 uLevels;")
       .replace("#include <color_fragment>", `#include <color_fragment>
-      if ( uMap > 0.5 ) {
-        float y = vWp.y;
-        float iso = abs( fract( y / 5.0 + 0.5 ) - 0.5 ) * 5.0;                       // topographic lines every 5 m
-        diffuseColor.rgb = mix( diffuseColor.rgb, diffuseColor.rgb * 0.62, 1.0 - smoothstep( 0.0, 0.22, iso ) );
-        float dash = step( 0.35, fract( ( vWp.x + vWp.z ) / 9.0 ) );
-        float l1 = 1.0 - smoothstep( 0.25, 0.5, abs( y - uLevels.x ) ), l2 = 1.0 - smoothstep( 0.25, 0.5, abs( y - uLevels.y ) );
-        diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 1.0, 0.86, 0.32 ), l1 * dash );
-        diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 1.0, 0.45, 0.32 ), l2 * dash );
+      float mapB1 = 0.0, mapB2 = 0.0;
+      if ( uMap > 0.5 ) { // painted bands along the 1896 and 1933 water lines (ragged painted edges)
+        float y = vWp.y, rag = 0.35 * sin( vWp.x * 0.9 ) * sin( vWp.z * 0.7 );
+        mapB1 = 1.0 - smoothstep( 1.1, 1.7, abs( y - uLevels.x + rag ) );
+        mapB2 = 1.0 - smoothstep( 1.1, 1.7, abs( y - uLevels.y + rag ) );
+        diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 1.0, 0.42, 0.16 ), mapB1 );
+        diffuseColor.rgb = mix( diffuseColor.rgb, vec3( 1.0, 0.78, 0.2 ), mapB2 );
+      }`).replace("#include <opaque_fragment>", `#include <opaque_fragment>
+      if ( uMap > 0.5 ) { // the bands glow (HDR, the bloom picks them up), with a soft halo either side
+        float y = vWp.y, h1 = 1.0 - smoothstep( 1.0, 6.0, abs( y - uLevels.x ) ), h2 = 1.0 - smoothstep( 1.0, 6.0, abs( y - uLevels.y ) );
+        gl_FragColor.rgb += vec3( 1.0, 0.36, 0.1 ) * ( 0.55 * mapB1 + 0.1 * h1 ) + vec3( 0.95, 0.72, 0.12 ) * ( 0.5 * mapB2 + 0.1 * h2 );
       }`);
   };
   m.customProgramCacheKey = () => "hillTerrain";
@@ -247,6 +251,18 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
   const plank = lam("debrisPlank", () => ({ map: rep(beamHD(), 1, 0.2), color: "#7a5a40" }));
   for (let k = 0; k < 46; k++) { const x = (rr() - 0.5) * 80, u = 0.5 + rr() * 24, y = H(x, -u); lbox(rb, plank, tr(x, y + 0.06, -u, rr() * 3).multiply(new THREE.Matrix4().makeRotationZ((rr() - 0.5) * 0.4)), -0.9 - rr(), 0.9 + rr(), 0, 0.08, -0.12, 0.12); }
   netHeap(rb, BOAT_OVER[0] + 3.4, BOAT_OVER[1], BOAT_OVER[2] - 1.6, 0.8);
+  { // the wrecked shore round the boat: broken beams and planks, a fallen thatch roof piece, a door, crates, a second net
+    const [bx, by, bz] = BOAT_OVER, beam = lam("debrisBeam", () => ({ map: rep(beamHD(), 1, 0.3), color: "#6a4c36" }));
+    const at = (dx: number, dz: number, lift = 0) => { const x = bx + dx, z = bz + dz; return [x, H(x, z) + lift, z] as const; };
+    for (const [dx, dz, yaw, len, roll] of [[2.2, -3.2, 0.5, 3.4, 0.12], [-1.6, -4.4, -0.9, 3.0, -0.2], [3.8, -1.2, 1.4, 2.6, 0.3], [-3.6, -2.2, 0.2, 2.8, 0.18], [0.6, -5.6, 1.1, 3.2, -0.1]] as const) {
+      const [x, y, z] = at(dx, dz, 0.12); lbox(rb, beam, tr(x, y, z, yaw).multiply(new THREE.Matrix4().makeRotationZ(roll)), -len / 2, len / 2, 0, 0.18, -0.1, 0.1);
+    }
+    for (let k = 0; k < 22; k++) { const [x, y, z] = at((rr() - 0.5) * 11, -0.5 - rr() * 7); lbox(rb, plank, tr(x, y + 0.05, z, rr() * 3).multiply(new THREE.Matrix4().makeRotationZ((rr() - 0.5) * 0.5)), -0.6 - rr() * 0.5, 0.6 + rr() * 0.5, 0, 0.06, -0.1, 0.1); }
+    { const [x, y, z] = at(-3.4, -3.6, 0.35); rb.add(new THREE.BoxGeometry(3.4, 0.32, 2.2), lam("thatchFallen", () => ({ color: "#7d6640" })), tr(x, y, z, 0.7).multiply(new THREE.Matrix4().makeRotationX(0.28))); }
+    { const [x, y, z] = at(2.8, -4.8, 0.04); lbox(rb, col("doorFrame", "#5a4030"), tr(x, y, z, 0.3), -0.9, 0.9, 0, 0.05, -0.45, 0.45); lbox(rb, col("doorPaper", "#d8ccb0"), tr(x, y, z, 0.3), -0.8, 0.8, 0.05, 0.06, -0.38, 0.38); }
+    for (const [dx, dz, s2] of [[1.4, -2.2, 0.5], [-2.2, -1.1, 0.45], [4.4, -3.6, 0.55]] as const) { const [x, y, z] = at(dx, dz); crateY(rb, x, y - 0.12, z, s2, dx); }
+    netHeap(rb, bx - 1.0, by, bz - 2.8, 0.6);
+  }
   rb.add(new THREE.ConeGeometry(0.42, 0.22, 18).translate(0, 0.08, 0).rotateZ(0.35), lam("strawHat", () => ({ color: "#d8b870" })), tr(BOAT_OVER[0] - 2.4, BOAT_OVER[1] + 0.02, BOAT_OVER[2] - 1.2));
   VILLAGE.forEach(([, , yaw], i) => { // what is left of the houses: a few posts, a fallen roof slab, timber piles
     const p = villageAt(i), m = tr(p[0], p[1], p[2], yaw + (rr() - 0.5) * 0.4);
@@ -314,27 +330,40 @@ export const buildHill = (root: THREE.Object3D): { parts: HillParts; lights: Pra
     lights.push({ place: "hill", pos: [x - s * 0.3, y + 2.05, z], color: "#ffa850", intensity: 12, distance: 10, shots: [8] });
     const p = pool(4, 4, 0.2, 0.12, 0.05, "haulPool"); p.rotation.x = -Math.PI / 2; p.position.set(x, y + 0.05, z); groups.haul.add(p);
   }
+  { // a lantern on a pole beside the sledge, so the stone is lit as it is hauled past
+    const lp = onPath(HAUL_U + 0.4, -1.6, 0); chochin(hb, groups.haul, lp[0], lp[1] + 2.1, lp[2], 1.1);
+    hb.add(new THREE.CylinderGeometry(0.03, 0.03, 2.4, 6).translate(0, 1.2, 0), col("bambooPole", "#8a9a5a"), tr(lp[0] + 0.25, lp[1], lp[2]));
+    lights.push({ place: "hill", pos: [lp[0], lp[1] + 1.9, lp[2]], color: "#ffa850", intensity: 8, distance: 7, shots: [8] });
+  }
   hb.build(groups.haul, true);
 
   // ---- the 100 / 200 / 300 FT posts below the stone (shots 20-21), boards facing uphill ----
   const ptb = new Batch();
   ["100 FT", "200 FT", "300 FT"].forEach((lab, i) => {
     const u = POSTS_U[i], x = pathX(-u) + 2.3, z = -u, y = H(x, z);
-    ptb.add(new THREE.CylinderGeometry(0.06, 0.07, 2.2, 8).translate(0, 1.1, 0), col("postWhite", "#f0ece4"), tr(x, y, z));
-    for (let k = 0; k < 4; k++) ptb.add(new THREE.CylinderGeometry(0.071, 0.071, 0.18, 8).translate(0, 0.25 + k * 0.42, 0), col("postRed", "#c8352a"), tr(x, y, z));
-    const bm = new THREE.Mesh(new THREE.PlaneGeometry(0.95, 0.6), new THREE.MeshBasicMaterial({ map: postTex(lab), color: new THREE.Color(0.92, 0.92, 0.92) }));
-    bm.position.set(x, y + 1.8, z - 0.09); bm.rotation.y = Math.PI + 0.25; groups.posts.add(bm);
+    // the 300 ft post where the water stops is a tall wooden measuring post (red bands every half metre, readable from
+    // the stone far above); the 100 / 200 ft posts stay small
+    const tall = i === 2, ph = tall ? 6.0 : 2.2, pr = tall ? 0.16 : 0.06;
+    ptb.add(new THREE.BoxGeometry(pr * 2, ph, pr * 2).translate(0, ph / 2, 0), lam("postWood", () => ({ map: rep(beamHD(), 1, 2), color: "#b08a5a" })), tr(x, y - 0.3, z));
+    for (let k = 0; k < (tall ? 11 : 4); k++) ptb.add(new THREE.BoxGeometry(pr * 2 + 0.02, tall ? 0.22 : 0.18, pr * 2 + 0.02).translate(0, 0.25 + k * (tall ? 0.5 : 0.42), 0), col("postRed", "#c8352a"), tr(x, y - 0.3, z));
+    if (tall) for (let k = 0; k < 11; k++) ptb.add(new THREE.BoxGeometry(pr * 2 + 0.03, 0.03, pr * 2 + 0.03).translate(0, 0.5 + k * 0.5, 0), col("postTick", "#f4f0e6"), tr(x, y - 0.3, z));
+    const bm = new THREE.Mesh(new THREE.PlaneGeometry(tall ? 1.9 : 0.95, tall ? 1.2 : 0.6), new THREE.MeshBasicMaterial({ map: postTex(lab), color: new THREE.Color(0.92, 0.92, 0.92) }));
+    bm.position.set(x, y + (tall ? 4.6 : 1.8), z - (tall ? 0.2 : 0.09)); bm.rotation.y = Math.PI + 0.25; groups.posts.add(bm);
   });
   ptb.build(groups.posts, true);
 
-  // ---- the map overlay (shot 18): labels on the old water lines, a ring round the stone ----
+  // ---- the diorama (shot 18): big year labels painted on the bands, THE stone as a giant marker above both ----
+  const mapEye = new THREE.Vector3(...MAP_EYE);
   const lab = (text: string, colr: string, level: number, side: number) => {
     let u = 0; while (u < 200 && floorY(u) < level) u += 0.5;
-    const x = pathX(-u) + side * 34, z = -u - 6, m = new THREE.Mesh(new THREE.PlaneGeometry(44, 17), new THREE.MeshBasicMaterial({ map: mapLabelTex(text, colr), transparent: true, depthWrite: false }));
-    m.rotation.set(-Math.PI / 2, 0, Math.PI); m.position.set(x, H(x, z) + 6, z); m.layers.set(NOINK); groups.map.add(m);
+    const x = pathX(-u) + side * 22, z = -u - 4, m = new THREE.Mesh(new THREE.PlaneGeometry(50, 19.5), new THREE.MeshBasicMaterial({ map: mapLabelTex(text, colr), transparent: true, depthWrite: false, depthTest: false }));
+    m.position.set(x, H(x, z) + 7, z); m.lookAt(mapEye); m.layers.set(NOINK); m.renderOrder = 2; groups.map.add(m);
   };
-  lab("1896", "#ffdc52", 14, -1); lab("1933", "#ff7452", 10, 1);
-  { const m = new THREE.Mesh(new THREE.PlaneGeometry(30, 30), new THREE.MeshBasicMaterial({ map: ringMarkTex(), transparent: true, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.position.set(STONE.x, STONE.y + 5, STONE.z); m.layers.set(NOINK); groups.map.add(m); }
+  lab("1896", "#ff8a4a", MAP_1896, -1); lab("1933", "#ffd84a", MAP_1933, 1);
+  void ringMarkTex;
+  { const big = makeStone(); big.scale.setScalar(22); big.position.set(STONE.x, STONE.y - 0.3, STONE.z); big.lookAt(mapEye.x, STONE.y, mapEye.z); groups.map.add(big);
+    const halo = new THREE.Mesh(new THREE.CircleGeometry(17, 40), new THREE.MeshBasicMaterial({ color: new THREE.Color(1.6, 1.35, 0.9), transparent: true, opacity: 0.35, depthWrite: false, blending: THREE.AdditiveBlending }));
+    void halo;
 
   // ---- water: the sea and the valley flood share one material ----
   const water = waterUniforms();

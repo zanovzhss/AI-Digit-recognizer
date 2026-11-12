@@ -7,7 +7,7 @@ import { Batch, V, lam, quad } from "./build";
 import { OFF, MARKET, OLDSTONE, growAt, STONE, WAVE_DEF, W2011_H } from "./story";
 import { makeStone, stoneTopAt } from "./stonemodel";
 import { addObst } from "./obstacles";
-import { modernBoat, utilityPole, wires, tr, lbox, col, bicycle, vendingMachine, jHouse } from "./jhouse";
+import { modernBoat, utilityPole, wires, tr, lbox, col, bicycle, vendingMachine, jHouse, netHeap } from "./jhouse";
 import { kawaraTex, marketSignTex, fishTex, groundDetailTex, boatNumTex } from "./jpaint";
 import { plant, Inst } from "./forest";
 import { rep, rng, ctex, stoneHD } from "./paint";
@@ -21,7 +21,7 @@ export const SEA_Y_TOWN = -1.6;
 export type TownParts = {
   bodies: THREE.InstancedMesh; roofs: THREE.InstancedMesh; poles: THREE.InstancedMesh; keys: Float32Array; mats: THREE.Matrix4[]; roofMats: THREE.Matrix4[];
   fields: { mesh: THREE.Mesh; key: number }[]; lots: { mesh: THREE.Mesh; key: number }[]; poleKeys: Float32Array; poleMats: THREE.Matrix4[];
-  harbour: THREE.Group; boats: THREE.Group; water: WaterU; win: THREE.Mesh[]; fish: THREE.Mesh; man: THREE.Vector3;
+  harbour: THREE.Group; boats: THREE.Group; boatList: THREE.Group[]; roads: { mesh: THREE.Object3D; key: number }[]; water: WaterU; win: THREE.Mesh[]; fish: THREE.Mesh; man: THREE.Vector3;
   trees: THREE.InstancedMesh[]; treeKeys: Float32Array; cloudShadow: THREE.Mesh; w2011: Wave;
 };
 
@@ -59,8 +59,19 @@ export const buildTown = (root: THREE.Object3D): { parts: TownParts } => {
   b.add(quad(P(-760, 0, 0), P(760, 0, 0), P(760, 0, -480), P(-760, 0, -480), 1, 1), lam("townGround", () => ({ map: rep(groundDetailTex(), 120, 40), color: "#a8a888" })));
   const asphalt = lam("asphaltT", () => ({ color: "#6e6c6a" })), line = lam("roadLine", () => ({ color: "#e8e4d8" }));
   const ROADS_Z = [-30, -110, -190, -270, -350, -430], ROADS_X = [-330, -250, -170, -90, -10, 70, 150, 230, 310];
-  for (const z of ROADS_Z) { b.add(quad(P(-760, 0.03, z + 4), P(760, 0.03, z + 4), P(760, 0.03, z - 4), P(-760, 0.03, z - 4)), asphalt); for (let x = -740; x < 740; x += 12) b.add(quad(P(x, 0.05, z + 0.15), P(x + 6, 0.05, z + 0.15), P(x + 6, 0.05, z - 0.15), P(x, 0.05, z - 0.15)), line); }
-  for (const x of ROADS_X) b.add(quad(P(x - 3, 0.025, 0), P(x + 3, 0.025, 0), P(x + 3, 0.025, -480), P(x - 3, 0.025, -480)), asphalt);
+  const roads: { mesh: THREE.Object3D; key: number }[] = [];
+  const NB = ROADS_Z.length - 2, roadKey = (bz: number) => ((NB - Math.min(bz, NB)) / NB) * 0.85 - 0.04;
+  ROADS_Z.forEach((z, i) => {
+    const rb2 = new Batch(), g = new THREE.Group();
+    rb2.add(quad(P(-760, 0.03, z + 4), P(760, 0.03, z + 4), P(760, 0.03, z - 4), P(-760, 0.03, z - 4)), asphalt);
+    for (let x = -740; x < 740; x += 12) rb2.add(quad(P(x, 0.05, z + 0.15), P(x + 6, 0.05, z + 0.15), P(x + 6, 0.05, z - 0.15), P(x, 0.05, z - 0.15)), line);
+    rb2.build(g, true); root.add(g); roads.push({ mesh: g, key: roadKey(i) });
+  });
+  for (const x of ROADS_X) for (let bz = 0; bz <= NB; bz++) {
+    const z0 = bz === 0 ? 0 : ROADS_Z[bz], z1 = ROADS_Z[bz + 1] ?? -480, rb2 = new Batch(), g = new THREE.Group();
+    rb2.add(quad(P(x - 3, 0.025, z0), P(x + 3, 0.025, z0), P(x + 3, 0.025, z1), P(x - 3, 0.025, z1)), asphalt);
+    rb2.build(g, true); root.add(g); roads.push({ mesh: g, key: roadKey(bz) });
+  }
   lbox(b, lam("seawall", () => ({ map: rep(groundDetailTex(), 60, 1), color: "#b8b4aa" })), new THREE.Matrix4(), O - 760, O + 760, -3, 0.6, -1.5, 1.2);
   const hills: [number, number, number, number, number][] = [[-500, -620, 420, 150, 200], [-80, -640, 380, 120, 190], [330, -610, 420, 160, 200], [720, -560, 300, 140, 180], [-860, -480, 300, 120, 220], [960, -420, 260, 100, 200]];
   for (const [x, z, sx, sy, sz] of hills) b.add(new THREE.SphereGeometry(1, 48, 20, 0, Math.PI * 2, 0, Math.PI / 2), lam("townHill", () => ({ color: "#4c7038", map: rep(groundDetailTex(), 30, 12) })), new THREE.Matrix4().compose(P(x, -6, z), new THREE.Quaternion(), V(sx, sy, sz)));
@@ -133,9 +144,22 @@ export const buildTown = (root: THREE.Object3D): { parts: TownParts } => {
   lbox(hb, col("lighthouseR", "#c8352a"), new THREE.Matrix4(), O - 40.2, O - 35.8, 7, 8, 114.8, 119.2);
   hb.build(harbour, true);
   const boats = new THREE.Group(); root.add(boats);
-  const bb = new Batch();
+  const bb = new Batch(), boatList: THREE.Group[] = [];
   const BOATS: [number, number, number, string][] = [[-70, 10, 1.62, "#2f5f9a"], [-52, 9, 1.5, "#c8352a"], [-36, 11, 1.58, "#2f8a54"], [-8, 9, 1.55, "#2f5f9a"], [18, 10, 1.6, "#d8a030"], [36, 9.5, 1.52, "#2f5f9a"], [56, 11, 1.64, "#c8352a"], [-40, 52, 0.9, "#2f5f9a"], [20, 68, 2.2, "#2f8a54"]];
-  for (const [x, z, yaw, s] of BOATS) modernBoat(bb, wb, O + x, SEA_Y_TOWN + 0.55, z, yaw, 8 + (x % 3), s);
+  for (const [x, z, yaw, s] of BOATS) {
+    const g = new THREE.Group(), b1 = new Batch(); g.position.set(O + x, SEA_Y_TOWN + 0.55, z);
+    modernBoat(b1, b1, 0, 0, 0, yaw, 8 + (x % 3), s); b1.build(g, true); boats.add(g); boatList.push(g);
+  }
+  // the working quay (shot 10): bollards with mooring lines, fish boxes, crates, net heaps, a hand cart, coiled ropes
+  const qb = new Batch();
+  for (let x = -60; x <= 40; x += 8) { qb.add(new THREE.CylinderGeometry(0.2, 0.26, 0.6, 12).translate(0, 0.3, 0), col("bollard", "#3a3e44"), tr(O + x, 0.6, -0.6)); }
+  for (const [x, z, yaw, s] of BOATS.slice(0, 7)) { const bx = Math.round(x / 8) * 8; const pts = [V(O + bx, 1.1, -0.6), V(O + (bx + x) / 2, 0.2, (z - 0.6) / 2), V(O + x - 0.5, SEA_Y_TOWN + 1.6, z - 2.6)]; qb.add(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 12, 0.035, 5), col("mooring", "#d8c8a0"), new THREE.Matrix4()); void yaw; void s; }
+  for (let k = 0; k < 14; k++) { const x = -46 + k * 4.6 + (r() - 0.5) * 1.5, z = -3.2 - r() * 3.5; crateY(qb, O + x, 0.6, z, 0.5 + 0.15 * r(), r() * 3); if (k % 3 === 0) crateY(qb, O + x + 0.1, 1.15, z, 0.45, r()); addObst("crate", O + x, z, 0.35, 0.35); }
+  for (let k = 1; k < 6; k++) { const x = -40 + k * 11 + r() * 3, z = -5.5 - r() * 2; for (let j = 0; j < 3; j++) lbox(qb, col("fishBox" + (k % 2), k % 2 ? "#2f6ab5" : "#e8eef4"), tr(O + x + j * 0.62, 0.6, z), -0.28, 0.28, j * 0.0, 0.26 + 0.26 * (j % 2), -0.2, 0.2); addObst("fishbox", O + x + 0.6, z, 0.95, 0.25); }
+  for (const [x, z, s] of [[-30, -2.4, 0.9], [-12, -6.4, 0.8], [6, -2.8, 1.0], [24, -5.8, 0.85]] as const) { netHeap(qb, O + x, 0.6, z, s); addObst("net", O + x, z, 0.8 * s, 0.6 * s); }
+  for (const [x, z] of [[-22, -1.6], [2, -1.4], [16, -1.8]] as const) for (let k = 0; k < 4; k++) qb.add(new THREE.TorusGeometry(0.34 - k * 0.05, 0.04, 8, 24).rotateX(Math.PI / 2), col("ropeCoil", "#c4a272"), tr(O + x, 0.64 + k * 0.07, z));
+  lbox(qb, col("cartBed", "#8a8e94"), tr(O - 18, 0.6, -5.2, 0.3), -0.7, 0.7, 0.35, 0.45, -0.45, 0.45); addObst("cart", O - 18, -5.2, 0.75, 0.5, 0.3);
+  qb.build(root, true);
   for (let k = 0; k < 18; k++) bb.add(new THREE.SphereGeometry(0.4, 12, 9), col("buoy" + (k % 3), ["#f28a2c", "#f4f0e6", "#e8352a"][k % 3]), tr(O - 80 + r() * 160, SEA_Y_TOWN + 0.15, 25 + r() * 80));
   bb.build(boats, true);
   BOATS.slice(0, 7).forEach(([x, z, yaw], i) => { const nm = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.52), lam("bnum" + i, () => ({ map: boatNumTex(String(11 + i * 7)), transparent: true, alphaTest: 0.4 }))); nm.position.set(O + x + Math.cos(yaw) * 2.6, SEA_Y_TOWN + 1.45, z - Math.sin(yaw) * 2.6 + 1.25); nm.rotation.y = yaw - Math.PI / 2; boats.add(nm); });
@@ -238,6 +262,6 @@ export const buildTown = (root: THREE.Object3D): { parts: TownParts } => {
     mesh.userData.inkNormal = wink; inkTwins.add(mesh); root.add(mesh);
   }
   void growAt;
-  return { parts: { bodies, roofs, poles, keys, mats, roofMats, fields, lots, poleKeys, poleMats, harbour, boats, water, win, fish, man: V(ox, 0.7, oz),
+  return { parts: { bodies, roofs, poles, keys, mats, roofMats, fields, lots, poleKeys, poleMats, harbour, boats, boatList, roads, water, win, fish, man: V(ox, 0.7, oz),
     trees: treeG.children as THREE.InstancedMesh[], treeKeys, cloudShadow, w2011 } };
 };

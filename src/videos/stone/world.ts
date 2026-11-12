@@ -185,7 +185,10 @@ export class World {
       for (const fl of T.fields) fl.mesh.visible = fl.key > g;
       for (const lo of T.lots) lo.mesh.visible = lo.key <= g;
       T.harbour.scale.set(1, 1, id === 9 ? Math.max(0.001, smooth((f - 668) / 40)) : 1);
-      T.boats.visible = id !== 9 || f > 700;
+      // boats pop in one by one (a little overshoot), the roads appear with their blocks, inland first
+      T.boats.visible = true;
+      T.boatList.forEach((bg, i) => { const d = id === 9 ? (f - (690 + 6 * i)) / 8 : 9, s = d <= 0 ? 0.001 : d >= 1 ? 1 : 1 + 0.25 * Math.sin(d * Math.PI) * (1 - d) + (d - 1) * (1 - d) * 0 - (1 - d) ** 3; bg.scale.setScalar(Math.max(0.001, s)); });
+      for (const rd of T.roads) rd.mesh.visible = rd.key <= g;
       T.fish.visible = false;
       const w = T.water;
       w.uTime.value = t;

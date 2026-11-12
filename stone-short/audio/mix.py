@@ -180,21 +180,10 @@ def main():
     v_ref = integrated(v)
     log(f"voice: {v_ref:.2f} LUFS (as stereo), TP {true_peak(v):.2f} dBTP")
 
-    # ---------------- music
-    import music
-    b = music.build()
-
-    def _m():
-        out, levels = music.render(b, ref=-20.0)
-        return out
-    m_raw = cached("music_raw", _m)
-    log("music rendered", f"{lufs(m_raw):.2f} LUFS raw")
-    dk = duck_db(spans)
-    m_d = m_raw * dbg(dk)[None, :]
-    sec_curve, sec_gains = section_db(m_d, v)
-    m = m_d * dbg(sec_curve)[None, :]
-    end = ns(T.DUR - 0.03)
-    m[:, end:] *= np.linspace(1, 0, N - end)[None, :]
+    # ---------------- music: none (the rebuild removes the synthesized score completely)
+    b = None
+    m = np.zeros((2, N))
+    sec_gains = {}
 
     # ---------------- sfx
     import sfx
@@ -246,8 +235,7 @@ def main():
 
 
 def _music_map():
-    import music as M
-    return [(a, f"{n}") for n, a, _ in M.SECTIONS] + [(T.W["still"], "warm D major chord on 'still standing', rings to the end")]
+    return [(0.0, "no music (removed in the rebuild): voice + SFX only")]
 
 
 MUSIC_MAP = []
