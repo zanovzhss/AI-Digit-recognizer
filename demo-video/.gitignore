@@ -1,0 +1,7 @@
+out/verify/
+out/stills*/
+out/tmp/
+out/layout_*.png
+out/sheet*.png
+out/*.log
+node_modules/
