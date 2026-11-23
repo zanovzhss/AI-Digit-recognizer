@@ -23,7 +23,7 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "out" / "voice"
 
 
-def synth_all(segments, model, length_scale, dry):
+def synth_all(segments, model, length_scale, dry, speaker_id=None):
     OUT.mkdir(parents=True, exist_ok=True)
     clips = {}
     if dry:
@@ -36,12 +36,22 @@ def synth_all(segments, model, length_scale, dry):
     from piper import PiperVoice, SynthesisConfig
 
     voice = PiperVoice.load(model)
-    cfg = SynthesisConfig(length_scale=length_scale, normalize_audio=True)
+    cfg = SynthesisConfig(speaker_id=speaker_id, length_scale=length_scale, normalize_audio=True)
     sr = voice.config.sample_rate
+    # Piper adds random noise, so every synthesis differs slightly: keep finished clips and
+    # only synthesise lines whose text (or voice settings) changed.
+    cache_file = OUT / "cache.json"
+    cache = json.loads(cache_file.read_text()) if cache_file.exists() else {}
     for s in segments:
         path = OUT / f"{s['id']}.wav"
-        with wave.open(str(path), "wb") as wf:
-            voice.synthesize_wav(s["text"], wf, syn_config=cfg)
+        key = f"{speaker_id}|{length_scale}|{s['text']}"
+        if cache.get(s["id"]) != key or not path.exists():
+            with wave.open(str(path), "wb") as wf:
+                voice.synthesize_wav(s["text"], wf, syn_config=cfg)
+            cache[s["id"]] = key
+    cache_file.write_text(json.dumps(cache, ensure_ascii=False, indent=1))
+    for s in segments:
+        path = OUT / f"{s['id']}.wav"
         with wave.open(str(path), "rb") as wf:
             pcm = np.frombuffer(wf.readframes(wf.getnframes()), dtype=np.int16).astype(np.float32) / 32768
         clips[s["id"]] = trim(pcm, sr)
@@ -107,7 +117,7 @@ def main():
     a = ap.parse_args()
     nar = json.loads((ROOT / "src" / "narration.json").read_text())
     segs = nar["segments"]
-    clips, sr = synth_all(segs, a.model, nar["voice"]["length_scale"], a.dry)
+    clips, sr = synth_all(segs, a.model, nar["voice"]["length_scale"], a.dry, nar["voice"].get("speaker_id"))
     pauses, lines, total = plan(segs, clips, sr, nar["voice"]["gap"], a.base)
     write_track(lines, clips, sr, total)
     speech = sum(l["dur"] for l in lines)

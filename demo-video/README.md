@@ -1,6 +1,10 @@
 # AI Algorithm Visualizer — демо-видео
 
-Готовое видео: `out/AI_Algorithm_Visualizer_demo.mp4`. Это MP4, H.264 High, yuv420p, 1920×1080, 60 fps, длительность 2:40. Звука нет, аудиодорожка отсутствует.
+Два варианта:
+
+- `out/AI_Algorithm_Visualizer_demo_kk_voice.mp4` — с казахской озвучкой: H.264 + AAC 48 кГц, 1920×1080, 60 fps, 2:56. Фоновой музыки нет.
+- `out/AI_Algorithm_Visualizer_demo_silent.mp4` — исходная версия без звука: 2:40, аудиодорожки нет.
+- `out/AI_Algorithm_Visualizer_voiceover_kk.srt` — текст озвучки с таймкодами (субтитры).
 
 ## Как сделано
 
@@ -37,6 +41,24 @@
 - «камера»: CSS-масштаб и сдвиг `<body>`, то есть плавное приближение к нужной части страницы;
 - выпадающий список у `<select>`. Headless Chromium не отрисовывает нативное системное меню, поэтому список рисуется в стиле приложения. Он строится из настоящих `<option>`, а значение меняется через `selectOption`, то есть приложение получает настоящее событие `change`.
 
+## Казахская озвучка
+
+- **Синтез.** Офлайн-синтезатор Piper, модель `kk_KZ-issai-high` (корпус ISSAI KazakhTTS, лицензия CC-BY-4.0), диктор `ISSAI_KazakhTTS2_M2`. Темп естественный (`length_scale` 1.0), речь не ускорялась.
+- **Текст.** `src/narration.json` — 28 фраз с привязкой к сценам. Латинские названия записаны кириллицей для синтезатора («Эй-стар», «Би-эф-эс»), числа — словами. Все названные числа совпадают с `out/facts.json`.
+- **Синхронизация** (`src/voice.py`). Каждая фраза начинается в момент своего действия. Если фраза не помещается до следующего действия, в видео вставляется неподвижная пауза в заранее выбранной «тихой» точке, а таймлайн сдвигается (`Timeline.remap`). Получилось 15 пауз общей длиной 16,2 с. Сверка начал фраз с кликами и подписями — в `out/voice/sync_table.txt`.
+- **Звук.** Фильтр высоких частот 70 Гц, двухпроходная нормализация громкости до −16 LUFS (пик ≤ −1,5 dBTP), AAC 192 кбит/с, 48 кГц.
+
+Пересборка версии с озвучкой:
+
+```bash
+python src/voice.py --model kk_KZ-issai-high.onnx          # синтез, паузы, out/voice/plan.json, voice_track.wav
+node src/render.cjs --voice 1 --out out/voice/video_with_holds.mp4
+bash src/mux.sh                                              # громкость + AAC → out/AI_Algorithm_Visualizer_demo_kk_voice.mp4
+python src/srt.py                                            # субтитры с текстом озвучки
+```
+
+Piper добавляет случайный шум, поэтому при новом синтезе длительности фраз немного меняются. Готовые клипы кэшируются в `out/voice/`, и заново синтезируются только изменённые фразы.
+
 ## Как пересобрать
 
 Нужны Node.js 18+, Playwright с Chromium и ffmpeg.
@@ -44,8 +66,8 @@
 ```bash
 npm install playwright        # если ещё не установлен
 npx playwright install chromium
-node src/render.cjs --out out/AI_Algorithm_Visualizer_demo.mp4
-bash src/verify.sh out/AI_Algorithm_Visualizer_demo.mp4
+node src/render.cjs --out out/AI_Algorithm_Visualizer_demo_silent.mp4
+bash src/verify.sh out/AI_Algorithm_Visualizer_demo_silent.mp4
 ```
 
 Полезные режимы:

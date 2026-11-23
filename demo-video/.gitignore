@@ -5,3 +5,6 @@ out/layout_*.png
 out/sheet*.png
 out/*.log
 node_modules/
+out/voice/*.wav
+out/voice/video_with_holds.mp4
+out/voice/ln1.json

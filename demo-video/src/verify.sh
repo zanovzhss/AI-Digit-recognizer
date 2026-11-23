@@ -2,13 +2,13 @@
 # Checks the finished MP4: streams, size, fps, duration, no audio, no black/frozen-empty frames,
 # and extracts review frames at every caption so text and actions can be compared by eye.
 set -euo pipefail
-MP4="${1:-out/AI_Algorithm_Visualizer_demo.mp4}"
+MP4="${1:-out/AI_Algorithm_Visualizer_demo_kk_voice.mp4}"
 OUT="${2:-out/verify}"
 mkdir -p "$OUT"
 
 echo "== streams"
 ffprobe -v error -show_entries stream=index,codec_type,codec_name,profile,width,height,pix_fmt,r_frame_rate,avg_frame_rate,nb_frames,duration -of default=nw=1 "$MP4"
-echo "== audio streams (must be 0)"
+echo "== audio streams (silent version: 0, voiced version: 1)"
 ffprobe -v error -select_streams a -show_entries stream=index -of csv=p=0 "$MP4" | wc -l
 echo "== container duration"
 ffprobe -v error -show_entries format=duration,size,bit_rate -of default=nw=1 "$MP4"
