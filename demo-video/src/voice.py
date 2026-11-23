@@ -58,13 +58,19 @@ def synth_all(segments, model, length_scale, dry, speaker_id=None):
     return clips, sr
 
 
-def trim(x, sr, thr=0.004):
-    """Remove leading/trailing silence so the planned start is the audible start."""
-    idx = np.where(np.abs(x) > thr)[0]
-    if len(idx) == 0:
+def trim(x, sr, thr_db=-40.0, pre=0.03, post=0.08):
+    """Cut leading/trailing silence using 10 ms RMS windows, so that the planned start time is
+    where the speech becomes audible (single noisy samples no longer count as speech)."""
+    w = int(0.01 * sr)
+    n = len(x) // w
+    if n == 0:
         return x
-    a = max(0, idx[0] - int(0.02 * sr))
-    b = min(len(x), idx[-1] + int(0.06 * sr))
+    rms = np.sqrt((x[: n * w].reshape(n, w) ** 2).mean(axis=1))
+    loud = np.where(rms > 10 ** (thr_db / 20))[0]
+    if len(loud) == 0:
+        return x
+    a = max(0, loud[0] * w - int(pre * sr))
+    b = min(len(x), (loud[-1] + 1) * w + int(post * sr))
     return x[a:b]
 
 
@@ -97,7 +103,10 @@ def plan(segments, clips, sr, gap, base_duration):
 def write_track(lines, clips, sr, total):
     buf = np.zeros(int(round(total * sr)) + sr, dtype=np.float32)
     for ln in lines:
-        x = clips[ln["id"]]
+        x = clips[ln["id"]].copy()
+        f = int(0.005 * sr)  # 5 ms fades: no clicks where a clip starts or ends
+        x[:f] *= np.linspace(0, 1, f)
+        x[-f:] *= np.linspace(1, 0, f)
         i = int(round(ln["start"] * sr))
         buf[i:i + len(x)] += x
     buf = buf[: int(round(total * sr))]
@@ -114,11 +123,24 @@ def main():
     ap.add_argument("--model")
     ap.add_argument("--dry", action="store_true")
     ap.add_argument("--base", type=float, default=160.0, help="duration of the silent timeline")
+    ap.add_argument("--relayout", action="store_true", help="keep pauses/start times of out/voice/plan.json (video already rendered); only re-trim and re-place the clips")
     a = ap.parse_args()
     nar = json.loads((ROOT / "src" / "narration.json").read_text())
     segs = nar["segments"]
     clips, sr = synth_all(segs, a.model, nar["voice"]["length_scale"], a.dry, nar["voice"].get("speaker_id"))
-    pauses, lines, total = plan(segs, clips, sr, nar["voice"]["gap"], a.base)
+    if a.relayout:
+        old = json.loads((OUT / "plan.json").read_text())
+        pauses, total = old["pauses"], old["duration"]
+        lines = []
+        for prev in old["lines"]:
+            dur = len(clips[prev["id"]]) / sr
+            lines.append({**prev, "dur": round(dur, 3), "end": round(prev["start"] + dur, 3)})
+        for x, y in zip(lines, lines[1:]):
+            assert x["end"] + 0.2 <= y["start"], (x["id"], y["id"])
+        for ln, s_ in zip(lines, segs):
+            assert ln["text"] == s_["text"], ln["id"]
+    else:
+        pauses, lines, total = plan(segs, clips, sr, nar["voice"]["gap"], a.base)
     write_track(lines, clips, sr, total)
     speech = sum(l["dur"] for l in lines)
     result = {"dry": a.dry, "sample_rate": sr, "duration": round(total, 3), "speech_seconds": round(speech, 2),
