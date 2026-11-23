@@ -20,6 +20,11 @@ const FPS = Number(args.fps || 60);
 const ROOT = path.resolve(__dirname, '..');
 const APP = path.join(ROOT, 'app', 'index.html');
 const tl = build();
+if (args.voice) { // stretch the script with the holds computed by src/voice.py
+  const plan = JSON.parse(fs.readFileSync(path.join(ROOT, 'out', 'voice', 'plan.json'), 'utf8'));
+  tl.remap(plan.pauses);
+  if (Math.abs(tl.duration - plan.duration) > 0.01) throw new Error(`duration mismatch ${tl.duration} vs ${plan.duration}`);
+}
 const DURATION = tl.duration;
 const N = Math.round(DURATION * FPS);
 const from = args.from ? Math.round(Number(args.from) * FPS) : 0;

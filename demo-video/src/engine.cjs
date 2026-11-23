@@ -48,6 +48,25 @@ class Timeline {
   ring(t0, t1, spec) { this.rings.push({ t0, t1, ...spec }); return this; }
   cursor(t, o, dur = 0.35) { this.cursorKeys.push({ t, o, dur }); return this; }
   scrim(t, top, len = 170, o = 0, dur = 0) { this.scrimKeys.push({ t, top, len, o, dur }); return this; }
+  // Insert still holds into the finished script: every time >= pause.at moves later by pause.dur.
+  // Used to give the voice-over room without changing any action or speeding anything up.
+  remap(pauses) {
+    const m = (t) => t + pauses.reduce((acc, p) => acc + (p.at <= t + 1e-9 ? p.dur : 0), 0);
+    for (const a of this.actions) a.t = m(a.t);
+    for (const c of this.cams) c.t = m(c.t);
+    for (const v of this.moves) v.t = m(v.t);
+    for (const c of this.clicks) c.t = m(c.t);
+    for (const c of this.captions) { c.t0 = m(c.t0); c.t1 = m(c.t1); }
+    for (const r of this.rings) { r.t0 = m(r.t0); r.t1 = m(r.t1); }
+    for (const l of this.listboxes) { l.t0 = m(l.t0); l.t1 = m(l.t1); l.hovers.forEach((h) => { h.t = m(h.t); }); }
+    for (const k of this.cursorKeys) k.t = m(k.t);
+    for (const k of this.scrimKeys) k.t = m(k.t);
+    if (this.titleKeys) { const T = this.titleKeys; T.t0 = m(T.t0); T.t1 = m(T.t1); T.lines = T.lines.map(m); }
+    this.weeks.keys = this.weeks.keys.map(m); this.weeks.active.forEach((a) => { a.t = m(a.t); }); this.weeks.until = m(this.weeks.until);
+    if (this.finalKey) { this.finalKey.t0 = m(this.finalKey.t0); this.finalKey.t1 = m(this.finalKey.t1); }
+    this.duration = m(this.duration);
+    return this;
+  }
 }
 
 // ---------- per-frame evaluation helpers ----------
