@@ -17,11 +17,11 @@ const SHOT = {
   home: { to: { s: 1, cx: 960, cy: 520 } },
   tabs: shot(1.05, 100), // hero + tabs + top of the panel
   aMain: shot(1.25, 547), // select, grid, playbar, metrics, seed controls
-  aCompare: shot(1.6, 1131), // legend → comparison table, with metrics and status on the right
+  aCompare: shot(1.58, 1131), // legend → comparison table, with metrics and status on the right
   hMain: shot(1.5, 497), // bars, playbar, values / start index / apply
   hHistory: shot(1.13, 497), // bars + step history
   hRestartWide: shot(1.45, 1005), // history + Random Restart box
-  hRestart: shot(1.6, 1180), // Random Restart table
+  hRestart: shot(1.56, 1180), // Random Restart table
   mMain: shot(1.3, 390), // difficulty, board, turn text, AI metrics
   mTree: shot(1.75, 1128, 930), // decision tree
   end: shot(1.0, 270, 731), // tabs + panel, leaves the left side for the summary list
@@ -176,7 +176,7 @@ module.exports = function build() {
   T.cam(86.5, 1.5, SHOT.hRestartWide);
   T.move(86.9, 1.0, { sel: '#h-restart' });
   T.click(88.2);
-  T.cam(88.45, 1.3, { ...SHOT.hRestart, drift: 0.0015 });
+  T.cam(88.45, 1.3, { ...SHOT.hRestart, drift: 0.0012 });
   T.probe(88.5, 'restart_table', `({summary: document.querySelector('#h-restarts p').textContent, rows: [...document.querySelectorAll('#h-restarts tr')].map(r => [...r.children].map(c => c.textContent))})`);
   T.move(89.0, 0.9, { sel: '#h-restarts .restart-choices', ax: 0.97, ay: 0.5 });
   T.caption(88.9, 94.4, 'Бірнеше бастапқы орыннан іздеу', K_HILL);
@@ -213,7 +213,7 @@ module.exports = function build() {
   T.caption(120.3, 124.8, 'Нәтиже: тең ойын', K_MM, 'Нәтиже: <em>тең ойын</em>');
   T.ring(120.4, 124.6, { sel: '#m-turn', pad: 4 });
   // Decision tree of the last AI move
-  T.cam(124.8, 1.5, { ...SHOT.mTree, drift: 0.0012 });
+  T.cam(124.8, 1.5, { ...SHOT.mTree, drift: 0.0008 });
   T.move(125.2, 1.0, { sel: '#m-tree .tree-branch.chosen summary', ax: 0.25 });
   T.click(126.6);
   T.move(127.1, 0.8, { sel: '#m-tree .tree-branch:not(.chosen) summary', ax: 0.25 });
@@ -222,7 +222,7 @@ module.exports = function build() {
   T.move(128.8, 1.0, { sel: '#m-tree .tree-grid', ax: 0.86, ay: 0.42 });
   T.caption(129.4, 134.2, 'O — MAX, X — MIN', K_MM, '<i>O</i> — MAX, <em>X</em> — MIN');
   T.ring(129.6, 134.0, { sel: '#m-tree .tree-root', pad: 4 });
-  T.ring(130.4, 134.0, { sel: '#m-tree .tree-branch.chosen .caption', pad: 4 });
+  T.ring(130.4, 134.0, { sel: '#m-tree .tree-branch.chosen .caption', pad: 9 });
   T.caption(134.4, 141.2, 'AI қарсыластың ең тиімді жауабын ескереді', K_MM, 'AI қарсыластың <em>ең тиімді жауабын</em> ескереді');
   T.ring(134.6, 141.0, { sel: '#m-tree .tree-branch.chosen', pad: 6 });
   T.ring(135.6, 141.0, { sel: '#m-tree .tree-branch:not(.chosen) .reply-list span', pad: 5, color: PURPLE });
