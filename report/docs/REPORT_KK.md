@@ -23,7 +23,7 @@ AI алгоритмдерінің шешімін интерактивті түр
 
 **Онлайн нұсқа:** [https://zhanarys-ai-lab-2026.zhanaryszanov712.chatgpt.site](https://zhanarys-ai-lab-2026.zhanaryszanov712.chatgpt.site) — бұл нұсқаға кіру үшін ChatGPT арқылы авторизация қажет.
 
-**GitHub:** _сілтеме кейін қосылады_
+**GitHub:** [https://github.com/zanovzhss/AI-Algorithm-Visualizer](https://github.com/zanovzhss/AI-Algorithm-Visualizer)
 
 ## A*
 Мақсаты: кедергілері бар торда қысқа жол табу. Кіріс: тор өлшемі, кедергілер жиыны, бастау және мақсат. Шығыс: маршрут, зерттелген түйіндер реті, жол құны немесе жол жоқ нәтижесі.
