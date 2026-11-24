@@ -1,13 +1,14 @@
 # Отчёт со скриншотами
 
-- `docs/REPORT_KK.md` — отчёт проекта (`docs/REPORT_KK.md` из ZIP) с новым разделом «Скриншоттар» (3 рисунка с пояснениями) и тремя обновлёнными фразами о браузерной проверке. Файл заменяет `docs/REPORT_KK.md` в проекте; рядом нужно положить папку `docs/screenshots/`.
-- `docs/screenshots/*.png` — настоящие скриншоты: сайт из ZIP запущен через `python -m http.server --directory dist`, открыт в Chromium (Playwright), 1440×900 @2x. Страница не изменялась, на неё ничего не накладывалось.
+- `docs/REPORT_KK.md` — отчёт проекта: разделы «Іске қосу нұсқаулығы», «Скриншоттар» (5 рисунков с подписями и пояснениями) и «Қорытынды». Им заменяется `docs/REPORT_KK.md` в проекте; рядом должна лежать папка `docs/screenshots/`.
+- `docs/screenshots/0*.png` — настоящие скриншоты. Сайт из ZIP запущен через `python -m http.server --directory dist` и открыт в Chromium (Playwright) в окне 1000×900 с двойной чёткостью. Рисунки 3–5 — вырезки реальной отрисовки страницы, без перерисовки.
 - `docs/screenshots/screenshots_facts.json` — значения, прочитанные со страницы в момент съёмки, и журнал HTTP-сервера.
-- `REPORT_KK.pdf` — тот же отчёт в PDF (A4).
+- `REPORT_KK.pdf` — тот же отчёт в формате A4, с номерами страниц и кликабельными ссылками.
 
 Повторить:
 
 ```bash
-node tools/screenshots.cjs <путь>/AI_Visualizer/dist docs/screenshots
-python tools/build_pdf.py     # нужен пакет markdown
+node tools/screenshots.cjs <путь>/AI_Visualizer/dist docs/screenshots 1000
+python tools/build_pdf.py                         # нужен пакет markdown
+python tools/build_pdf.py --github <ссылка>       # вставить ссылку на GitHub вместо заглушки и пересобрать PDF
 ```
